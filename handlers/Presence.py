@@ -2,75 +2,101 @@
 # This file is a part of VK4XMPP transport
 # © simpleApps, 2013.
 
-def prsHandler(cl, prs):
-	pType = prs.getType()
-	jidFrom = prs.getFrom()
-	jidTo = prs.getTo()
-	jidFromStr = jidFrom.getStripped()
-	jidToStr = jidTo.getStripped()
-	if jidFromStr in Transport:
-		Class = Transport[jidFromStr]
-		Resource = jidFrom.getResource()
-		if pType in ("available", "probe", None):
-			if jidTo == TransportID and Resource not in Class.resources:
-				logger.debug("%s from user %s, will send sendInitPresence" % (pType, jidFromStr))
-				Class.resources.append(Resource)
-				if Class.lastStatus == "unavailable" and len(Class.resources) == 1:
-					if not Class.vk.Online:
-						Class.vk.Online = True
-				Class.sendInitPresence()
+from library.writer import dump_crash
+from config import TRANSPORT_ID, DB_FILE
+from user import TUser
+from handlers.message import msg_send, watcher_msg
+from library.itypes import Database
+from sender import Sender
+import library.xmpp as xmpp
+from library.stext import _
+from vk2xmpp import vk2xmpp
 
-		elif pType == "unavailable":
-			if jidTo == TransportID and Resource in Class.resources:
-				Class.resources.remove(Resource)
-				if Class.resources:
-					Class.sendOutPresence(jidFrom)
-			if not Class.resources:
-				Sender(cl, xmpp.Presence(jidFrom, "unavailable", frm = TransportID))
-				Class.vk.disconnect()
-				if jidFromStr in Transport:
-					del Transport[jidFromStr]
-				updateTransportsList(jidFromStr, False)
-	
-		elif pType == "error":
-			eCode = prs.getErrorCode()
-			if eCode == "404":
-				Class.vk.disconnect()
+import logging
+logger = logging.getLogger("vk4xmpp")
+from handler import Handler
 
-		elif pType == "subscribe":
-			if jidToStr == TransportID:
-				Sender(cl, xmpp.Presence(jidFromStr, "subscribed", frm = TransportID))
-				Sender(cl, xmpp.Presence(jidFrom, frm = TransportID))
-			else:
-				Sender(cl, xmpp.Presence(jidFromStr, "subscribed", frm = jidTo))
-				if Class.friends:
-					id = vk2xmpp(jidToStr)
-					if id in Class.friends:
-						if Class.friends[id]["online"]:
-							Sender(cl, xmpp.Presence(jidFrom, frm = jidTo))
-		elif pType == "unsubscribe":
-			if jidFromStr in Transport and jidToStr == TransportID:
-				Class.deleteUser(True)
-				WatcherMsg(_("User removed registration: %s") % jidFromStr)
 
-		if jidToStr == TransportID:
-			Class.lastStatus = pType
+class PresenceHandler(Handler):
+    def __init__(self, gateway):
+        super(PresenceHandler, self).__init__(gateway)
 
-	elif pType in ("available", None):
-		logger.debug("User %s not in transport but want to be in" % jidFromStr)
-		with Database(DatabaseFile) as db:
-			db("select * from users where jid=?", (jidFromStr,))
-			user = db.fetchone()
-			if user:
-				logger.debug("User %s found in db" % jidFromStr)
-				jid, phone = user[:2]
-				Transport[jid] = user = tUser((phone, None), jid)
-				try:
-					if user.connect():
-						user.init(None, True)
-						updateTransportsList(user)
-					else:
-						crashLog("prs.connect", 0, False)
-						msgSend(Component, jid, _("Auth failed! If this error repeated, please register again. This incident will be reported."), TransportID)
-				except:
-					crashLog("prs.init")
+    def handle(self, cl, prs):
+        p_type = prs.getType()
+        jid_from = prs.getFrom()
+        jid_to = prs.getTo()
+        jid_from_str = jid_from.getStripped()
+        jid_to_str = jid_to.getStripped()
+        if jid_from_str in self.clients:
+            client = self.clients[jid_from_str]
+            resource = jid_from.getResource()
+            if p_type in ("available", "probe", None):
+                if jid_to == TRANSPORT_ID and resource not in client.resources:
+                    logger.debug("%s from user %s, will send sendInitPresence" % (p_type, jid_from_str))
+                    client.resources.append(resource)
+                    if client.lastStatus == "unavailable" and len(client.resources) == 1:
+                        if not client.vk.Online:
+                            client.vk.Online = True
+                    client.send_init_presence()
+
+            elif p_type == "unavailable":
+                if jid_to == TRANSPORT_ID and resource in client.resources:
+                    client.resources.remove(resource)
+                    if client.resources:
+                        client.send_out_presence(jid_from)
+                if not client.resources:
+                    Sender(cl, xmpp.Presence(jid_from, "unavailable", frm=TRANSPORT_ID))
+                    client.vk.disconnect()
+                    if jid_from_str in self.gateway.clients:
+                        del self.gateway.clients[jid_from_str]
+                    self.gateway.update_transports_list(jid_from_str, False)
+
+            elif p_type == "error":
+                eCode = prs.getErrorCode()
+                if eCode == "404":
+                    client.vk.disconnect()
+
+            elif p_type == "subscribe":
+                if jid_to_str == TRANSPORT_ID:
+                    Sender(cl, xmpp.Presence(jid_from_str, "subscribed", frm=TRANSPORT_ID))
+                    Sender(cl, xmpp.Presence(jid_from, frm=TRANSPORT_ID))
+                else:
+                    Sender(cl, xmpp.Presence(jid_from_str, "subscribed", frm=jid_to))
+                    if client.friends:
+                        id = vk2xmpp(jid_to_str)
+                        if id in client.friends:
+                            if client.friends[id]["online"]:
+                                Sender(cl, xmpp.Presence(jid_from, frm=jid_to))
+            elif p_type == "unsubscribe":
+                if jid_from_str in self.clients and jid_to_str == TRANSPORT_ID:
+                    client.delete_user(True)
+                    watcher_msg(_("User removed registration: %s") % jid_from_str)
+
+            if jid_to_str == TRANSPORT_ID:
+                client.lastStatus = p_type
+
+        elif p_type in ("available", None):
+            logger.debug("User %s not in transport but want to be in" % jid_from_str)
+            with Database(DB_FILE) as db:
+                db("select * from users where jid=?", (jid_from_str,))
+                user = db.fetchone()
+                if user:
+                    logger.debug("User %s found in db" % jid_from_str)
+                    jid, phone = user[:2]
+                    self.clients[jid] = user = TUser(self.gateway, (phone, None), jid)
+                    try:
+                        if user.connect():
+                            user.init(None, True)
+                            self.gateway.update_transports_list(user)
+                        else:
+                            dump_crash("prs.connect", 0, False)
+                            msg_send(self.gateway.component, jid, _(
+                                "Auth failed! If this error repeated, please register again. This incident will be reported."),
+                                    TRANSPORT_ID)
+                    except Exception as e:
+                        logger.critical('Error while adding user: %s' % e)
+                        dump_crash("prs.init")
+
+
+def get_handler(gateway):
+    return PresenceHandler(gateway).handle

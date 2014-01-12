@@ -4,21 +4,25 @@
 
 import urllib
 
-GoogleMapLink = "https://maps.google.com/maps?q=%s"
+API_URL = "https://maps.google.com/maps?q=%s"
 
-def TimeAndRelativeDimensionInSpace(self, machine):
-	body = str()
-	if machine.has_key("geo"):
-		WhereAreYou = machine["geo"]
-		Place = WhereAreYou.get("place")
-		Coordinates = WhereAreYou["coordinates"].split()
-		Coordinates = "Lat.: {0}°, long: {1}°".format(*Coordinates)
-		body = _("Point on the map: \n")
-		if Place:
-			body += _("Country: %s") % Place["country"]
-			body += _("\nCity: %s\n") % Place["city"]
-		body += _("Coordinates: %s") % Coordinates
-		body += "\n%s — Google Maps" % GoogleMapLink % urllib.quote(WhereAreYou["coordinates"])
-	return body
+def parse_geo(_, machine):
+    body = ""
 
-Handlers["msg01"].append(TimeAndRelativeDimensionInSpace)
+    if "geo" not in machine:
+        return body
+
+    location = machine["geo"]
+    place = location.get("place")
+    coordinates = location["coordinates"].split()
+    coordinates = "Lat.: {0}°, long: {1}°".format(*coordinates)
+    body = _("Point on the map: \n")
+
+    if place:
+        body += "Country: %s" % place["country"]
+        body += "\nCity: %s\n" % place["city"]
+
+    body += "Coordinates: %s" % coordinates
+    body += "\n%s — Google Maps" % API_URL % urllib.quote(location["coordinates"])
+
+    return body
