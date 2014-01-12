@@ -24,5 +24,5 @@ def get_pid(pid):
                 except OSError as os_error:
                     logger.debug('OS error %s' % os_error)
 
-                logger.info("%d killed.\n" % old_pid, False)
+                logger.info("%d killed.\n" % old_pid)
     wFile(pid, str(current_pid))

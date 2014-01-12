@@ -10,10 +10,12 @@ import library.xmpp as xmpp
 logger = logging.getLogger("vk4xmpp")
 
 def init_db(filename):
+    logger.info('Initializing database')
     if not os.path.exists(filename):
         with Database(filename) as db:
             db("CREATE TABLE users (jid TEXT, username TEXT, token TEXT, lastMsgID INTEGER, rosterSet bool)")
             db.commit()
+    logger.info('Initialized')
     return True
 
 def init_users(gateway):

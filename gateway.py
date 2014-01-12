@@ -4,6 +4,7 @@
 # vk4xmpp gateway, v1.9
 # © simpleApps, 01.08.2013
 # Program published under MIT license.
+# code cleaned by Ernado, cydev
 
 import signal
 import socket

@@ -7,8 +7,12 @@ from library.writer import dump_crash
 logger = logging.getLogger("vk4xmpp")
 
 
-def Sender(cl, stanza):
+def stanza_send(cl, stanza):
+    if not stanza:
+        return
+
     try:
+        logger.debug('sending stanza %s' % stanza)
         cl.send(stanza)
     except KeyboardInterrupt:
         pass

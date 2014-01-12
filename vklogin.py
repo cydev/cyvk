@@ -1,7 +1,7 @@
 import logging
 logger = logging.getLogger("vk4xmpp")
 import library.vkapi as api
-from sender import Sender
+from sender import stanza_send
 
 from handlers.message import msg_send, escape_name
 from library.writer import dump_crash

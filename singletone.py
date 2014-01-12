@@ -33,10 +33,12 @@ class Gateway(object):
         self.component.RegisterDisconnectHandler(handler)
 
     def update_transports_list(self, user, add=True):
-        if add and user not in self.client_list:
-            self.client_list.append(user)
+        if add:
+            if user not in self.client_list:
+                self.client_list.append(user)
         elif user in self.client_list:
             self.client_list.remove(user)
+
         length = len(self.client_list)
         if length > self.client_list_length:
             start = self.client_list_length
@@ -81,8 +83,8 @@ class Gateway(object):
             self.component.send(stanza)
         except KeyboardInterrupt:
             pass
-        except IOError:
-            logger.error("Panic: Couldn't send stanza: %s" % str(stanza))
+        except IOError as e:
+            logger.error("Panic: Couldn't send stanza: %s, %s" % (str(stanza), e))
         except Exception as e:
             logger.critical('Crashed: %s' % e)
             dump_crash("Sender")

@@ -4,28 +4,28 @@ import library.xmpp as xmpp
 from library.stext import _ as _
 import logging
 
-## Connection host.
-## For Prosody "vk.example.com"
+# Connection host.
+# For Prosody "vk.example.com"
 HOST = "s1.cydev"
 
-## Connection server (usually equals host)
-## For Prosody "example.com"
+# Connection server (usually equals host)
+# For Prosody "example.com"
 SERVER = "vk.s1.cydev"
 
-## Connection port (as you set in your jabber-server config)
-## Default value for Prosody is 5347
+# Connection port (as you set in your jabber-server config)
+# Default value for Prosody is 5347
 PORT = 5556
 
-## Transport ID (Controls all)
+# Transport ID (Controls all)
 TRANSPORT_ID = "vk.s1.cydev"
 
-## Connection password.
+# Connection password.
 PASSWORD = "secret"
 
-## Default status (1 — online (recommented) / 0 — offline) 
+# Default status (1 — online (recommended) / 0 — offline)
 DEFAULT_STATUS = 1
 
-## Use API feature lastMessageID (transport will save last user message id, 1 — use (recommented), 2 — not use)
+# Use API feature lastMessageID (transport will save last user message id, 1 — use (recommended), 2 — not use)
 USE_LAST_MESSAGE_ID = 1
 
 ## Language (ru/en/pl)
@@ -46,7 +46,7 @@ WATCHER_LIST = []
 ADDITIONAL_ABOUT = ""
 
 # Conference server. Don't change if you won't allow your users to use groupchats (depends from jabber-server's MUC)
-# It's an alpha! Testers are welcome, but don't use it everytime!
+# It's an alpha! Testers are welcome, but don't use it every time!
 # F.e. conference.example.com
 CONFERENCE_SERVER = ""
 

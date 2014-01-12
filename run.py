@@ -20,7 +20,7 @@ def start_thread(thread, number=0):
     try:
         thread.start()
     except threading.ThreadError:
-        start_thread(thread, (number + 1))
+        start_thread(thread, number + 1)
 
 
 def f_apply(instance, *args):
