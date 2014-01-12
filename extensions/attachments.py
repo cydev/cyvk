@@ -58,6 +58,8 @@ def parse_attachments(_, msg):
     if "attachments" not in msg:
         return result
 
+    logger.debug('attachment found')
+
     attachments = msg["attachments"]
 
     # If there is a message with attachments, adding divider

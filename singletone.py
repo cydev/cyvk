@@ -10,6 +10,8 @@ from run import run_thread
 from library.writer import dump_crash
 from vk2xmpp import vk2xmpp
 
+import user as user_api
+
 
 class Gateway(object):
     def __init__(self):
@@ -61,14 +63,16 @@ class Gateway(object):
                 if not (now - user.last_activity < ACTIVE_TIMEOUT or now - user.last_update > ROSTER_TIMEOUT):
                     continue
 
-                user.last_udate = time.time()
+                user.last_update = time.time()
                 friends = user.vk.get_friends() # TODO: Update only statuses
-                user.vk.method("account.setOnline")
+
+                user_api.set_online(user.jid)
+
                 if friends != user.friends:
                     for uid, value in friends.iteritems():
                         if uid in user.friends:
                             if user.friends[uid]["online"] != value["online"]:
-                                user.send_presence(user.jid_from, vk2xmpp(uid),
+                                user.send_presence(user.jid, vk2xmpp(uid),
                                                    None if value["online"] else "unavailable")
                         else:
                             user.roster_subscribe({uid: friends[uid]})

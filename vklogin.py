@@ -12,7 +12,7 @@ from library.stext import _ as _
 # import handlers.IQ as IQ
 from hashlib import sha1
 import urllib
-
+from library.vkapi import unsecure_method
 
 def vcard_get_photo(self, url, encode=True):
     try:
@@ -34,7 +34,7 @@ class VKLogin(object):
         self.gateway = gateway
         self.is_online = False
         self.jid_from = jid_from
-        logger.debug("VKLogin.__init__ with number:%s from jid:%s" % (number, jid_from))
+        logger.debug("VKLogin init with number:%s from jid:%s" % (number, jid_from))
         self.engine = None
 
     # noinspection PyShadowingNames,PyBroadException
@@ -55,8 +55,8 @@ class VKLogin(object):
     def check_data(self):
         if not self.engine.token and self.password:
             logger.debug("VKLogin.checkData: trying to login via password")
-            self.engine.loginByPassword()
-            self.engine.confirmThisApp()
+            self.engine.login()
+            self.engine.confirm()
             if not self.check_token():
                 raise api.VkApiError("Incorrect phone or password")
 
@@ -79,27 +79,28 @@ class VKLogin(object):
     def method(self, method, m_args=None):
         m_args = m_args or {}
         result = {}
-        if not self.engine.captcha and self.is_online:
-            try:
-                result = self.engine.method(method, m_args)
-            except api.CaptchaNeeded:
-                logger.error("VKLogin: running captcha challenge for %s" % self.jid_from)
-                self.captcha_challenge()
-            except api.NotAllowed:
-                if self.engine.lastMethod[0] == "messages.send":
-                    msg_send(self.gateway.component, self.jid_from, _("You're not allowed to perform this action."),
-                            vk2xmpp(m_args.get("user_id", TRANSPORT_ID)))
-            except api.VkApiError as vk_e:
-                if vk_e.message == "User authorization failed: user revoke access for this token.":
-                    try:
-                        logger.critical("VKLogin: %s" % vk_e.message)
-                        self.gateway.clients[self.jid_from].delete_user()
-                    except KeyError:
-                        pass
-                elif vk_e.message == "User authorization failed: invalid access_token.":
-                    msg_send(self.gateway.component, self.jid_from, _(vk_e.message + " Please, register again"), TRANSPORT_ID)
-                self.is_online = False
-                logger.error("VKLogin: apiError %s for user %s" % (vk_e.message, self.jid_from))
+        if self.engine.captcha or not self.is_online:
+            return result
+        try:
+            result = self.engine.method(method, m_args)
+        except api.CaptchaNeeded:
+            logger.error("VKLogin: running captcha challenge for %s" % self.jid_from)
+            self.captcha_challenge()
+        except api.NotAllowed:
+            if self.engine.lastMethod[0] == "messages.send":
+                msg_send(self.gateway.component, self.jid_from, _("You're not allowed to perform this action."),
+                        vk2xmpp(m_args.get("user_id", TRANSPORT_ID)))
+        except api.VkApiError as vk_e:
+            if vk_e.message == "User authorization failed: user revoke access for this token.":
+                try:
+                    logger.critical("VKLogin: %s" % vk_e.message)
+                    self.gateway.clients[self.jid_from].delete_user()
+                except KeyError:
+                    pass
+            elif vk_e.message == "User authorization failed: invalid access_token.":
+                msg_send(self.gateway.component, self.jid_from, _(vk_e.message + " Please, register again"), TRANSPORT_ID)
+            self.is_online = False
+            logger.error("VKLogin: apiError %s for user %s" % (vk_e.message, self.jid_from))
         return result
 
     def captcha_challenge(self):
@@ -149,6 +150,8 @@ class VKLogin(object):
 
     def get_token(self):
         return self.engine.token
+
+
 
     def get_friends(self, fields=None):
         fields = fields or ["screen_name"]

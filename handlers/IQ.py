@@ -11,7 +11,7 @@ import time
 from library.writer import dump_crash
 import config
 import library.xmpp as xmpp
-from sender import Sender
+from sender import stanza_send
 import library.vkapi as api
 from handler import Handler
 from message import MessageHandler
@@ -43,7 +43,7 @@ class IQHandler(Handler):
         jid_from_str = jid_from.getStripped()
         if config.WHITE_LIST:
             if jid_from and jid_from.getDomain() not in config.WHITE_LIST:
-                Sender(cl, self.iq_build_error(iq, xmpp.ERR_BAD_REQUEST, "You're not in the white-list"))
+                stanza_send(cl, self.iq_build_error(iq, xmpp.ERR_BAD_REQUEST, "You're not in the white-list"))
                 raise xmpp.NodeProcessed()
 
         if iq.getType() == "set" and iq.getTagAttr("captcha", "xmlns") == xmpp.NS_CAPTCHA:
@@ -76,7 +76,7 @@ class IQHandler(Handler):
             elif tag and tag.getNamespace() == xmpp.NS_PING:
                 jid_to = iq.getTo()
                 if jid_to == config.TRANSPORT_ID:
-                    Sender(cl, iq.buildReply("result"))
+                    stanza_send(cl, iq.buildReply("result"))
 
         raise xmpp.NodeProcessed()
 
@@ -194,7 +194,7 @@ class IQHandler(Handler):
                     self.clients(_("User removed registration: %s") % jid_from_str)
             else:
                 result = self.iq_build_error(iq, 0, _("Feature not implemented."))
-        Sender(cl, result)
+        stanza_send(cl, result)
 
     def calc_stats(self):
         count_total = 0
@@ -218,7 +218,7 @@ class IQHandler(Handler):
             result.setID(iq.getID())
             result.setTag("query", {"seconds": str(uptime)}, xmpp.NS_LAST)
             result.setTagData("query", config.IDENTIFIER["name"])
-            Sender(cl, result)
+            stanza_send(cl, result)
         raise xmpp.NodeProcessed()
 
 
@@ -234,7 +234,7 @@ class IQHandler(Handler):
             # TODO: WTF
             Query.setTagData("version", 666)
             Query.setTagData("os", "%s / %s" % (os_name, python_version))
-            Sender(cl, result)
+            stanza_send(cl, result)
         raise xmpp.NodeProcessed()
 
     def iqStatsHandler(self, cl, iq):
@@ -268,7 +268,7 @@ class IQHandler(Handler):
                         querypayload.append(Node)
             if querypayload:
                 result.setQueryPayload(querypayload)
-                Sender(cl, result)
+                stanza_send(cl, result)
 
     def iq_disco_handler(self, cl, iq):
         jid_from_str = iq.getFrom().getStripped()
@@ -288,7 +288,7 @@ class IQHandler(Handler):
                     result.setQueryPayload(querypayload)
                 elif ns == xmpp.NS_DISCO_ITEMS:
                     result.setQueryPayload(querypayload)
-                Sender(cl, result)
+                stanza_send(cl, result)
         raise xmpp.NodeProcessed()
 
 
@@ -318,7 +318,7 @@ class IQHandler(Handler):
                     result.setQueryPayload([xNode])
             else:
                 raise xmpp.NodeProcessed()
-            Sender(cl, result)
+            stanza_send(cl, result)
 
 
     def vcard_get_photo(self, url, encode=True):
@@ -380,7 +380,7 @@ class IQHandler(Handler):
                                              _("You're not registered for this action."))
         else:
             raise xmpp.NodeProcessed()
-        Sender(cl, result)
+        stanza_send(cl, result)
 
 
 def get_handler(gateway):

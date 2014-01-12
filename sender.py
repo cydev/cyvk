@@ -2,7 +2,7 @@ __author__ = 'ernado'
 
 import logging
 
-from library.writer import dump_crash
+# from library.writer import dump_crash
 
 logger = logging.getLogger("vk4xmpp")
 
@@ -17,7 +17,8 @@ def stanza_send(cl, stanza):
     except KeyboardInterrupt:
         pass
     except IOError:
-        logger.error("Panic: Couldn't send stanza: %s" % str(stanza))
+        logger.error("error while sending stanza %s" % str(stanza))
     except Exception as e:
-        logger.critical('Crashed: %s' % e)
-        dump_crash("Sender")
+        logger.critical('crashed while sending stanza: %s' % e)
+        raise e
+        # dump_crash("Sender")

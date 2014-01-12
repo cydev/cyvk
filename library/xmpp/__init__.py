@@ -25,6 +25,7 @@ session-related info. Though if you are not accessing instances variables direct
 and use only methods for access all values you should not have any problems.
 """
 
+
 import auth
 import browser
 import commands

@@ -80,7 +80,7 @@ URL_VCARD_NO_IMAGE = "http://simpleapps.ru/vk4xmpp.png"
 EVAL_JID = ""
 
 ## Debug xmpppy library
-DEBUG_XMPPPY = True
+DEBUG_XMPPPY = False
 
 ## Database file (as you like)
 DB_FILE = "users.db"
@@ -131,3 +131,7 @@ AVATAR_SIZE = "photo_100"
 ALLOW_PUBLISH = False
 DATABASE_FILE = "users.db"
 
+REDIS_PREFIX = 'cyvk'
+REDIS_HOST = 'localhost'
+REDIS_PORT = 6379
+REDIS_DB = 0

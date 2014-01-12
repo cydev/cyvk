@@ -7,7 +7,7 @@ from config import TRANSPORT_ID, DB_FILE
 from user import TUser
 from handlers.message import msg_send, watcher_msg
 from library.itypes import Database
-from sender import Sender
+from sender import stanza_send
 import library.xmpp as xmpp
 from library.stext import _
 from vk2xmpp import vk2xmpp
@@ -45,7 +45,7 @@ class PresenceHandler(Handler):
                     if client.resources:
                         client.send_out_presence(jid_from)
                 if not client.resources:
-                    Sender(cl, xmpp.Presence(jid_from, "unavailable", frm=TRANSPORT_ID))
+                    stanza_send(cl, xmpp.Presence(jid_from, "unavailable", frm=TRANSPORT_ID))
                     client.vk.disconnect()
                     if jid_from_str in self.gateway.clients:
                         del self.gateway.clients[jid_from_str]
@@ -58,15 +58,15 @@ class PresenceHandler(Handler):
 
             elif p_type == "subscribe":
                 if jid_to_str == TRANSPORT_ID:
-                    Sender(cl, xmpp.Presence(jid_from_str, "subscribed", frm=TRANSPORT_ID))
-                    Sender(cl, xmpp.Presence(jid_from, frm=TRANSPORT_ID))
+                    stanza_send(cl, xmpp.Presence(jid_from_str, "subscribed", frm=TRANSPORT_ID))
+                    stanza_send(cl, xmpp.Presence(jid_from, frm=TRANSPORT_ID))
                 else:
-                    Sender(cl, xmpp.Presence(jid_from_str, "subscribed", frm=jid_to))
+                    stanza_send(cl, xmpp.Presence(jid_from_str, "subscribed", frm=jid_to))
                     if client.friends:
                         id = vk2xmpp(jid_to_str)
                         if id in client.friends:
                             if client.friends[id]["online"]:
-                                Sender(cl, xmpp.Presence(jid_from, frm=jid_to))
+                                stanza_send(cl, xmpp.Presence(jid_from, frm=jid_to))
             elif p_type == "unsubscribe":
                 if jid_from_str in self.clients and jid_to_str == TRANSPORT_ID:
                     client.delete_user(True)
