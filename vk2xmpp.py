@@ -2,10 +2,13 @@ __author__ = 'ernado'
 
 from config import TRANSPORT_ID
 
-is_number = lambda obj: (not apply(int, (obj,)) is None)
+# is_number = lambda obj: (not apply(int, (obj,)) is None)
+
+def is_number(obj):
+    return isinstance(obj, int)
 
 
-def vk2xmpp(t_id):
+def parse(t_id):
     if not is_number(t_id) and "@" in t_id:
         t_id = t_id.split("@")[0]
         if is_number(t_id):

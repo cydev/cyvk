@@ -1,19 +1,19 @@
 import time
 import logging
 
-from config import TRANSPORT_ID, USE_LAST_MESSAGE_ID, IDENTIFIER, DB_FILE
+from config import TRANSPORT_ID, USE_LAST_MESSAGE_ID, IDENTIFIER
 from vklogin import VKLogin
-from library.itypes import Database
 from run import run_thread
 from library.writer import dump_crash
-from handlers.message import msg_send, msg_sort, escape_name, escape_message
+from messaging import msg_send, msg_sort, escape_name, escape_message
 import library.vkapi as api
 import library.webtools as webtools
-from vk2xmpp import vk2xmpp
+from vklogin import get_messages, mark_messages_as_read
+from vk2xmpp import parse
 import library.xmpp as xmpp
-from run import f_apply
+from errors import CaptchaNeeded, TokenError
 
-from library.vkapi import unsecure_method
+from library.vkapi import method
 
 logger = logging.getLogger("vk4xmpp")
 import library.stext as stext
@@ -22,40 +22,29 @@ import database
 
 def set_online(user):
     m = "account.setOnline"
-    unsecure_method(m, user)
+    method(m, user)
+
 
 def update_last_activity(uid):
-    logger.debug('NOT IMPLEMENTED: update_last_activity for %s' % uid)
+    logger.debug('Updating last activity')
+    database.set_last_activity(uid, time.time())
 
-# def get_friends_unsecure(fields=None):
-#     logger.warning('get_friends_unsecure')
-#     fields = fields or ["screen_name"]
-#     friends_raw = unsecure_method("friends.get", {"fields": ",".join(fields)}) or {} # friends.getOnline
-#     friends = {}
-#     for friend in friends_raw:
-#         uid = friend["uid"]
-#         name = escape_name("", u"%s %s" % (friend["first_name"], friend["last_name"]))
-#         try:
-#             friends[uid] = {"name": name, "online": friend["online"]}
-#             for key in fields:
-#                 if key != "screen_name":
-#                     friends[uid][key] = friend.get(key)
-#         except KeyError as key_error:
-#             logger.debug('%s while processing %s' % (key_error, uid))
-#             continue
-#     return friends
-
-# def send_message(body, uid, m_type="user_id"):
-#     logger.debug('TUser: msg to %s' % uid)
-#
-#     # noinspection PyBroadException
-#     try:
-#         update_last_activity(uid)
-#         msg = self.vk.method("messages.send", {m_type: uid, "message": body, "type": 0})
-#     except:
-#         dump_crash("messages.send")
-#         msg = False
-#     return msg
+def get_friends(jid, fields=None):
+    fields = fields or ["screen_name"]
+    friends_raw = method("friends.get", jid, {"fields": ",".join(fields)}) or {} # friends.getOnline
+    friends = {}
+    for friend in friends_raw:
+        uid = friend["uid"]
+        name = escape_name("", u"%s %s" % (friend["first_name"], friend["last_name"]))
+        try:
+            friends[uid] = {"name": name, "online": friend["online"]}
+            for key in fields:
+                if key != "screen_name":
+                    friends[uid][key] = friend.get(key)
+        except KeyError as key_error:
+            logger.debug('%s while processing %s' % (key_error, uid))
+            continue
+    return friends
 
 
 class TUser(object):
@@ -79,10 +68,12 @@ class TUser(object):
         self.chat_users = {}
         self.user_id = None
         self.vk = VKLogin(self.username, self.password, self.jid)
+
         logger.debug("TUSER init %s" % self.jid)
         desc = database.get_description(self.jid)
         if not desc:
             return
+
         if not self.token or not self.password:
             logger.debug("TUser: %s exists in db. Using it." % self.jid)
             self.exists_id_db = True
@@ -91,8 +82,8 @@ class TUser(object):
             logger.debug("TUser: %s exists in db. Will be deleted." % self.jid)
             run_thread(self.delete_user)
 
-    def __str__(self):
-        return '<TUser %s:%s>' % (self.username, self.user_id)
+    def __repr__(self):
+        return '<TUser %s>' % self.jid
 
     def delete_user(self, roster=False):
         logger.debug("TUser: delete_user %s" % self.jid)
@@ -101,9 +92,9 @@ class TUser(object):
         self.exists_id_db = False
 
         if roster and self.friends:
-            logger.debug("TUser: deleting me from %s roster" % self.jid)
-            for friend_id in self.friends.keys():
-                jid = vk2xmpp(friend_id)
+            logger.debug("TUser: removing %s roster" % self.jid)
+            for friend_id in self.friends:
+                jid = parse(friend_id)
                 self.send_presence(self.jid, jid, "unsubscribe")
                 self.send_presence(self.jid, jid, "unsubscribed")
             self.vk.is_online = False
@@ -111,80 +102,89 @@ class TUser(object):
         if self.jid in self.gateway.clients:
             del self.gateway.clients[self.jid]
             try:
-                self.gateway.update_transports_list(self, False)
+                self.gateway.remove_user(self.jid)
             except NameError as e:
                 logger.debug(e)
 
     # noinspection PyShadowingNames
-    def msg(self, body, uid, m_type="user_id"):
-        logger.debug('TUser: msg to %s' % uid)
-
+    def msg(self, body, recipient_uid, m_type="user_id"):
+        logger.debug('TUser: msg to %s' % recipient_uid)
+        method_name = "messages.send"
+        method_values = {m_type: recipient_uid, "message": body, "type": 0}
         # noinspection PyBroadException
         try:
-            self.last_activity = time.time()
-            msg = self.vk.method("messages.send", {m_type: uid, "message": body, "type": 0})
-        except:
+            update_last_activity(self.jid)
+            a = database.get_last_activity(self.jid)
+            return method(method_name, self.jid, method_values)
+            # msg = self.vk.method("messages.send", {m_type: uid, "message": body, "type": 0})
+        except Exception as e:
+            logger.error('messages.send: %s' % e)
             dump_crash("messages.send")
-            msg = False
-        return msg
+            return False
 
     def connect(self):
-        logger.debug("TUser: connecting %s" % self.jid)
-        self.auth = False
+        jid = self.jid
+        authenticated = False
+        token = self.token
+        gateway = self.gateway
+
+        logger.debug("TUser: connecting %s" % jid)
+        is_online = False
         # noinspection PyBroadException
         try:
-            logger.debug('TUser: trying to auth with token %s' % self.token)
-            self.auth = self.vk.auth(self.token)
-            database.set_token(self.jid, self.token)
-            logger.debug("TUser: auth=%s for %s" % (self.auth, self.jid))
-        except api.CaptchaNeeded:
-            logger.debug("TUser: captcha needed for %s" % self.jid)
-            self.roster_subscribe()
+            logger.debug('TUser: trying to auth with token %s' % token)
+            authenticated = self.vk.auth(token)
+            database.set_token(jid, token)
+            logger.debug("TUser: auth=%s for %s" % (authenticated, jid))
+        except CaptchaNeeded:
+            logger.debug("TUser: captcha needed for %s" % jid)
+            roster_subscribe(gateway, jid)
             self.vk.captcha_challenge()
             return True
-        except api.TokenError as token_error:
+        except TokenError as token_error:
             if token_error.message == "User authorization failed: user revoke access for this token.":
                 logger.critical("TUser: %s" % token_error.message)
                 self.delete_user()
             elif token_error.message == "User authorization failed: invalid access_token.":
                 msg_send(self.gateway.component, self.jid,
                          stext._(token_error.message + " Please, register again"), TRANSPORT_ID)
-            self.vk.is_online = False
+            is_online = False
         except Exception as e:
             # TODO: We can crash there
             logger.debug('Auth failed: %s' % e)
-            dump_crash("TUser.Connect")
-            return False
+            raise
+            # dump_crash("TUser.Connect")
+            # return False
 
         token = self.vk.get_token()
-        if self.auth and token:
+        if authenticated and token:
             logger.debug("TUser: updating db for %s because auth done " % self.jid)
+            t = None
             if not self.exists_id_db:
-                # TODO: Semaphore
-                with Database(DB_FILE) as db:
-                    db("INSERT INTO users VALUES (?,?,?,?,?)", (self.jid, self.username,
-                                                                self.vk.get_token(), self.last_msg_id, self.roster_set))
+                database.add_user(self.jid, self.username, token, self.last_msg_id, self.roster_set)
             elif self.password:
                 database.set_token(self.jid, token)
-                with Database(DB_FILE) as db:
-                    db("UPDATE users SET token=? WHERE jid=?", (token, self.jid))
             try:
-                _ = self.vk.method("users.get")
-                self.user_id = _[0]["uid"]
+                m = "users.get"
+                # t = self.vk.method("users.get")
+                t = method(m, self.jid)
+                self.user_id = t[0]["uid"]
             except (KeyError, TypeError):
-                logger.error("TUser: could not recieve user id. JSON: %s" % str(_))
+                logger.error("TUser: could not recieve user id. JSON: %s" % str(t))
                 self.user_id = 0
 
-            self.gateway.jid_to_id[self.user_id] = self.jid
-            self.friends = self.vk.get_friends()
-            self.vk.is_online = True
+            # self.gateway.jid_to_id[self.user_id] = self.jid
+            # self.friends = self.vk.get_friends()
+            database.set_online(self.jid)
+            is_online = True
+
         if not USE_LAST_MESSAGE_ID:
             self.last_msg_id = 0
-        return self.vk.is_online
+        return is_online
 
     def init(self, force=False, send=True):
         logger.debug("TUser: called init for user %s" % self.jid)
-        self.friends = self.vk.get_friends()
+        self.friends = get_friends(self.jid)
         if self.friends and not self.roster_set or force:
             logger.debug("TUser: calling subscribe with force:%s for %s" % (force, self.jid))
             self.roster_subscribe(self.friends)
@@ -199,13 +199,13 @@ class TUser(object):
         self.gateway.send(presence)
 
     def send_init_presence(self):
-        self.friends = self.vk.get_friends()
+        self.friends = database.get_friends(self.jid)
         # too too bad way to do it again. But it's a guarantee of the availability of friends.
         logger.debug("TUser: sending init presence to %s (friends %s)" % \
                      (self.jid, "exists" if self.friends else "empty"))
         for uid, value in self.friends.iteritems():
             if value["online"]:
-                self.send_presence(self.jid, vk2xmpp(uid), None, value["name"])
+                self.send_presence(self.jid, parse(uid), None, value["name"])
         self.send_presence(self.jid, TRANSPORT_ID, None, IDENTIFIER["name"])
 
     def send_out_presence(self, target, reason=None):
@@ -213,12 +213,12 @@ class TUser(object):
         p_type = "unavailable"
         logger.debug("TUser: sending out presence to %s" % self.jid)
         for uid in self.friends.keys() + [TRANSPORT_ID]:
-            self.send_presence(target, vk2xmpp(uid), "unavailable", reason=reason)
+            self.send_presence(target, parse(uid), p_type, reason=reason)
 
     def roster_subscribe(self, dist=None):
         dist = dist or {}
         for uid, value in dist.iteritems():
-            self.send_presence(self.jid, vk2xmpp(uid), "subscribe", value["name"])
+            self.send_presence(self.jid, parse(uid), "subscribe", value["name"])
         self.send_presence(self.jid, TRANSPORT_ID, "subscribe", IDENTIFIER["name"])
 
         if dist:
@@ -243,7 +243,8 @@ class TUser(object):
 
     def send_messages(self):
         logger.debug('TUser: send_messages for %s' % self.jid)
-        messages = self.vk.get_messages(200, self.last_msg_id if USE_LAST_MESSAGE_ID else 0)
+
+        messages = get_messages(self.jid, 200, self.last_msg_id if USE_LAST_MESSAGE_ID else None)
 
         if not messages:
             return
@@ -254,40 +255,163 @@ class TUser(object):
         if not messages:
             return
 
-        read = list()
+        read = []
         self.last_msg_id = messages[-1]["mid"]
+
+        usr = self
+
         for message in messages:
             read.append(str(message["mid"]))
-            from_jid = vk2xmpp(message["uid"])
+            from_jid = parse(message["uid"])
             body = webtools.unescape(message["body"])
-            # iter = handlers["msg01"]
-            for func in self.gateway.handlers:
-                # noinspection PyBroadException
-                # TODO: Maybe too broad?
-                result = None
-                try:
-                    result = func(self, message)
-                except Exception as e:
-                    logger.error('Error while processing handlers: %s' % e)
-                    dump_crash("handle.%s" % func.func_name)
-                    raise e
-                if result is None:
-                    for func in self.gateway.handlers:
-                        f_apply(func, (self, message))
-                    break
-                else:
-                    body += result
-            else:
-                msg_send(self.gateway.component, self.jid, escape_message("", body), from_jid, message["date"])
-        self.vk.msg_mark_as_read(read)
+
+            def process_handler(func):
+                # try:
+                return func(usr, message)
+                # except Exception as e:
+                #     logger.error('Error while processing handlers: %s' % e)
+                #     dump_crash("handle.%s" % func.func_name)
+                #     raise e
+
+            body += ''.join(map(process_handler, self.gateway.handlers))
+
+            # for func in self.gateway.handlers:
+            #     try:
+            #         result = func(self, message)
+            #     except Exception as e:
+            #         logger.error('Error while processing handlers: %s' % e)
+            #         dump_crash("handle.%s" % func.func_name)
+            #         raise e
+            #     if result is None:
+            #         for func in self.gateway.handlers:
+            #             f_apply(func, (self, message))
+            #         break
+            #     else:
+            #         body += result
+            # else:
+            msg_send(self.gateway.component, self.jid, escape_message("", body), from_jid, message["date"])
+
+        mark_messages_as_read(self.jid, read)
+        # self.vk.msg_mark_as_read(read)
         if USE_LAST_MESSAGE_ID:
             database.set_last_message(self.last_msg_id, self.jid)
 
     def try_again(self):
         logger.debug("calling reauth for user %s" % self.jid)
-        try:
-            if not self.vk.is_online:
-                self.connect()
-            self.init(True)
-        except:
-            dump_crash("tryAgain")
+        # try:
+        if not self.vk.is_online:
+            self.connect()
+        self.init(True)
+        # except:
+        #     dump_crash("tryAgain")
+
+def send_presence(gateway, target, jid_from, p_type=None, nick=None, reason=None):
+    logger.debug('sending presence for %s about %s' % (target, jid_from))
+    presence = xmpp.Presence(target, p_type, frm=jid_from, status=reason)
+    if nick:
+        presence.setTag("nick", namespace=xmpp.NS_NICK)
+        presence.setTagData("nick", nick)
+    gateway.send(presence)
+
+def roster_subscribe(gateway, jid, dist=None):
+    """
+    Subscribe user for jids in dist
+    """
+    logger.debug('roster_subscribe for %s' % jid)
+
+    if not dist:
+        send_presence(gateway, jid, TRANSPORT_ID, "subscribe", IDENTIFIER["name"])
+        return
+
+    for uid, value in dist.iteritems():
+        send_presence(gateway, jid, parse(uid), "subscribe", value["name"])
+
+
+def send_messages(gateway, jid):
+    logger.debug('TUser: send_messages for %s' % jid)
+
+    last_message = database.get_last_message(jid)
+
+    messages = get_messages(jid, 200, last_message)
+
+    if not messages:
+        return
+
+    messages = messages[1:]
+    messages = sorted(messages, msg_sort)
+
+    if not messages:
+        return
+
+    read = []
+
+    last_message = messages[-1]["mid"]
+
+    if USE_LAST_MESSAGE_ID:
+        database.set_last_message(last_message, jid)
+
+    for message in messages:
+        read.append(str(message["mid"]))
+        from_jid = parse(message["uid"])
+        body = webtools.unescape(message["body"])
+
+        def process_handler(func):
+            # try:
+            return func(None, message)
+            # except Exception as e:
+            #     logger.error('Error while processing handlers: %s' % e)
+            #     dump_crash("handle.%s" % func.func_name)
+            #     raise e
+
+        body += u''.join(map(process_handler, gateway.handlers))
+
+        # for func in self.gateway.handlers:
+        #     try:
+        #         result = func(self, message)
+        #     except Exception as e:
+        #         logger.error('Error while processing handlers: %s' % e)
+        #         dump_crash("handle.%s" % func.func_name)
+        #         raise e
+        #     if result is None:
+        #         for func in self.gateway.handlers:
+        #             f_apply(func, (self, message))
+        #         break
+        #     else:
+        #         body += result
+        # else:
+        msg_send(gateway.component, jid, escape_message("", body), from_jid, message["date"])
+
+    mark_messages_as_read(jid, read)
+    # self.vk.msg_mark_as_read(read)
+    # if USE_LAST_MESSAGE_ID:
+    #     database.set_last_message(last_msg_id, self.jid)
+
+def get_user_data(uid, target_uid, fields=None):
+    logger.debug('TUser: sending user data for %s' % uid)
+    fields = fields or ["screen_name"]
+    args = {"fields": ",".join(fields), "user_ids": target_uid}
+    m = "users.get"
+    data = method(m, uid, args)
+    print 'User data:'
+    print data
+    if data:
+        data = data[0]
+        data["name"] = escape_name("", u"%s %s" % (data["first_name"], data["last_name"]))
+        del data["first_name"], data["last_name"]
+    else:
+        data = {}
+        for key in fields:
+            data[key] = "Unknown error when trying to get user data. We're so sorry."
+    return data
+
+def send_message(jid, body, recipient_uid, m_type="user_id"):
+    logger.debug('TUser: msg to %s' % recipient_uid)
+    method_name = "messages.send"
+    method_values = {m_type: recipient_uid, "message": body, "type": 0}
+    # try:
+    update_last_activity(jid)
+    return method(method_name, jid, method_values)
+    # except Exception as e:
+    #     logger.error('messages.send: %s' % e)
+    #     dump_crash("messages.send")
+    #     return False

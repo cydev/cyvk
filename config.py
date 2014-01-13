@@ -22,10 +22,10 @@ TRANSPORT_ID = "vk.s1.cydev"
 # Connection password.
 PASSWORD = "secret"
 
-# Default status (1 — online (recommended) / 0 — offline)
+# Default status (1 - online (recommended) / 0 - offline)
 DEFAULT_STATUS = 1
 
-# Use API feature lastMessageID (transport will save last user message id, 1 — use (recommended), 2 — not use)
+# Use API feature lastMessageID (transport will save last user message id, 1 - use (recommended), 2 - not use)
 USE_LAST_MESSAGE_ID = 1
 
 ## Language (ru/en/pl)
@@ -61,19 +61,19 @@ USER_LIMIT = 0
 ## minimum value is 32768 bytes (32kb)
 THREAD_STACK_SIZE = 0
 
-## Timeout when user considered inactive (seconds)
+# Timeout when user considered inactive (seconds)
 ACTIVE_TIMEOUT = 120
 
-## Max roster update timeout (when user inactive, seconds)
+# Max roster update timeout (when user inactive, seconds)
 ROSTER_TIMEOUT = 180
 
-## Default roster update timeout (when user is active)
+# Default roster update timeout (when user is active)
 ROSTER_UPDATE_TIMEOUT = 6
 
-## Maximum forwarded messages depth.
+# Maximum forwarded messages depth
 MAXIMUM_FORWARD_DEPTH = 5
 
-## Image that will be used if transport can't recieve image from VK.
+## Image that will be used if transport can't recieve image from VK
 URL_VCARD_NO_IMAGE = "http://simpleapps.ru/vk4xmpp.png"
 
 ## Eval jid. jid for command "!eval"

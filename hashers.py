@@ -32,5 +32,11 @@ def base_encode(number, base=0):
 
 
 def get_hash(msg):
-    int_hash = int(sha1(msg).hexdigest(), 16)
-    return base_encode(int_hash)
+    try:
+        int_hash = int(sha1(msg).hexdigest(), 16)
+        return base_encode(int_hash)
+    except TypeError:
+        return None
+    except UnicodeEncodeError:
+        int_hash = int(sha1(msg.encode('utf-8')).hexdigest(), 16)
+        return base_encode(int_hash)

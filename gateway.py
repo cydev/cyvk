@@ -8,68 +8,96 @@
 
 import signal
 import socket
-import threading
 import log
-import sys
 import os
-import time
+
+from errors import AuthenticationException, ConnectionError, all_errors
 
 
-from config import (THREAD_STACK_SIZE,
-                    PID_FILE, DATABASE_FILE,
+from config import (PID_FILE, DATABASE_FILE,
                     HOST, SERVER, PORT, TRANSPORT_ID,
                     DEBUG_XMPPPY, PASSWORD)
 
-from database import init_db, init_users
+from database import init_db, init_users, set_burst, reset_online_users
 
 # Setup logger
 logger = log.get_logger()
 
-reload(sys).setdefaultencoding("utf-8")
 socket.setdefaulttimeout(10)
 
 import library.xmpp as xmpp
 import handlers
 from extensions import message
-from library.writer import dump_crash
 from daemon import get_pid
-
-
-if THREAD_STACK_SIZE:
-    threading.stack_size(THREAD_STACK_SIZE)
 
 from singletone import Gateway
 
 g = Gateway()
 
-def disconnect_handler(crash=True):
-    if crash:
-        dump_crash("main.disconnect")
+def disconnect_transport():
+    logger.debug('disconnecting transport')
     try:
         if g.component.isConnected():
             g.component.disconnect()
+        return True
     except (NameError, AttributeError):
-        pass
-    sleep_seconds = 5
-    logger.debug("Reconnecting in %s seconds" % sleep_seconds)
-    time.sleep(sleep_seconds)
-    os.execl(sys.executable, sys.executable, *sys.argv)
+        return False
 
-def main():
+
+def disconnect_handler(crash=True):
+    logger.debug('Handling disconnect. Crash: %s' % crash)
+
+    # if crash:
+    #     dump_crash("main.disconnect")
+
+    disconnect_transport()
+
+    exit()
+
+
+
+
+def authenticate():
+    """
+    Authenticate to jabber server
+    """
+
+    logger.debug('Authenticating')
+    result =  g.component.auth(TRANSPORT_ID, PASSWORD)
+
+    if not result:
+        raise AuthenticationException('Unable to authenticate with provided credentials')
+
+    logger.info('Authenticated')
+
+def connect():
+    """
+    Connects to jabber server
+    """
+
+    logger.debug('Connecting')
+    result = g.connect(SERVER, PORT)
+
+    if not result:
+        raise ConnectionError
+
+    logger.info('Connected')
+
+
+def get_transport():
+    return xmpp.Component(HOST, debug=DEBUG_XMPPPY)
+
+
+def initialize():
     get_pid(PID_FILE)
     init_db(DATABASE_FILE)
+    set_burst()
 
-    g.component = xmpp.Component(HOST, debug=DEBUG_XMPPPY)
+    g.component = get_transport()
 
-    if not g.connect(SERVER, PORT):
-        return
+    connect()
+    authenticate()
 
-    if not g.component.auth(TRANSPORT_ID, PASSWORD):
-        logger.debug("Auth failed (%s/%s)!\n" % (g.component.lastErr, g.component.lastErrCode))
-        disconnect_handler(False)
-        return
-
-    logger.info('Auth ok')
     logger.info('Registering handlers')
 
     g.register_handler("iq", handlers.IQHandler)
@@ -81,47 +109,57 @@ def main():
     # TODO: Group chats
 
     init_users(g)
+    reset_online_users()
 
     logger.info('Initialization finished')
+
+
+def map_clients(f):
+    map(f, g.clients)
 
 
 def stop(sig=None, frame=None):
     status = "Shutting down by %s" % ("SIGTERM" if sig == 15 else "SIGINT")
     logger.debug("%s" % status)
-    for client in g.clients:
+
+    def send_presence(client):
         client.send_presence(client.jidFrom, TRANSPORT_ID, "unavailable", reason=status)
-        logger.debug("." * len(client.friends))
+
+    map_clients(send_presence)
+
     try:
         os.remove(PID_FILE)
     except OSError:
-        pass
+        logger.error('unable to remove pid file %s' % PID_FILE)
     exit(sig)
 
-
-# def garbageCollector():
-#     while True:
-#         gc.collect()
-#         time.sleep(60)
-
-
-lengthOfTransportsList = 0
-
 if __name__ == "__main__":
-    # run_thread(garbageCollector, (), "gc")
     signal.signal(signal.SIGTERM, stop)
     signal.signal(signal.SIGINT, stop)
 
-    main()
+    try:
+        initialize()
+    except AuthenticationException:
+        disconnect_transport()
+    except all_errors as e:
+        logger.critical('Unable to initialize: %s' % e)
+        raise
+
 
     while True:
         try:
             g.component.iter(2)
-        except AttributeError:
-            disconnect_handler(False)
-            break
-        except xmpp.StreamError:
-            dump_crash("Component.iter")
-        except Exception as e:
-            logger.critical("DISCONNECTED: %s" % e)
-            dump_crash("Component.iter")
-            disconnect_handler(False)
+        # except AttributeError as e:
+        #     logger.critical('AttributeError while iterating: %s' % e)
+        #     # disconnect_transport()
+        #     # disconnect_handler(False)
+        #     # break
+        #     raise
+        except xmpp.StreamError as e:
+            logger.critical('StreamError while iterating: %s' % e)
+            raise
+            # dump_crash("Component.iter")
+        # except Exception as e:
+        #     logger.critical("DISCONNECTED: %s" % e)
+        #     dump_crash("Component.iter")
+        #     disconnect_handler(False)

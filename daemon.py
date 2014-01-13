@@ -1,6 +1,6 @@
 import os
 import time
-from library.writer import Print, wFile
+from library.writer import dump_to_file
 
 __author__ = 'ernado'
 
@@ -25,4 +25,4 @@ def get_pid(pid):
                     logger.debug('OS error %s' % os_error)
 
                 logger.info("%d killed.\n" % old_pid)
-    wFile(pid, str(current_pid))
+    dump_to_file(pid, str(current_pid))

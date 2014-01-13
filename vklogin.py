@@ -3,16 +3,17 @@ logger = logging.getLogger("vk4xmpp")
 import library.vkapi as api
 from sender import stanza_send
 
-from handlers.message import msg_send, escape_name
+from messaging import msg_send, escape_name
 from library.writer import dump_crash
-from vk2xmpp import vk2xmpp
+from vk2xmpp import parse
 from config import TRANSPORT_ID
 import library.xmpp as xmpp
 from library.stext import _ as _
+import database
 # import handlers.IQ as IQ
 from hashlib import sha1
 import urllib
-from library.vkapi import unsecure_method
+from library.vkapi import method
 
 def vcard_get_photo(self, url, encode=True):
     try:
@@ -21,10 +22,11 @@ def vcard_get_photo(self, url, encode=True):
         if data and encode:
             data = data.encode("base64")
         return data
-    except IOError:
-        pass
-    except:
-        dump_crash("vcard.getPhoto")
+    except IOError as e:
+        logging.error('IOError while vcard_get_photo: %s' % e)
+        return None
+    # except:
+    #     dump_crash("vcard.getPhoto")
 
 
 class VKLogin(object):
@@ -38,7 +40,8 @@ class VKLogin(object):
         self.engine = None
 
     # noinspection PyShadowingNames,PyBroadException
-    def auth(self, token=None):
+    def auth(self, jid, token=None):
+        self.jid_from = jid
         logger.debug("VKLogin.auth %s token" % ("with" if token else "without"))
         try:
             self.engine = api.APIBinding(self.number, self.password, token=token)
@@ -46,8 +49,6 @@ class VKLogin(object):
         except api.AuthError as e:
             logger.error("VKLogin.auth failed with error %s" % e.message)
             return False
-        except Exception as e:
-            dump_crash("VKLogin.auth")
         logger.debug("VKLogin.auth completed")
         self.is_online = True
         return self.is_online
@@ -76,30 +77,37 @@ class VKLogin(object):
             return False
         return True
 
-    def method(self, method, m_args=None):
+    def method(self, m, m_args=None):
+        if not self.jid_from:
+            raise ValueError('jid is None')
+
         m_args = m_args or {}
         result = {}
         if self.engine.captcha or not self.is_online:
             return result
         try:
-            result = self.engine.method(method, m_args)
+            result = method(m, self.jid_from, m_args)
+            # result = self.engine.method(method, m_args)
         except api.CaptchaNeeded:
             logger.error("VKLogin: running captcha challenge for %s" % self.jid_from)
             self.captcha_challenge()
         except api.NotAllowed:
-            if self.engine.lastMethod[0] == "messages.send":
-                msg_send(self.gateway.component, self.jid_from, _("You're not allowed to perform this action."),
-                        vk2xmpp(m_args.get("user_id", TRANSPORT_ID)))
+            # if self.engine.lastMethod[0] == "messages.send":
+            msg_send(self.gateway.component, self.jid_from, _("You're not allowed to perform this action."),
+                    parse(m_args.get("user_id", TRANSPORT_ID)))
         except api.VkApiError as vk_e:
             if vk_e.message == "User authorization failed: user revoke access for this token.":
                 try:
                     logger.critical("VKLogin: %s" % vk_e.message)
-                    self.gateway.clients[self.jid_from].delete_user()
+                    database.remove_user(self.jid_from)
+                    database.remove_online_user(self.jid_from)
+                    # self.gateway.clients[self.jid_from].delete_user()
                 except KeyError:
                     pass
             elif vk_e.message == "User authorization failed: invalid access_token.":
                 msg_send(self.gateway.component, self.jid_from, _(vk_e.message + " Please, register again"), TRANSPORT_ID)
             self.is_online = False
+
             logger.error("VKLogin: apiError %s for user %s" % (vk_e.message, self.jid_from))
         return result
 
@@ -146,28 +154,27 @@ class VKLogin(object):
     def disconnect(self):
         logger.debug("VKLogin: user %s has left" % self.jid_from)
         self.method("account.setOffline")
-        self.is_online = False
+        database.set_offline(self.jid_from)
 
     def get_token(self):
         return self.engine.token
 
-
-
     def get_friends(self, fields=None):
         fields = fields or ["screen_name"]
         friends_raw = self.method("friends.get", {"fields": ",".join(fields)}) or {} # friends.getOnline
+        print 'Friends raw: %s' % friends_raw
         friends = {}
         for friend in friends_raw:
             uid = friend["uid"]
             name = escape_name("", u"%s %s" % (friend["first_name"], friend["last_name"]))
-            try:
-                friends[uid] = {"name": name, "online": friend["online"]}
-                for key in fields:
-                    if key != "screen_name":
-                        friends[uid][key] = friend.get(key)
-            except KeyError as key_error:
-                logger.debug('%s while processing %s' % (key_error, uid))
-                continue
+            # try:
+            friends[uid] = {"name": name, "online": friend["online"]}
+            for key in fields:
+                if key != "screen_name":
+                    friends[uid][key] = friend.get(key)
+            # except KeyError as key_error:
+            #     logger.debug('%s while processing %s' % (key_error, uid))
+            #     continue
         return friends
 
     def msg_mark_as_read(self, msg_list):
@@ -180,3 +187,16 @@ class VKLogin(object):
             del values["count"]
             values["last_message_id"] = last_msg_id
         return self.method("messages.get", values)
+
+def mark_messages_as_read(jid, msg_list):
+    method("messages.markAsRead", jid, {"message_ids": ','.join(msg_list)})
+
+def get_messages(jid, count=5, last_msg_id=None):
+    arguments = {"out": 0, "filters": 1, "count": count}
+    if last_msg_id:
+        del arguments["count"]
+        arguments["last_message_id"] = last_msg_id
+    return method("messages.get", jid, arguments)
+
+
+

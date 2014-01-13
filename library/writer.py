@@ -16,7 +16,7 @@ fixme_message = lambda msg: Print("\n#! fixme: \"%s\"." % msg)
 last_error = None
 
 
-def wFile(filename, data, mode="w"):
+def dump_to_file(filename, data, mode="w"):
     with open(filename, mode, 0) as file:
         file.write(data)
 
@@ -36,14 +36,14 @@ def dump_crash(name, text=0, is_fixme=True):
         file_path = "%s/%s.txt" % (crash_dir, name)
         if not os.path.exists(crash_dir):
             os.makedirs(crash_dir)
-        exception = wException(True)
+        exception = dump_exception(True)
         if exception not in ("None", last_error):
             timestamp = time.strftime("| %d.%m.%Y (%H:%M:%S) |\n")
-            wFile(file_path, timestamp + exception + "\n", "a")
+            dump_to_file(file_path, timestamp + exception + "\n", "a")
         last_error = exception
     except:
         fixme_message("crashlog")
-        wException()
+        dump_exception()
 
 
 def Print(text, line=True):
@@ -57,10 +57,10 @@ def Print(text, line=True):
         pass
 
 
-def wException(File=False):
+def dump_exception(f=False):
     try:
         exception = traceback.format_exc().strip()
-        if not File:
+        if not f:
             Print(exception)
         return exception
     except (IOError, OSError):
