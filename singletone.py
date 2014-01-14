@@ -6,17 +6,15 @@ import logging
 logger = logging.getLogger("vk4xmpp")
 
 from config import transport_features, SLICE_STEP, ROSTER_TIMEOUT, ACTIVE_TIMEOUT
-from run import run_thread
-from library.writer import dump_crash
 from errors import ConnectionError
 import user as user_api
 import database
+
 
 class Gateway(object):
     def __init__(self):
         self.handlers = []
         self.group_handlers = []
-        self.clients = {}
         self.client_list = []
         self.jid_to_id = {}
         self.client_list_length = 0
@@ -34,45 +32,26 @@ class Gateway(object):
         self.component.RegisterDisconnectHandler(handler)
 
     def process_client(self, jid):
-        now = time.time()
+        logger.debug('processing client %s' % jid)
 
         if not database.is_user_online(jid):
+            logger.debug('user %s offline' % jid)
             return
 
-        last_activity = database.get_last_activity(jid)
-        last_update = database.get_last_update(jid)
-
-        if not (now - last_activity < ACTIVE_TIMEOUT or now - last_update > ROSTER_TIMEOUT):
+        if user_api.is_timed_out(jid):
+            logger.debug('timeout for client %s' % jid)
+            database.remove_online_user(jid)
             return
 
-        user_api.update_last_activity(jid)
-        friends_vk = user_api.get_friends(jid)
-        friends_db = database.get_friends(jid)
-        user_api.set_online(jid)
-
-        logger.debug('Updating friends')
-
-        def process_changes(uid):
-            friend = friends_vk[uid]
-
-            if uid not in friends_db:
-                logger.debug('User %s not found in friends db' % uid)
-                user_api.roster_subscribe(self, jid, {uid: friend})
-                return
-
-            if friends_db[uid]['online'] != friend["online"]:
-                status = None if friend["online"] else "unavailable"
-                user_api.send_presence(self, jid, uid, status)
-
-        if friends_vk != friends_db:
-            map(process_changes, friends_vk)
-
+        # user_api.update_last_activity(jid)
+        # user_api.set_online(jid)
+        user_api.update_friends(self, jid)
         user_api.send_messages(self, jid)
+
 
     def add_user(self, jid):
         logger.debug('add_user %s' % jid)
-        is_client = database.is_client(jid)
-        if is_client:
+        if database.is_client(jid):
            logger.debug('%s already a client' % jid)
            return
         database.add_online_user(jid)
@@ -95,38 +74,41 @@ class Gateway(object):
                 database.add_online_user(jid)
             else:
                 database.remove_online_user(jid)
-        length = len(self.client_list)
+        # length = len(self.client_list)
 
-        if length > self.client_list_length:
-            start = self.client_list_length
-            self.client_list_length += SLICE_STEP
-            end = self.client_list_length
-            run_thread(self.hyper_thread, (start, end), "updateTransportsList")
-        elif length <= self.client_list_length - SLICE_STEP:
-            self.client_list_length -= SLICE_STEP
+        self.process_client(jid)
+
+        # if length > self.client_list_length:
+        #     start = self.client_list_length
+        #     self.client_list_length += SLICE_STEP
+        #     end = self.client_list_length
+        #     run_thread(self.main_loop, (start, end), "updateTransportsList")
+        # elif length <= self.client_list_length - SLICE_STEP:
+        #     self.client_list_length -= SLICE_STEP
 
 
 
-    def hyper_thread(self):
+    def main_loop(self):
         while True:
             now = time.time()
-            logger.debug('hyper_thread iteration')
+            # logger.debug('hyper_thread iteration')
             clients = database.get_users()
-            map(self.process_client, clients)
-            logger.debug('iterated for %s' % (time.time() - now))
-            time.sleep(ROSTER_TIMEOUT)
+            l = len(map(self.process_client, clients))
+            logger.debug('iterated for %.2f ms - %s users' % ((time.time() - now)*1000, l))
+            time.sleep(7)
 
     def send(self, stanza):
         try:
             self.component.send(stanza)
         except KeyboardInterrupt:
             pass
+            logger.debug('ignoring KeyboardInterrupt')
         except IOError as e:
-            logger.error("Panic: Couldn't send stanza: %s, %s" % (str(stanza), e))
-        except Exception as e:
-            # TODO: More accurate exception handling
-            logger.critical('Crashed: %s' % e)
-            dump_crash("Sender")
+            logger.error("couldn't send stanza: %s, %s" % (str(stanza), e))
+        # except Exception as e:
+        #     # TODO: More accurate exception handling
+        #     logger.critical('Crashed: %s' % e)
+        #     dump_crash("Sender")
 
     def connect(self, server, port):
         r =  self.component.connect((server, port))

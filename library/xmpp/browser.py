@@ -24,8 +24,9 @@ Such functionality is achieved via registering "DISCO handlers" that are
 automatically called when user requests some node of your disco tree.
 """
 
-from dispatcher import *
+from protocol import NS_DISCO_INFO, NS_DISCO_ITEMS, ERR_ITEM_NOT_FOUND, NodeProcessed, Error
 from plugin import PlugIn
+
 
 
 class Browser(PlugIn):

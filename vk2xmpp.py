@@ -8,7 +8,7 @@ def is_number(obj):
     return isinstance(obj, int)
 
 
-def parse(t_id):
+def jid_from_uid(t_id):
     if not is_number(t_id) and "@" in t_id:
         t_id = t_id.split("@")[0]
         if is_number(t_id):

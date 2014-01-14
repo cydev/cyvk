@@ -7,20 +7,22 @@ class AuthenticationException(Exception):
 class ConnectionError(Exception):
     pass
 
-class VkApiError(Exception):
+class APIError(Exception):
     pass
 
 
-class CaptchaNeeded(VkApiError):
+class CaptchaNeeded(APIError):
     pass
 
 
-class TokenError(VkApiError):
+class TokenError(APIError):
     pass
 
 
-class NotAllowed(VkApiError):
+class NotAllowed(APIError):
     pass
 
 
-all_errors = (AuthenticationException, ConnectionError)
+
+
+all_errors = (AuthenticationException, ConnectionError, APIError)

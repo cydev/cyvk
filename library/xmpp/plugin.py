@@ -27,6 +27,7 @@ class PlugIn:
 
     def __init__(self):
         self._exported_methods = []
+        self._owner = None
         self.DBG_LINE = self.__class__.__name__.lower()
 
     def PlugIn(self, owner):

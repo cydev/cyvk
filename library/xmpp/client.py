@@ -27,8 +27,6 @@ import dispatcher
 import auth
 import roster
 
-from plugin import PlugIn
-
 Debug = debug
 Debug.DEBUGGING_IS_ON = 1
 

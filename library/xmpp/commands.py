@@ -35,15 +35,17 @@ What it supplies:
 """
 
 from plugin import PlugIn
-from protocol import *
-
+from protocol import NS_COMMANDS, NS_DATA
+from protocol import NodeProcessed, Node
+from protocol import ERR_BAD_REQUEST, ERR_ITEM_NOT_FOUND, Error
+from protocol import DataForm, DataField
 
 class Commands(PlugIn):
     """
     Commands is an ancestor of PlugIn and can be attached to any session.
 
-    The commands class provides a lookup and browse mechnism.
-    It follows the same priciple of the Browser class, for Service Discovery to provide the list of commands,
+    The commands class provides a lookup and browse mechanism.
+    It follows the same principle of the Browser class, for Service Discovery to provide the list of commands,
     it adds the "list" disco type to your existing disco handler function.
 
     How it works:
@@ -306,6 +308,7 @@ class Command_Handler_Prototype(PlugIn):
         """
         The handler for discovery events.
         """
+        result = None
         if type == "list":
             result = (request.getTo(), self.name, self.description)
         elif type == "items":
@@ -416,9 +419,10 @@ class TestCommand(Command_Handler_Prototype):
 
     def cmdThirdStage(self, conn, request):
         form = DataForm(node=request.getTag(name="command").getTag(name="x", namespace=NS_DATA))
+        numb = 0
         try:
             numb = float(form.getField("radius").getValue())
-        except Exception:
+        except TypeError:
             self.cmdSecondStageReply(conn, request)
         from math import pi
 

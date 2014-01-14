@@ -19,7 +19,7 @@ Protocol module contains tools that is needed for processing of
 xmpp-related data structures.
 """
 
-from simplexml import Node, XML_ls, XMLescape, ustr
+from simplexml import Node
 
 import time
 
@@ -741,13 +741,17 @@ class Message(Protocol):
     XMPP Message stanza - "push" mechanism.
     """
 
-    def __init__(self, to=None, body=None, typ=None, subject=None, attrs={}, frm=None, payload=[], timestamp=None,
+    def __init__(self, to=None, body=None, typ=None, subject=None, attrs=None, frm=None, payload=None, timestamp=None,
                  xmlns=NS_CLIENT, node=None):
         """
         Create message object. You can specify recipient, text of message, type of message
         any additional attributes, sender of the message, any additional payload (f.e. jabber:x:delay element) and namespace in one go.
         Alternatively you can pass in the other XML object as the "node" parameted to replicate it as message.
         """
+
+        attrs = attrs or {}
+        payload = payload or []
+
         Protocol.__init__(self, "message", to=to, typ=typ, attrs=attrs, frm=frm, payload=payload, timestamp=timestamp,
                           xmlns=xmlns, node=node)
         if body:
@@ -808,13 +812,18 @@ class Presence(Protocol):
     XMPP Presence object.
     """
 
-    def __init__(self, to=None, typ=None, priority=None, show=None, status=None, attrs={}, frm=None, timestamp=None,
-                 payload=[], xmlns=NS_CLIENT, node=None):
+    def __init__(self, to=None, typ=None, priority=None, show=None, status=None, attrs=None, frm=None, timestamp=None,
+                 payload=None, xmlns=NS_CLIENT, node=None):
         """
         Create presence object. You can specify recipient, type of message, priority, show and status values
         any additional attributes, sender of the presence, timestamp, any additional payload (f.e. jabber:x:delay element) and namespace in one go.
         Alternatively you can pass in the other XML object as the "node" parameted to replicate it as presence.
         """
+
+
+        attrs = attrs or {}
+        payload = payload or []
+
         Protocol.__init__(self, "presence", to=to, typ=typ, attrs=attrs, frm=frm, payload=payload, timestamp=timestamp,
                           xmlns=xmlns, node=node)
         if priority:
@@ -919,17 +928,20 @@ class Iq(Protocol):
     XMPP Iq object - get/set dialog mechanism.
     """
 
-    def __init__(self, typ=None, queryNS=None, attrs={}, to=None, frm=None, payload=[], xmlns=NS_CLIENT, node=None):
+    def __init__(self, typ=None, query_ns=None, attributes=None, to=None, frm=None, payload=None, xmlns=NS_CLIENT, node=None):
         """
-        Create Iq object. You can specify type, query namespace
-        any additional attributes, recipient of the iq, sender of the iq, any additional payload (f.e. jabber:x:data node) and namespace in one go.
-        Alternatively you can pass in the other XML object as the "node" parameted to replicate it as an iq.
-        """
-        Protocol.__init__(self, "iq", to=to, typ=typ, attrs=attrs, frm=frm, xmlns=xmlns, node=node)
+            Create Iq object. You can specify type, query namespace
+            any additional attributes, recipient of the iq, sender of the iq, any additional payload (f.e. jabber:x:data node) and namespace in one go.
+            Alternatively you can pass in the other XML object as the "node" parameted to replicate it as an iq.
+            """
+        attributes = attributes or {}
+        super(Iq, self).__init__("iq", to=to, typ=typ, attrs=attributes, frm=frm, xmlns=xmlns, node=node)
+
+        payload = payload or []
         if payload:
             self.setQueryPayload(payload)
-        if queryNS:
-            self.setQueryNS(queryNS)
+        if query_ns:
+            self.setQueryNS(query_ns)
 
     def getQueryNS(self):
         """
@@ -984,7 +996,7 @@ class Iq(Protocol):
         Builds and returns another Iq object of specified type.
         The to, from and query child node of new Iq are pre-set as reply to this Iq.
         """
-        iq = Iq(typ, to=self.getFrom(), frm=self.getTo(), attrs={"id": self.getID()})
+        iq = Iq(typ, to=self.getFrom(), frm=self.getTo(), attributes={"id": self.getID()})
         if self.getTag("query"):
             iq.setQueryNS(self.getQueryNS())
         return iq

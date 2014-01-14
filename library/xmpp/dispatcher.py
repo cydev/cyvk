@@ -23,7 +23,6 @@ Dispatcher.SendAndWaitForResponce method will wait for reply stanza before givin
 
 import simplexml
 import sys
-import time
 
 from plugin import PlugIn
 from protocol import *
@@ -101,7 +100,7 @@ class Dispatcher(PlugIn):
         self._init()
         for method in self._old_owners_methods:
             if method.__name__ == "send":
-                self._owner_send = method;
+                self._owner_send = method
                 break
         self._owner.lastErrNode = None
         self._owner.lastErr = None

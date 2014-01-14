@@ -36,14 +36,14 @@ def _discover(disp, ns, jid, node=None, fb2b=0, fb2a=1):
     and if it doesnt support browse (or fb2b is not true) fall back to agents protocol
     (if gb2a is true). Returns obtained info. Used internally.
     """
-    iq = Iq(to=jid, typ="get", queryNS=ns)
+    iq = Iq(to=jid, typ="get", query_ns=ns)
     if node:
         iq.setQuerynode(node)
     rep = disp.SendAndWaitForResponse(iq)
     if fb2b and not isResultNode(rep):
-        rep = disp.SendAndWaitForResponse(Iq(to=jid, typ="get", queryNS=NS_BROWSE)) # Fallback to browse
+        rep = disp.SendAndWaitForResponse(Iq(to=jid, typ="get", query_ns=NS_BROWSE)) # Fallback to browse
     if fb2a and not isResultNode(rep):
-        rep = disp.SendAndWaitForResponse(Iq(to=jid, typ="get", queryNS=NS_AGENTS)) # Fallback to agents
+        rep = disp.SendAndWaitForResponse(Iq(to=jid, typ="get", query_ns=NS_AGENTS)) # Fallback to agents
     if isResultNode(rep):
         return [n for n in rep.getQueryPayload() if isinstance(n, Node)]
     return []

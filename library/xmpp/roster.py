@@ -20,7 +20,8 @@ mass-renaming of contacts.
 """
 
 from plugin import PlugIn
-from protocol import *
+from protocol import NS_ROSTER, Iq, NodeProcessed, JID, Node, Presence
+# from protocol import *
 
 
 class Roster(PlugIn):

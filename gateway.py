@@ -29,8 +29,11 @@ import library.xmpp as xmpp
 import handlers
 from extensions import message
 from daemon import get_pid
-
+from run import run_thread
 from singletone import Gateway
+import database
+import user as user_api
+
 
 g = Gateway()
 
@@ -115,17 +118,20 @@ def initialize():
 
 
 def map_clients(f):
-    map(f, g.clients)
+    clients = database.get_users()
+    map(f, clients)
 
 
-def stop(sig=None, frame=None):
+def halt_handler(sig=None, frame=None):
     status = "Shutting down by %s" % ("SIGTERM" if sig == 15 else "SIGINT")
     logger.debug("%s" % status)
 
-    def send_presence(client):
-        client.send_presence(client.jidFrom, TRANSPORT_ID, "unavailable", reason=status)
+    def send_unavailable_presence(client):
+        presence_status = "unavailable"
+        user_api.send_presence(g, client, TRANSPORT_ID, presence_status, reason=status)
+        # send_presence(client.jidFrom, TRANSPORT_ID, presence_status, reason=status)
 
-    map_clients(send_presence)
+    map_clients(send_unavailable_presence)
 
     try:
         os.remove(PID_FILE)
@@ -133,19 +139,8 @@ def stop(sig=None, frame=None):
         logger.error('unable to remove pid file %s' % PID_FILE)
     exit(sig)
 
-if __name__ == "__main__":
-    signal.signal(signal.SIGTERM, stop)
-    signal.signal(signal.SIGINT, stop)
-
-    try:
-        initialize()
-    except AuthenticationException:
-        disconnect_transport()
-    except all_errors as e:
-        logger.critical('Unable to initialize: %s' % e)
-        raise
-
-
+def component_loop():
+    logger.debug('component loop started')
     while True:
         try:
             g.component.iter(2)
@@ -158,8 +153,37 @@ if __name__ == "__main__":
         except xmpp.StreamError as e:
             logger.critical('StreamError while iterating: %s' % e)
             raise
-            # dump_crash("Component.iter")
-        # except Exception as e:
-        #     logger.critical("DISCONNECTED: %s" % e)
-        #     dump_crash("Component.iter")
-        #     disconnect_handler(False)
+
+if __name__ == "__main__":
+    signal.signal(signal.SIGTERM, halt_handler)
+    signal.signal(signal.SIGINT, halt_handler)
+
+    try:
+        initialize()
+    except AuthenticationException:
+        disconnect_transport()
+    except all_errors as e:
+        logger.critical('Unable to initialize: %s' % e)
+        raise
+
+    run_thread(g.main_loop)
+    run_thread(component_loop)
+
+    #
+    # while True:
+    #     try:
+    #         g.component.iter(2)
+    #     # except AttributeError as e:
+    #     #     logger.critical('AttributeError while iterating: %s' % e)
+    #     #     # disconnect_transport()
+    #     #     # disconnect_handler(False)
+    #     #     # break
+    #     #     raise
+    #     except xmpp.StreamError as e:
+    #         logger.critical('StreamError while iterating: %s' % e)
+    #         raise
+    #         # dump_crash("Component.iter")
+    #     # except Exception as e:
+    #     #     logger.critical("DISCONNECTED: %s" % e)
+    #     #     dump_crash("Component.iter")
+    #     #     disconnect_handler(False)
