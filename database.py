@@ -4,7 +4,7 @@ import time
 from library.itypes import Database
 
 import logging
-from config import DB_FILE, TRANSPORT_ID, REDIS_PREFIX, REDIS_HOST, REDIS_PORT, USE_LAST_MESSAGE_ID
+from config import DB_FILE, TRANSPORT_ID, REDIS_PREFIX, REDIS_HOST, REDIS_PORT, USE_LAST_MESSAGE_ID, API_MAXIMUM_RATE, POLLING_WAIT
 import library.xmpp as xmpp
 
 import pickle
@@ -18,7 +18,7 @@ logger = logging.getLogger("vk4xmpp")
 
 r = redis.StrictRedis(REDIS_HOST, REDIS_PORT, )
 
-def init_db(filename):
+def initialize_database(filename):
     logger.info('DB: initializing')
     if not os.path.exists(filename):
         with Database(filename) as db:
@@ -42,14 +42,14 @@ def remove_user(jid):
 #         return map(lambda user: user[0], users)
 
 
-def probe_users(gateway):
+def probe_users():
     logger.info('DB: Initializing users')
     with Database(DB_FILE) as db:
         users = db("SELECT * FROM users").fetchall()
 
         for user in users:
             logger.debug('DB: user %s initialized' % user[0])
-            gateway.send(xmpp.Presence(user[0], "probe", frm=TRANSPORT_ID))
+            queue_stanza(xmpp.Presence(user[0], "probe", frm=TRANSPORT_ID))
 
 def _get_last_message_key(jid):
     return _get_user_attribute_key(jid, 'last_message')
@@ -66,13 +66,11 @@ def set_last_message(jid, message_id):
         db("UPDATE users SET lastMsgID=? WHERE jid=?", (message_id, jid))
 
 
-BURST_RATE = 0.3
-
 burst_protection_key = ':'.join([REDIS_PREFIX, 'burst'])
 clients_set_key = ':'.join([REDIS_PREFIX, 'clients'])
 
 
-def set_burst():
+def initialize_burst_protection():
     r.set(burst_protection_key, time.time())
 
 def is_client(jid):
@@ -90,11 +88,11 @@ def burst_protection():
     last_time = float(r.get(burst_protection_key))
 
     diff = now - last_time
-    if diff < BURST_RATE:
+    if diff < API_MAXIMUM_RATE:
         # logger.debug('Burst protection succeeded')
-        time.sleep(abs(diff - BURST_RATE))
+        time.sleep(abs(diff - API_MAXIMUM_RATE))
 
-    set_burst()
+    initialize_burst_protection()
 
 def _get_friends_key(uid):
     return _get_user_attribute_key(uid, 'friends')
@@ -323,3 +321,46 @@ def enqueue_stanza():
     assert isinstance(stanza, Stanza)
 
     return stanza
+
+
+# processing lock
+
+def _get_processing_key(jid):
+    return _get_user_attribute_key(jid, 'is_processing')
+
+def set_processing(jid):
+    logger.debug('processing client %s' % jid)
+    k = _get_processing_key(jid)
+    r.set(k, True)
+    r.expire(k, 10)
+
+def unset_processing(jid):
+    r.set(_get_processing_key(jid), False)
+    logger.debug('client %s processed' % jid)
+
+def is_processing(jid):
+    result =  r.get(_get_processing_key(jid))
+    if result == 'False':
+        return False
+    logger.debug('result: %s (%s)' % (result, type(result)))
+    return result
+
+def _get_polling_key(jid):
+    return _get_user_attribute_key(jid, 'is_polling')
+
+def set_polling(jid):
+    logger.debug('polling client %s' % jid)
+    k = _get_polling_key(jid)
+    r.set(k, True)
+    r.expire(k, POLLING_WAIT)
+
+def unset_polling(jid):
+    r.set(_get_polling_key(jid), False)
+    logger.debug('client %s processed' % jid)
+
+def is_polling(jid):
+    result =  r.get(_get_polling_key(jid))
+    if result == 'False':
+        return False
+    logger.debug('result: %s (%s)' % (result, type(result)))
+    return result

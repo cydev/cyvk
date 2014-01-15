@@ -4,14 +4,11 @@ import time
 import logging
 
 logger = logging.getLogger("vk4xmpp")
-import json
 
 from config import TRANSPORT_FEATURES
 from errors import ConnectionError
 import user as user_api
 import database
-
-import pickle
 
 
 class Gateway(object):
@@ -28,8 +25,8 @@ class Gateway(object):
     def register_handler(self, name, handler_class):
         self.component.RegisterHandler(name, handler_class(self).handle)
 
-    def register_parser(self, handler):
-        self.handlers.append(handler)
+    # def register_parser(self, handler):
+    #     self.handlers.append(handler)
 
     def register_disconnect_handler(self, handler):
         self.component.RegisterDisconnectHandler(handler)

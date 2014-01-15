@@ -49,6 +49,6 @@ def extract_message(msg):
             'jid_from_str': jid_from_str
             }
 
-def send_watcher_message(transport, text):
+def send_watcher_message(text):
     for jid in WATCHER_LIST:
-        send_message(transport, jid, text, TRANSPORT_ID)
+        send_message(jid, text, TRANSPORT_ID)

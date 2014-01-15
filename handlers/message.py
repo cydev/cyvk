@@ -41,11 +41,11 @@ def get_answer(message, jid_from, jid_to):
 
 
 class MessageHandler(Handler):
-    def __init__(self, gateway):
-        super(MessageHandler, self).__init__(gateway)
+    # def __init__(self, gateway):
+    #     super(MessageHandler, self).__init__(gateway)
 
-    def captcha_accept(self, cl, args, jid_to, jid_from_str):
-        captcha_accept(self.gateway, cl, args, jid_to, jid_from_str)
+    def captcha_accept(self, args, jid_to, jid_from_str):
+        captcha_accept(args, jid_to, jid_from_str)
 
     def handle(self, cl, msg):
 
@@ -76,7 +76,7 @@ class MessageHandler(Handler):
                 text, args = msg_raw
                 args = args.strip()
                 if text == "!captcha" and args:
-                    captcha_accept(self.gateway, cl, args, jid_to, jid_from_str)
+                    captcha_accept(args, jid_to, jid_from_str)
                     answer = get_answer(msg, jid_from, jid_to)
                 # TODO: evaluate and others
         else:
@@ -90,6 +90,6 @@ class MessageHandler(Handler):
         # TODO: Group handlers
 
 
-def get_handler(gateway):
-    return MessageHandler(gateway).handle
+def get_handler():
+    return MessageHandler().handle
 

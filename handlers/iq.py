@@ -4,7 +4,7 @@ import logging
 import urllib
 
 import config
-from config import WHITE_LIST, IDENTIFIER, TRANSPORT_ID, LOGO_URL
+from config import WHITE_LIST, IDENTIFIER, TRANSPORT_ID, LOGO_URL, TRANSPORT_FEATURES
 from friends import get_friend_jid
 from library.xmpp.protocol import (NodeProcessed, NS_REGISTER, NS_CAPTCHA, NS_GATEWAY,
                                    NS_DISCO_ITEMS, NS_DISCO_INFO, NS_VCARD, NS_PING, ERR_FEATURE_NOT_IMPLEMENTED,
@@ -20,7 +20,6 @@ import user as user_api
 from errors import AuthenticationException
 import database
 import forms
-from singletone import Gateway
 
 
 logger = logging.getLogger("vk4xmpp")
@@ -52,17 +51,16 @@ def generate_error(stanza, error=None, text=None):
     return error
 
 
-def _send_form(_, iq, jid):
+def _send_form(iq, jid):
     logger.debug("sending register form to %s" % jid)
     result = iq.buildReply("result")
     result.setQueryPayload((forms.get_form(),))
     return result
 
 
-def _process_form(gateway, iq, jid):
+def _process_form(iq, jid):
     logger.debug('received register form from %s' % jid)
 
-    assert isinstance(gateway, Gateway)
     assert isinstance(jid, unicode)
 
     result = iq.buildReply("result")
@@ -93,15 +91,15 @@ def _process_form(gateway, iq, jid):
         raise NotImplementedError('already in database')
 
     try:
-        user_api.connect(gateway, jid, token)
-        user_api.initialize(gateway, jid)
+        user_api.connect(jid, token)
+        user_api.initialize(jid)
     except AuthenticationException:
         logger.error("user %s connection failed (from iq)" % jid)
         result = generate_error(iq, ERR_BAD_REQUEST, "Incorrect password or access token")
 
     database.set_last_activity_now(jid)
-    gateway.add_user(jid)
-    send_watcher_message(gateway.component, "new user registered: %s" % jid)
+    user_api.make_client(jid)
+    send_watcher_message("new user registered: %s" % jid)
     logger.debug('registration for %s completed' % jid)
 
     return result
@@ -117,16 +115,14 @@ class IQHandler(Handler):
     #     "cpu/time": "seconds"
     # }
 
-    def __init__(self, gateway):
-        super(IQHandler, self).__init__(gateway)
 
-    def handle(self, transport, stanza):
+    def handle(self, _, stanza):
         jid_from = stanza.getFrom()
         jid_from_str = jid_from.getStripped()
         jid_to = stanza.getTo()
 
         if WHITE_LIST and jid_from and jid_from.getDomain() not in WHITE_LIST:
-            stanza_send(transport, generate_error(stanza, ERR_BAD_REQUEST, "You are not in white list"))
+            database.queue_stanza(generate_error(stanza, ERR_BAD_REQUEST, "You are not in white list"))
             raise NodeProcessed()
 
         from_is_client = database.is_client(jid_from_str)
@@ -138,7 +134,7 @@ class IQHandler(Handler):
             cx_tag = c_tag.getTag("x", {}, NS_DATA)
             fcx_tag = cx_tag.getTag("field", {"var": "ocr"})
             c_value = fcx_tag.getTagData("value")
-            captcha_accept(self.gateway, transport, c_value, jid_to, jid_from_str)
+            captcha_accept(c_value, jid_to, jid_from_str)
 
         ns = stanza.getQueryNS()
 
@@ -150,19 +146,19 @@ class IQHandler(Handler):
         }
 
         try:
-            mapping[ns](transport, stanza)
+            mapping[ns](stanza)
         except KeyError:
             tag = stanza.getTag("vCard") or stanza.getTag("ping")
             if tag and tag.getNamespace() == NS_VCARD:
-                self.iq_vcard_handler(transport, stanza)
+                self.iq_vcard_handler(stanza)
             elif tag and tag.getNamespace() == NS_PING:
                 if jid_to == config.TRANSPORT_ID:
-                    stanza_send(transport, stanza.buildReply("result"))
+                    database.queue_stanza(stanza.buildReply("result"))
 
         raise NodeProcessed()
 
 
-    def iq_register_handler(self, transport, stanza):
+    def iq_register_handler(self, stanza):
         jid = stanza.getFrom().getStripped()
         logger.debug('register handler for %s' % jid)
 
@@ -183,13 +179,11 @@ class IQHandler(Handler):
             logger.debug('register not to transport')
             return
 
-        gateway = self.gateway
-
         try:
             handler = {'get': _send_form, 'set': _process_form}[stanza.getType()]
-            stanza_send(transport, handler(gateway, stanza, jid))
+            database.queue_stanza(handler(stanza, jid))
         except (NotImplementedError, KeyError) as e:
-            stanza_send(transport, generate_error(stanza, 0, "Requested feature not implemented: %s" % e))
+            database.queue_stanza(generate_error(stanza, 0, "Requested feature not implemented: %s" % e))
 
 
     # def calc_stats(self):
@@ -266,7 +260,8 @@ class IQHandler(Handler):
     #             result.setQueryPayload(querypayload)
     #             stanza_send(cl, result)
 
-    def iq_disco_handler(self, transport, iq_raw):
+    @staticmethod
+    def iq_disco_handler(transport, iq_raw):
         logger.debug('handling disco')
 
         iq = IQ(iq_raw)
@@ -275,7 +270,7 @@ class IQHandler(Handler):
             query = [Node("identity", IDENTIFIER)]
             result = iq_raw.buildReply("result")
             if iq.ns == NS_DISCO_INFO:
-                for key in self.gateway.features:
+                for key in TRANSPORT_FEATURES:
                     node = Node("feature", {"var": key})
                     query.append(node)
                 result.setQueryPayload(query)
@@ -340,7 +335,7 @@ class IQHandler(Handler):
                 vcard.setTagData(key, tags[key])
         return vcard
 
-    def iq_vcard_handler(self, transport, stanza):
+    def iq_vcard_handler(self, stanza):
         logger.debug('iq_vcard_handler')
         jid_from = stanza.getFrom()
         jid_to = stanza.getTo()
@@ -375,8 +370,8 @@ class IQHandler(Handler):
                 result = generate_error(stanza, ERR_REGISTRATION_REQUIRED, 'You are not registered for this action')
         else:
             raise NodeProcessed()
-        stanza_send(transport, result)
+        database.queue_stanza(result)
 
 
-def get_handler(gateway):
-    return IQHandler(gateway).handle
+def get_handler():
+    return IQHandler().handle

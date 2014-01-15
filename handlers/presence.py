@@ -10,7 +10,6 @@ import database
 import user as user_api
 from handler import Handler
 from errors import AuthenticationException
-from singletone import Gateway
 
 
 logger = logging.getLogger("vk4xmpp")
@@ -35,23 +34,21 @@ class Presence(object):
 
 def presence_handler_wrapper(handler):
 
-    def wrapper(presence, jid, gateway):
+    def wrapper(presence, jid):
         assert isinstance(jid, unicode)
         assert isinstance(presence, Presence)
-        assert isinstance(gateway, Gateway)
-        handler(presence, jid, gateway)
+        handler(presence, jid)
 
     return wrapper
 
 @presence_handler_wrapper
-def _error(presence, jid, _):
+def _error(presence, jid):
     """
     Error presence handler
 
     @type presence: Presence
     @param presence: presence object
     @param jid: client jid
-    @param _:
     @raise NotImplementedError:
     """
     logger.debug('error presence %s' % presence)
@@ -63,16 +60,14 @@ def _error(presence, jid, _):
         # client.vk.disconnect()
 
 @presence_handler_wrapper
-def _unavailable(presence, jid, gateway):
+def _unavailable(presence, jid):
     """
     Unavailable presence handler
 
-    @type gateway: Gateway
     @type presence: Presence
     @type jid: str
     @param presence: Presence object
     @param jid: client jid
-    @param gateway: Gateway object
     @return: @raise NotImplementedError:
     """
     logger.debug('unavailable presence %s' % presence)
@@ -88,16 +83,14 @@ def _unavailable(presence, jid, gateway):
 
 
 @presence_handler_wrapper
-def _subscribe(presence, jid, gateway):
+def _subscribe(presence, jid):
     """
     Subscribe presence handler
 
     @type jid: str
-    @type gateway: Gateway
     @type presence: Presence
     @param presence: presence object
     @param jid: client jid
-    @param gateway: Gateway object
     @return:
     """
     if presence.destination_id == TRANSPORT_ID:
@@ -125,13 +118,12 @@ def _subscribe(presence, jid, gateway):
 
 
 @presence_handler_wrapper
-def _available(presence, jid, _):
+def _available(presence, jid):
     """
     Available status handler
     @type presence: Presence
     @param presence: Presence object
     @param jid: client jid
-    @param _:
     @return:
     """
     if presence.destination_id != TRANSPORT_ID:
@@ -150,11 +142,10 @@ def _available(presence, jid, _):
 
 
 @presence_handler_wrapper
-def _unsubscribe(presence, jid, _):
+def _unsubscribe(presence, jid):
     """
     Client unsubscribe handler
     @type jid: str
-    @param _:
     @type presence: Presence
     @param presence: Presence object
     @param jid: client jid
@@ -166,7 +157,7 @@ def _unsubscribe(presence, jid, _):
 
 
 @presence_handler_wrapper
-def _attempt_to_add_client(_, jid, gateway):
+def _attempt_to_add_client(_, jid):
     logger.debug("presence: attempting to add %s to transport" % jid)
 
     user = database.get_description(jid)
@@ -180,22 +171,21 @@ def _attempt_to_add_client(_, jid, gateway):
     try:
         user_api.connect(jid, token)
         user_api.initialize(jid, send=True)
-        gateway.add_user(jid)
+        user_api.make_client(jid)
     except AuthenticationException as e:
         logger.error('unable to authenticate %s: %s' % (jid, e))
         message = "Authentication failed! " \
                   "If this error repeated, please register again. " \
                   "Error: %s" % e
-        send_message(gateway.component, jid, message, TRANSPORT_ID)
+        send_message(jid, message, TRANSPORT_ID)
 
 @presence_handler_wrapper
-def _update_client_status(presence, jid, gateway):
+def _update_client_status(presence, jid):
     """
     Status update handler for client
     @type presence: Presence
     @param presence: status prescense
     @param jid: client jid
-    @param gateway: Gateway object
     """
     status = presence.status
 
@@ -204,7 +194,7 @@ def _update_client_status(presence, jid, gateway):
          'unsubscribe': _unsubscribe
     }
 
-    mapping[status](presence, jid, gateway)
+    mapping[status](presence, jid)
 
     if presence.destination_id == TRANSPORT_ID:
         logger.debug('setting last status %s for %s' % (status, jid))
@@ -215,22 +205,19 @@ class PresenceHandler(Handler):
     Handler for presence messages from jabber server
     """
 
-    def __init__(self, gateway):
-        super(PresenceHandler, self).__init__(gateway)
 
     def handle(self, _, stanza):
         # logger.debug('presence handling')
         presence = Presence(stanza)
-        gateway = self.gateway
         jid = presence.origin_id
 
         if not isinstance(jid, unicode):
             raise ValueError('jid %s (%s) is not str' % (jid, type(jid)))
 
         if database.is_client(jid):
-            _update_client_status(presence, jid, gateway)
+            _update_client_status(presence, jid)
         elif presence.status in ("available", None):
-            _attempt_to_add_client(presence, jid, gateway)
+            _attempt_to_add_client(presence, jid)
 
-def get_handler(gateway):
-    return PresenceHandler(gateway).handle
+def get_handler():
+    return PresenceHandler().handle

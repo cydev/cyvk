@@ -1,7 +1,7 @@
 import time
 import logging
 
-from config import TRANSPORT_ID, USE_LAST_MESSAGE_ID, IDENTIFIER, ACTIVE_TIMEOUT
+from config import TRANSPORT_ID, USE_LAST_MESSAGE_ID, IDENTIFIER, ACTIVE_TIMEOUT, POLLING_WAIT
 from friends import get_friend_jid
 import messaging
 import library.webtools as webtools
@@ -9,6 +9,12 @@ import library.xmpp as xmpp
 import vklogin as login_api
 from vklogin import get_messages, mark_messages_as_read
 from errors import CaptchaNeeded, TokenError, AuthenticationException
+import threading
+from async_api import tail_call_optimized
+import updates
+
+import json
+import urllib2
 
 from library.vkapi import method
 
@@ -117,8 +123,7 @@ def get_user_data(uid, target_uid, fields=None):
     args = {"fields": ",".join(fields), "user_ids": target_uid}
     m = "users.get"
     data = method(m, uid, args)
-    print 'User data:'
-    print data
+
     if data:
         data = data[0]
         data["name"] = messaging.escape_name("", u"%s %s" % (data["first_name"], data["last_name"]))
@@ -267,6 +272,8 @@ def initialize(jid, send=True):
     assert isinstance(jid, unicode)
     friends = get_friends(jid)
     database.set_friends(jid, friends)
+    database.unset_polling(jid)
+    database.unset_processing(jid)
 
     if friends:
         logger.debug("user api: subscribing friends for %s" % jid)
@@ -351,6 +358,116 @@ def connect(jid, token):
     # self.friends = self.vk.get_friends()
     database.set_online(jid)
     database.set_last_activity_now(jid)
+
+@tail_call_optimized
+def _long_polling_get(jid):
+    if database.is_polling(jid):
+        logger.debug('already polling %s' % jid)
+        return
+
+    database.set_polling(jid)
+    logger.debug('getting data via long polling')
+    long_polling = method('messages.getLongPollServer', jid)
+    long_polling['wait'] = POLLING_WAIT
+    url = 'http://{server}?act=a_check&key={key}&ts={ts}&wait={wait}&mode=2'.format(**long_polling)
+    logger.debug('got url, starting polling')
+    database.burst_protection()
+    data = json.loads(urllib2.urlopen(url).read())
+    logger.debug('got data from polling server')
+    database.unset_polling(jid)
+
+    if not data['updates']:
+        logger.debug('no updates for %s' % data)
+        return _long_polling_get(jid)
+
+    for update in data['updates']:
+        updates.process_data(jid, update)
+
+    logger.debug('response: %s' % data)
+
+    if database.is_client(jid):
+        _long_polling_get(jid)
+    else:
+        logger.debug('finishing polling')
+    # process_client(jid)
+
+def process_client(jid):
+    """
+    Updates client messages, friends and status
+    @type jid: unicode
+    @param jid: client jid
+    @return:
+    """
+    assert isinstance(jid, unicode)
+
+    if database.is_processing(jid):
+        logger.debug('already processing client %s' % jid)
+        return
+
+    database.set_processing(jid)
+
+    # checking user status
+    if not database.is_user_online(jid):
+        logger.debug('user %s offline' % jid)
+        database.remove_online_user(jid)
+        return
+
+    # checking user time out
+    if is_timed_out(jid):
+        logger.debug('timeout for client %s' % jid)
+        database.remove_online_user(jid)
+        return
+
+
+    t = threading.Thread(target=_long_polling_get, args=(jid, ), name='long polling thread for %s' % jid)
+    t.start()
+
+    update_friends(jid)
+    send_messages(jid)
+
+    database.unset_processing(jid)
+
+
+def update_transports_list(jid, add=True):
+    is_client = database.is_client(jid)
+    if not is_client:
+        if add:
+            database.add_online_user(jid)
+        else:
+            database.remove_online_user(jid)
+
+    process_client(jid)
+
+def remove_user(jid):
+    logger.debug('remove_user %s' % jid)
+    is_client = database.is_client(jid)
+    if not is_client:
+        logger.debug('%s already not in transport')
+        return
+    database.remove_online_user(jid)
+    process_client(jid)
+
+def process_users():
+    now = time.time()
+    clients = database.get_clients()
+
+    if not clients:
+        logger.debug('no clients')
+        return
+
+    l = len(map(process_client, clients))
+
+    logger.debug('iterated for %.2f ms - %s users' % ((time.time() - now)*1000, l))
+
+def make_client(jid):
+    assert isinstance(jid, unicode)
+
+    logger.debug('add_user %s' % jid)
+    if database.is_client(jid):
+       logger.debug('%s already a client' % jid)
+       return
+    database.add_online_user(jid)
+    process_client(jid)
 
     # def connect(gateway, jid):
     #         # jid = self.jid

@@ -1,40 +1,31 @@
-__author__ = 'ernado'
+import sys
 
-import logging
+class TailRecurseException:
+  def __init__(self, args, kwargs):
+    self.args = args
+    self.kwargs = kwargs
 
-logger = logging.getLogger("vk4xmpp")
-
-from config import REDIS_PORT, REDIS_HOST, REDIS_DB, REDIS_PREFIX, HOST, DEBUG_XMPPPY
-import redis
-import library.xmpp as xmpp
-
-
-r = redis.StrictRedis(REDIS_HOST, REDIS_PORT, REDIS_DB)
-
-CHANNEL_NAME = ':'.join([REDIS_PREFIX, 'stanzas_channel'])
-
-class ComponentWrapper(object):
-    def __init__(self):
-        self.component = xmpp.Component(HOST, debug=DEBUG_XMPPPY)
-
-
-    def register_handler(self, name, handler):
-        self.component.RegisterHandler(name, handler(self).handle)
-
-
-    def send(self, stanza):
+def tail_call_optimized(g):
+  """
+  This function decorates a function with tail call
+  optimization. It does this by throwing an exception
+  if it is it's own grandparent, and catching such
+  exceptions to fake the tail call optimization.
+  
+  This function fails if the decorated
+  function recurses in a non-tail context.
+  """
+  def func(*args, **kwargs):
+    f = sys._getframe()
+    if f.f_back and f.f_back.f_back \
+        and f.f_back.f_back.f_code == f.f_code:
+      raise TailRecurseException(args, kwargs)
+    else:
+      while 1:
         try:
-            self.component.send(stanza)
-        except KeyboardInterrupt:
-            logger.debug('ignoring KeyboardInterrupt')
-        except IOError as e:
-            logger.error("couldn't send stanza: %s, %s" % (str(stanza), e))
-
-def stanza_processing_thread(component):
-    c = ComponentWrapper(component)
-
-
-def send(stanza):
-    p = r.pubsub()
-    p.subscribe(CHANNEL_NAME)
-    pass
+          return g(*args, **kwargs)
+        except TailRecurseException, e:
+          args = e.args
+          kwargs = e.kwargs
+  func.__doc__ = g.__doc__
+  return func

@@ -13,10 +13,12 @@ from errors import AuthenticationException
 
 logger = logging.getLogger("vk4xmpp")
 
-from config import APP_ID, APP_SCOPE
+from config import APP_ID, APP_SCOPE, API_MAXIMUM_RATE
+
+VK_ERROR_BURST = 6
 
 
-def method(m, user, values=None):
+def method(m, user, values=None, additional_timeout=None):
     logger.debug('api method %s' % m)
     values = values or {}
     url = "https://api.vk.com/method/%s" % m
@@ -37,11 +39,25 @@ def method(m, user, values=None):
 
     body, response = response
 
-    if body:
-        body = json.loads(body)
+    if not body:
+        raise RuntimeError('got blank body')
+
+    body = json.loads(body)
 
     if "response" in body:
         return body["response"]
+
+    if 'error' in body:
+        code = body['error']['error_code']
+
+        if code == VK_ERROR_BURST:
+            logger.debug('too many requests per second, trying again')
+            if additional_timeout:
+                additional_timeout *= 2
+            else:
+                additional_timeout = API_MAXIMUM_RATE
+            return method(m, user, values, additional_timeout=additional_timeout)
+
 
     raise NotImplementedError('unsecure method: %s' %  body)
 

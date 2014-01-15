@@ -6,11 +6,12 @@ import signal
 import log
 import os
 import threading
+from multiprocessing import Process
 import time
 
-from errors import AuthenticationException, all_errors
+from errors import AuthenticationException, all_errors, ConnectionError
 from friends import get_friend_jid
-from database import init_db, probe_users, set_burst, reset_online_users
+from database import initialize_database, probe_users, initialize_burst_protection, reset_online_users
 from config import (PID_FILE, DATABASE_FILE,
                     HOST, SERVER, PORT, TRANSPORT_ID,
                     DEBUG_XMPPPY, PASSWORD)
@@ -20,49 +21,45 @@ logger = log.get_logger()
 
 import library.xmpp as xmpp
 import handlers
-from parsers import message
 from daemon import get_pid
-from singletone import Gateway
 import database
 import user as user_api
 
-g = Gateway()
 
-def disconnect_transport():
-    logger.debug('disconnecting transport')
-    try:
-        if g.component.isConnected():
-            g.component.disconnect()
-        return True
-    except (NameError, AttributeError):
-        return False
+def get_disconnect_handler(c):
 
+    def handler():
+        logger.debug('handling disconnect')
+        if c.isConnected():
+            c.disconnect()
 
-def disconnect_handler():
-    logger.debug('handling disconnect')
-    disconnect_transport()
+    return handler
 
 
-def authenticate():
+def authenticate(c):
     """
     Authenticate to jabber server
     """
 
     logger.debug('authenticating')
-    result =  g.component.auth(TRANSPORT_ID, PASSWORD)
+    result =  c.auth(TRANSPORT_ID, PASSWORD)
 
     if not result:
         raise AuthenticationException('unable to authenticate with provided credentials')
 
     logger.info('authenticated')
 
-def connect():
+def connect(c):
     """
     Connects to jabber server
     """
 
     logger.debug('Connecting')
-    g.connect(SERVER, PORT)
+    r =  c.connect((SERVER, PORT))
+
+    if not r:
+        raise ConnectionError
+
     logger.info('Connected')
 
 
@@ -70,26 +67,31 @@ def get_transport():
     return xmpp.Component(HOST, debug=DEBUG_XMPPPY)
 
 
+def register_handler(c, name, handler_class):
+    c.RegisterHandler(name, handler_class().handle)
+
 def initialize():
     get_pid(PID_FILE)
-    init_db(DATABASE_FILE)
-    set_burst()
+    initialize_database(DATABASE_FILE)
+    initialize_burst_protection()
 
-    g.component = get_transport()
+    transport = get_transport()
 
-    connect()
-    authenticate()
+    connect(transport)
+    authenticate(transport)
 
     logger.info('registering handlers')
 
-    g.register_handler("iq", handlers.IQHandler)
-    g.register_handler("presence", handlers.PresenceHandler)
-    g.register_handler("message", handlers.MessageHandler)
-    g.register_disconnect_handler(disconnect_handler)
-    g.register_parser(message.parse_message)
+    register_handler(transport, "iq", handlers.IQHandler)
+    register_handler(transport, "presence", handlers.PresenceHandler)
+    register_handler(transport, "message", handlers.MessageHandler)
+    transport.RegisterDisconnectHandler(get_disconnect_handler(transport))
+
     reset_online_users()
 
     logger.info('initialization finished')
+
+    return transport
 
 
 def map_clients(f):
@@ -97,14 +99,18 @@ def map_clients(f):
     map(f, clients)
 
 
-def get_loop_thread(iteration_handler, name, iteration_time=0):
+def get_loop(iteration_handler, name, iteration_time=0):
 
-    def iteration():
+    def loop():
+        logger.debug('starting %s' % name)
         while True:
             iteration_handler()
             time.sleep(iteration_time)
+    return loop
 
-    thread = threading.Thread(target=iteration, name=name)
+def get_loop_thread(iteration_handler, name, iteration_time=0):
+
+    thread = threading.Thread(target=get_loop(iteration_handler, name, iteration_time), name=name)
     thread.daemon = True
 
     return thread
@@ -122,7 +128,8 @@ def halt_handler(sig=None, frame=None):
         # send_presence(client.jidFrom, TRANSPORT_ID, presence_status, reason=status)
 
     map_clients(send_unavailable_presence)
-    disconnect_transport()
+    # disconnect_transport()
+    # TODO: send to component thread message to disconnect
 
     try:
         os.remove(PID_FILE)
@@ -130,44 +137,54 @@ def halt_handler(sig=None, frame=None):
         logger.error('unable to remove pid file %s' % PID_FILE)
     exit(sig)
 
-def transport_iteration():
-    try:
-        g.component.iter(2)
-    except xmpp.StreamError as e:
-        logger.critical('StreamError while iterating: %s' % e)
-        raise
+def get_transport_iteration(c):
 
-def component_loop():
-    logger.debug('component loop started')
+    def transport_iteration():
+        try:
+            c.iter(2)
+        except xmpp.StreamError as stream_error:
+            logger.critical('StreamError while iterating: %s' % stream_error)
+            raise
 
-    while True:
-        transport_iteration()
+    return transport_iteration
 
-def stanza_sender_iteration():
-    stanza = database.enqueue_stanza()
-    g.send(stanza)
+
+def get_sender_iteration(c):
+
+    def stanza_sender_iteration():
+        stanza = database.enqueue_stanza()
+        # noinspection PyUnresolvedReferences
+        c.send(stanza)
+
+    return stanza_sender_iteration
+
+
 
 if __name__ == "__main__":
     signal.signal(signal.SIGTERM, halt_handler)
     signal.signal(signal.SIGINT, halt_handler)
 
     try:
-        initialize()
+        component = initialize()
+
+        # main_loop = get_loop_thread(user_api.main_loop_iteration, 'main loop', 5)
+        main_loop = Process(target=get_loop(user_api.process_users,  'main loop', 35), name='main loop')
+        # transport_loop = Process(target=transport_loop, args=(component, ), name='transport loop')
+        transport_loop = get_loop_thread(get_transport_iteration(component), 'transport loop')
+        sender_loop = get_loop_thread(get_sender_iteration(component), 'stanza sender loop')
+
+        main_loop.start()
+        transport_loop.start()
+        sender_loop.start()
+
+        # probe all users from database and add them to client list
+        # if they are online
+        time.sleep(0.5)
+        probe_users()
     except all_errors as e:
         logger.critical('unable to initialize: %s' % e)
         halt_handler()
-
-    main_loop = get_loop_thread(g.main_loop_iteration, 'main loop', 5)
-    transport_loop = get_loop_thread(transport_iteration, 'transport loop')
-    sender_loop = get_loop_thread(stanza_sender_iteration, 'stanza sender loop')
-
-    main_loop.start()
-    transport_loop.start()
-    sender_loop.start()
-
-    time.sleep(0.5)
-
-    probe_users(g)
+        exit()
 
     while True:
         # allow main thread to catch ctrl+c
