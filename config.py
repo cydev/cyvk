@@ -1,102 +1,94 @@
 # coding: utf
 
 import library.xmpp as xmpp
-from library.stext import _ as _
 import logging
 
-# Connection host.
-# For Prosody "vk.example.com"
+# connection host.
+# for Prosody "vk.example.com"
 HOST = "s1.cydev"
 
-# Connection server (usually equals host)
-# For Prosody "example.com"
+# connection server (usually equals host)
+# for Prosody "example.com"
 SERVER = "vk.s1.cydev"
 
-# Connection port (as you set in your jabber-server config)
-# Default value for Prosody is 5347
+# connection port (as you set in your jabber-server config)
+# default for Prosody is 5347
 PORT = 5556
 
-# Transport ID (Controls all)
+# transport ID
 TRANSPORT_ID = "vk.s1.cydev"
 
-# Connection password.
+# connection password.
 PASSWORD = "secret"
 
-# Default status (1 - online (recommended) / 0 - offline)
+# default status (1 - online / 0 - offline)
 DEFAULT_STATUS = 1
 
-# Use API feature lastMessageID (transport will save last user message id, 1 - use (recommended), 2 - not use)
-USE_LAST_MESSAGE_ID = 1
+# save last message id (recommended)
+USE_LAST_MESSAGE_ID = True
 
-## Language (ru/en/pl)
-DefLang = "ru"
-
-## Photo size (photo_50, photo_100, photo_200_orig)
+# avatar photo size (photo_50, photo_100, photo_200_orig)
 PHOTO_SIZE = "photo_100"
 
-## White list. Put here servers which you want allow to access transport. F.e.: ['yourserver1.tld','yourserver2.tld']
-## Save it as [] if you won't block any servers.
+# white list
+# if set, only users from listed servers are allowed to access transport
+# for example WHITE_LIST = ['xmppserver1.ru, 'xmppserver2.com']
 WHITE_LIST = []
 
-## Watcher list. Put here jid(s) of transport admin for notifications of registration. F.e.: ['admin@yourserver1.tld','name@yourserver2.tld']
-## Save it as [] if you won't watch any registration.
-WATCHER_LIST = []
+# users with jid from this list are receiving registration notifications
+# WATCHER_LIST = [] for no notifications
+WATCHER_LIST = ['ernado@vk.s1.cydev']
 
-# Additional about text. It was shown after main about text in transports vcard.
+# addition description text for transport vcard
 ADDITIONAL_ABOUT = ""
 
-# Conference server. Don't change if you won't allow your users to use groupchats (depends from jabber-server's MUC)
-# It's an alpha! Testers are welcome, but don't use it every time!
 # F.e. conference.example.com
-CONFERENCE_SERVER = ""
+# conference server
+# WARNING: feature is in alpha testing
+# CONFERENCE_SERVER = '' for no group chats
+CONFERENCE_SERVER = ''
 
-# Users limit. How much users can be stored on your server?
-# Save as 0 if you won't limit registrations.
+# user registration limit
+# USER_LIMIT = 0 for unlimited registration
 USER_LIMIT = 0
 
-#! Danger zone.
-#! Edit next settings ONLY IF YOU KNOW WHAT ARE YOU DOING! DEFAULT VALUES ARE RECOMMENTED!
-## Thread stack size (WARNING: MAY CAUSE TRANSPORT CRASH WITH SEGMENTATION FAULT ERROR)
-## It's needed for optimize memory consuming.
-## minimum value is 32768 bytes (32kb)
-THREAD_STACK_SIZE = 0
+# Danger zone.
+# DANGER ZONE
+# edit settings below if you are definitely know what you are doing
 
-# Timeout when user considered inactive (seconds)
-ACTIVE_TIMEOUT = 120
+# timeout when user considered inactive (seconds)
+# default 600
+ACTIVE_TIMEOUT = 600
 
-# Max roster update timeout (when user inactive, seconds)
+# roster update rate in seconds for inactive users
+# default 180
 ROSTER_TIMEOUT = 180
 
-# Default roster update timeout (when user is active)
+# roster update rate in seconds for active users
+# default 6
 ROSTER_UPDATE_TIMEOUT = 6
 
-# Maximum forwarded messages depth
+# maximum forwarded messages depth
 MAXIMUM_FORWARD_DEPTH = 5
 
-## Image that will be used if transport can't recieve image from VK
+# image replace for avatars
 URL_VCARD_NO_IMAGE = "http://simpleapps.ru/vk4xmpp.png"
 
-## Eval jid. jid for command "!eval"
-EVAL_JID = ""
-
-## Debug xmpppy library
+# debug mode for xmppy library
 DEBUG_XMPPPY = False
 
-## Database file (as you like)
+# sqlite database filename
 DB_FILE = "users.db"
 
-## File used for storage PID.
+# pid file
 PID_FILE = "pidFile.txt"
 
-## Log file.
+# log file
 LOG_FILE = "vk4xmpp.log"
-
-## Directory for storage crash logs.
-CRASH_DIR = "crash"
 
 IDENTIFIER = {"type": "vk",
                 "category": "gateway",
-                "name": "VK4XMPP Transport"}
+                "name": "cyvk transport"}
 
 BANNED_CHARS = [unichr(x) for x in xrange(32) if x not in (9, 10, 13)] + [unichr(57003)]
 
@@ -104,13 +96,10 @@ LOCALE = 'ru'
 
 LOCALE_PATH = 'locales'
 
-DESC = _("© simpleApps, 2013."
-         "\nYou can support developing of any project"
-         " via donation by WebMoney:"
-         "\nZ405564701378 | R330257574689.")
+DESC = "cyvk transport"
 
 
-transport_features = (xmpp.NS_DISCO_ITEMS,
+TRANSPORT_FEATURES = (xmpp.NS_DISCO_ITEMS,
                       xmpp.NS_DISCO_INFO,
                       xmpp.NS_RECEIPTS,
                       xmpp.NS_REGISTER,
@@ -122,8 +111,13 @@ transport_features = (xmpp.NS_DISCO_ITEMS,
                       xmpp.NS_DELAY,
                       xmpp.NS_PING,
                       xmpp.NS_LAST)
+url = 'https://oauth.vk.com/authorize?client_id=%s&scope=%s&redirect_uri=' \
+      'http://oauth.vk.com/blank.html&display=page&response_type=token'
 
-URL_ACCEPT_APP = "http://simpleapps.ru/vk4xmpp.html"
+APP_ID = 3789129
+APP_SCOPE = 69634
+
+URL_ACCEPT_APP = url % (APP_ID, APP_SCOPE)
 
 LOG_LEVEL = logging.DEBUG
 SLICE_STEP = 8
@@ -136,5 +130,3 @@ REDIS_HOST = 'localhost'
 REDIS_PORT = 6379
 REDIS_DB = 0
 
-APP_ID = 3789129
-APP_SCOPE = 69634

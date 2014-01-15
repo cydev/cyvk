@@ -14,8 +14,11 @@ mapping = {'geo': parse_geo, 'fwd_messages': parse_forwarded_messages, 'attachme
 def parse_message(user, message):
     h = get_hash(message['body'])
 
+    if not user:
+        raise ValueError('user is None')
+
     body = ""
-    logger.debug('parse_message %s' % h)
+    logger.debug('parse_message %s for %s' % (h, user))
     for k in mapping:
         if k in message:
             logger.debug('found %s key, processing' % k)

@@ -1,8 +1,4 @@
 # coding: utf-8
-# This file is a part of VK4XMPP transport
-# © simpleApps, 2013.
-
-# Cleaned by Ernado, Cydev
 
 from datetime import datetime
 from extensions import attachments
@@ -12,12 +8,18 @@ import user as user_api
 
 from config import MAXIMUM_FORWARD_DEPTH
 
+import logging
 
-def parse_forwarded_messages(user, msg, depth=0):
+logger = logging.getLogger("vk4xmpp")
+
+
+def parse_forwarded_messages(jid, msg, depth=0):
     body = ""
 
     if "fwd_messages" not in msg:
         return body
+
+    logger.debug('forwarded messages for %s' % jid)
 
     body += "\nForward messages:"
 
@@ -27,13 +29,13 @@ def parse_forwarded_messages(user, msg, depth=0):
         date = fwd["date"]
         fwd_body = escape_message("", unescape(fwd["body"]))
         date = datetime.fromtimestamp(date).strftime("%d.%m.%Y %H:%M:%S")
-        name = user.get_user_data(id_from)["name"]
-        # user_data = user_api.get_user_data(user.jid, id_from)
+        # name = user.get_user_data(id_from)["name"]
+        name = user_api.get_user_data(jid, id_from)["name"]
 
         body += "\n[%s] <%s> %s" % (date, name, fwd_body)
-        body += attachments.parse_attachments(user, fwd)
+        body += attachments.parse_attachments(jid, fwd)
 
         if depth < MAXIMUM_FORWARD_DEPTH:
-            body += parse_forwarded_messages(user, fwd, depth + 1)
+            body += parse_forwarded_messages(jid, fwd, depth + 1)
 
     return body

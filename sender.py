@@ -16,7 +16,7 @@ def stanza_send(transport, stanza):
         logger.debug('sending stanza %s' % hashers.get_hash(stanza))
         transport.send(stanza)
     except KeyboardInterrupt:
-        pass
+        logger.warning('ignoring keyboard interruption')
     except IOError:
         logger.error("error while sending stanza %s" % str(stanza))
     # except Exception as e:

@@ -160,7 +160,11 @@ def set_last_update_now(uid):
     r.set(_get_last_update_key(uid), last_update)
 
 def get_users():
-    return r.smembers(clients_set_key)
+    # getting user list as raw strings
+    raw_data = r.smembers(clients_set_key)
+
+    # returning users as list of unicode strings
+    return map(unicode, raw_data)
 
 def reset_online_users():
     r.delete(clients_set_key)

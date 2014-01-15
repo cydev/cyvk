@@ -5,7 +5,7 @@ import logging
 
 logger = logging.getLogger("vk4xmpp")
 
-from config import transport_features, SLICE_STEP, ROSTER_TIMEOUT, ACTIVE_TIMEOUT
+from config import TRANSPORT_FEATURES
 from errors import ConnectionError
 import user as user_api
 import database
@@ -19,7 +19,7 @@ class Gateway(object):
         self.jid_to_id = {}
         self.client_list_length = 0
         self.start_time = int(time.time())
-        self.features = transport_features
+        self.features = TRANSPORT_FEATURES
         self.component = None
 
     def register_handler(self, name, handler_class):
@@ -32,24 +32,36 @@ class Gateway(object):
         self.component.RegisterDisconnectHandler(handler)
 
     def process_client(self, jid):
+        """
+        Updates client messages, friends and status
+        @type jid: unicode
+        @param jid: client jid
+        @return:
+        """
+        assert isinstance(jid, unicode)
+
         logger.debug('processing client %s' % jid)
 
+        # checking user status
         if not database.is_user_online(jid):
             logger.debug('user %s offline' % jid)
+            database.remove_online_user(jid)
             return
 
+        # checking user time out
         if user_api.is_timed_out(jid):
             logger.debug('timeout for client %s' % jid)
             database.remove_online_user(jid)
             return
 
-        # user_api.update_last_activity(jid)
-        # user_api.set_online(jid)
         user_api.update_friends(self, jid)
         user_api.send_messages(self, jid)
 
 
     def add_user(self, jid):
+
+        assert isinstance(jid, unicode)
+
         logger.debug('add_user %s' % jid)
         if database.is_client(jid):
            logger.debug('%s already a client' % jid)
@@ -74,34 +86,22 @@ class Gateway(object):
                 database.add_online_user(jid)
             else:
                 database.remove_online_user(jid)
-        # length = len(self.client_list)
 
         self.process_client(jid)
 
-        # if length > self.client_list_length:
-        #     start = self.client_list_length
-        #     self.client_list_length += SLICE_STEP
-        #     end = self.client_list_length
-        #     run_thread(self.main_loop, (start, end), "updateTransportsList")
-        # elif length <= self.client_list_length - SLICE_STEP:
-        #     self.client_list_length -= SLICE_STEP
-
-
-
-    def main_loop(self):
-        while True:
-            now = time.time()
-            # logger.debug('hyper_thread iteration')
-            clients = database.get_users()
-            l = len(map(self.process_client, clients))
-            logger.debug('iterated for %.2f ms - %s users' % ((time.time() - now)*1000, l))
-            time.sleep(7)
+    def main_loop_iteration(self):
+        now = time.time()
+        clients = database.get_users()
+        if not clients:
+            logger.debug('no clients')
+            return
+        l = len(map(self.process_client, clients))
+        logger.debug('iterated for %.2f ms - %s users' % ((time.time() - now)*1000, l))
 
     def send(self, stanza):
         try:
             self.component.send(stanza)
         except KeyboardInterrupt:
-            pass
             logger.debug('ignoring KeyboardInterrupt')
         except IOError as e:
             logger.error("couldn't send stanza: %s, %s" % (str(stanza), e))

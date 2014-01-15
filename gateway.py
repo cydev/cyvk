@@ -1,39 +1,30 @@
 #!/usr/bin/env python2
 # coding: utf-8
-
-# vk4xmpp gateway, v1.9
-# © simpleApps, 01.08.2013
-# Program published under MIT license.
-# code cleaned by Ernado, cydev
+from __future__ import unicode_literals
 
 import signal
-import socket
 import log
 import os
+import threading
+import time
 
-from errors import AuthenticationException, ConnectionError, all_errors
-
-
+from errors import AuthenticationException, all_errors
+from friends import get_friend_jid
+from database import init_db, init_users, set_burst, reset_online_users
 from config import (PID_FILE, DATABASE_FILE,
                     HOST, SERVER, PORT, TRANSPORT_ID,
                     DEBUG_XMPPPY, PASSWORD)
 
-from database import init_db, init_users, set_burst, reset_online_users
 
-# Setup logger
 logger = log.get_logger()
-
-socket.setdefaulttimeout(10)
 
 import library.xmpp as xmpp
 import handlers
 from extensions import message
 from daemon import get_pid
-from run import run_thread
 from singletone import Gateway
 import database
 import user as user_api
-
 
 g = Gateway()
 
@@ -47,17 +38,9 @@ def disconnect_transport():
         return False
 
 
-def disconnect_handler(crash=True):
-    logger.debug('Handling disconnect. Crash: %s' % crash)
-
-    # if crash:
-    #     dump_crash("main.disconnect")
-
+def disconnect_handler():
+    logger.debug('handling disconnect')
     disconnect_transport()
-
-    exit()
-
-
 
 
 def authenticate():
@@ -65,13 +48,13 @@ def authenticate():
     Authenticate to jabber server
     """
 
-    logger.debug('Authenticating')
+    logger.debug('authenticating')
     result =  g.component.auth(TRANSPORT_ID, PASSWORD)
 
     if not result:
-        raise AuthenticationException('Unable to authenticate with provided credentials')
+        raise AuthenticationException('unable to authenticate with provided credentials')
 
-    logger.info('Authenticated')
+    logger.info('authenticated')
 
 def connect():
     """
@@ -79,11 +62,7 @@ def connect():
     """
 
     logger.debug('Connecting')
-    result = g.connect(SERVER, PORT)
-
-    if not result:
-        raise ConnectionError
-
+    g.connect(SERVER, PORT)
     logger.info('Connected')
 
 
@@ -101,7 +80,7 @@ def initialize():
     connect()
     authenticate()
 
-    logger.info('Registering handlers')
+    logger.info('registering handlers')
 
     g.register_handler("iq", handlers.IQHandler)
     g.register_handler("presence", handlers.PresenceHandler)
@@ -114,7 +93,7 @@ def initialize():
     init_users(g)
     reset_online_users()
 
-    logger.info('Initialization finished')
+    logger.info('initialization finished')
 
 
 def map_clients(f):
@@ -122,16 +101,32 @@ def map_clients(f):
     map(f, clients)
 
 
+def get_loop_thread(iteration_handler, name, iteration_time=0):
+
+    def iteration():
+        while True:
+            iteration_handler()
+            time.sleep(iteration_time)
+
+    thread = threading.Thread(target=iteration, name=name)
+    thread.daemon = True
+
+    return thread
+
 def halt_handler(sig=None, frame=None):
-    status = "Shutting down by %s" % ("SIGTERM" if sig == 15 else "SIGINT")
+    status = "shutting down by %s" % ("SIGTERM" if sig == 15 else "SIGINT")
     logger.debug("%s" % status)
 
-    def send_unavailable_presence(client):
+    def send_unavailable_presence(jid):
         presence_status = "unavailable"
-        user_api.send_presence(g, client, TRANSPORT_ID, presence_status, reason=status)
+        friends = database.get_friends(jid)
+        for friend in friends:
+           user_api.send_presence(g, jid, get_friend_jid(friend, jid), presence_status, reason=status)
+        user_api.send_presence(g, jid, TRANSPORT_ID, presence_status, reason=status)
         # send_presence(client.jidFrom, TRANSPORT_ID, presence_status, reason=status)
 
     map_clients(send_unavailable_presence)
+    disconnect_transport()
 
     try:
         os.remove(PID_FILE)
@@ -139,20 +134,18 @@ def halt_handler(sig=None, frame=None):
         logger.error('unable to remove pid file %s' % PID_FILE)
     exit(sig)
 
+def transport_iteration():
+    try:
+        g.component.iter(2)
+    except xmpp.StreamError as e:
+        logger.critical('StreamError while iterating: %s' % e)
+        raise
+
 def component_loop():
     logger.debug('component loop started')
+
     while True:
-        try:
-            g.component.iter(2)
-        # except AttributeError as e:
-        #     logger.critical('AttributeError while iterating: %s' % e)
-        #     # disconnect_transport()
-        #     # disconnect_handler(False)
-        #     # break
-        #     raise
-        except xmpp.StreamError as e:
-            logger.critical('StreamError while iterating: %s' % e)
-            raise
+        transport_iteration()
 
 if __name__ == "__main__":
     signal.signal(signal.SIGTERM, halt_handler)
@@ -160,30 +153,17 @@ if __name__ == "__main__":
 
     try:
         initialize()
-    except AuthenticationException:
-        disconnect_transport()
     except all_errors as e:
-        logger.critical('Unable to initialize: %s' % e)
-        raise
+        logger.critical('unable to initialize: %s' % e)
+        halt_handler()
 
-    run_thread(g.main_loop)
-    run_thread(component_loop)
+    main_loop = get_loop_thread(g.main_loop_iteration, 'main loop', 5)
+    transport_loop = get_loop_thread(transport_iteration, 'transport loop')
 
-    #
-    # while True:
-    #     try:
-    #         g.component.iter(2)
-    #     # except AttributeError as e:
-    #     #     logger.critical('AttributeError while iterating: %s' % e)
-    #     #     # disconnect_transport()
-    #     #     # disconnect_handler(False)
-    #     #     # break
-    #     #     raise
-    #     except xmpp.StreamError as e:
-    #         logger.critical('StreamError while iterating: %s' % e)
-    #         raise
-    #         # dump_crash("Component.iter")
-    #     # except Exception as e:
-    #     #     logger.critical("DISCONNECTED: %s" % e)
-    #     #     dump_crash("Component.iter")
-    #     #     disconnect_handler(False)
+    main_loop.start()
+    transport_loop.start()
+
+    while True:
+        # allow main thread to catch ctrl+c
+        time.sleep(1)
+

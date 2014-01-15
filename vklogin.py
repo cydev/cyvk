@@ -1,8 +1,8 @@
+from friends import get_friend_jid
 import library.vkapi as api
 
 import logging
 from messaging import msg_send, escape_name
-from vk2xmpp import jid_from_uid
 from config import TRANSPORT_ID
 from library.stext import _ as _
 import database
@@ -102,7 +102,7 @@ class VKLogin(object):
         except NotAllowed:
             # if self.engine.lastMethod[0] == "messages.send":
             msg_send(gateway.component, jid, _("You're not allowed to perform this action."),
-                    jid_from_uid(m_args.get("user_id", TRANSPORT_ID)))
+                    get_friend_jid(m_args.get("user_id", TRANSPORT_ID), jid))
         except APIError as vk_e:
             if vk_e.message == "User authorization failed: user revoke access for this token.":
                 try:
@@ -173,7 +173,7 @@ def method_wrapped(gateway, jid, m, m_args=None):
     except NotAllowed:
         # if self.engine.lastMethod[0] == "messages.send":
         msg_send(gateway.component, jid, _("You're not allowed to perform this action."),
-                jid_from_uid(m_args.get("user_id", TRANSPORT_ID)))
+                get_friend_jid(m_args.get("user_id", TRANSPORT_ID), jid))
     except APIError as vk_e:
         if vk_e.message == "User authorization failed: user revoke access for this token.":
             try:
