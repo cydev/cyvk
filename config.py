@@ -37,7 +37,7 @@ WHITE_LIST = []
 
 # users with jid from this list are receiving registration notifications
 # WATCHER_LIST = [] for no notifications
-WATCHER_LIST = ['ernado@vk.s1.cydev']
+WATCHER_LIST = [u'ernado@vk.s1.cydev']
 
 # addition description text for transport vcard
 ADDITIONAL_ABOUT = ""

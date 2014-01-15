@@ -102,7 +102,7 @@ class VKLogin(object):
         except NotAllowed:
             # if self.engine.lastMethod[0] == "messages.send":
             send_message(gateway.component, jid, _("You're not allowed to perform this action."),
-                    get_friend_jid(m_args.get("user_id", TRANSPORT_ID), jid))
+                    get_friend_jid(m_args.get("user_id", TRANSPORT_ID)))
         except APIError as vk_e:
             if vk_e.message == "User authorization failed: user revoke access for this token.":
                 try:
@@ -173,7 +173,7 @@ def method_wrapped(jid, m, m_args=None):
     except NotAllowed:
         # if self.engine.lastMethod[0] == "messages.send":
         send_message(jid, _("You're not allowed to perform this action."),
-                get_friend_jid(m_args.get("user_id", TRANSPORT_ID), jid))
+                get_friend_jid(m_args.get("user_id", TRANSPORT_ID)))
     except APIError as vk_e:
         if vk_e.message == "User authorization failed: user revoke access for this token.":
             try:

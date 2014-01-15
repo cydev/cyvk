@@ -153,7 +153,7 @@ def _unsubscribe(presence, jid):
 
     if database.is_client(jid) and presence.destination_id == TRANSPORT_ID:
         database.remove_user(jid)
-        send_watcher_message("User removed registration: %s" % jid, None)
+        send_watcher_message("user removed registration: %s" % jid)
 
 
 @presence_handler_wrapper

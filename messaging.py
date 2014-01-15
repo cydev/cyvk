@@ -27,6 +27,18 @@ def send_message(jid_to, body, jid_from, timestamp=None):
 
     database.queue_stanza(message)
 
+def send_typing_status(jid_to, jid_from):
+    logger.debug('typing %s -> %s' % (jid_from, jid_to))
+
+    assert isinstance(jid_to, unicode)
+    assert isinstance(jid_from, unicode)
+
+    message = Message(jid_to, typ='chat', frm=jid_from)
+    message.setTag('composing', 'http://jabber.org/protocol/chatstates')
+
+    database.queue_stanza(message)
+
+
 escape_name = re.compile(u"[^-0-9a-zа-яёë\._\'\ ґїє]", re.IGNORECASE | re.UNICODE | re.DOTALL).sub
 escape_message = re.compile("|".join(BANNED_CHARS)).sub
 

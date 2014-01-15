@@ -75,7 +75,7 @@ def roster_subscribe(jid, subscriptions=None):
         return
 
     for uid, value in subscriptions.iteritems():
-        send_presence(jid, get_friend_jid(uid, jid), "subscribe", value["name"])
+        send_presence(jid, get_friend_jid(uid), "subscribe", value["name"])
 
 
 def send_messages(jid):
@@ -106,7 +106,7 @@ def send_messages(jid):
 
     for message in messages:
         read.append(str(message["mid"]))
-        from_jid = get_friend_jid(message["uid"], jid)
+        from_jid = get_friend_jid(message["uid"])
         body = webtools.unescape(message["body"])
         body += parsers.message.parse_message(jid, message)
         messaging.send_message(jid, messaging.escape_message("", body), from_jid, message["date"])
@@ -143,7 +143,7 @@ def send_message(jid, body, destination_uid):
     assert isinstance(body, unicode)
 
     method_name = "messages.send"
-    method_values = {'user_id': destination_uid, "message": body, "type": 0}
+    method_values = {'user_id': int(destination_uid), "message": body, "type": 0}
     update_last_activity(jid)
 
     return method(method_name, jid, method_values)
@@ -163,7 +163,7 @@ def send_init_presence(jid):
     logger.debug('user api: sending initial status to %s, with friends: %s' % (jid, online_friends != {}))
 
     for friend_uid in online_friends:
-        send_presence(jid, get_friend_jid(friend_uid, jid), nick=friends[friend_uid]['name'])
+        send_presence(jid, get_friend_jid(friend_uid), nick=friends[friend_uid]['name'])
 
     # sending transport presence
     send_presence(jid, TRANSPORT_ID, nick=IDENTIFIER["name"])
@@ -177,7 +177,7 @@ def send_out_presence(jid, reason=None):
     notification_list = database.get_friends(jid).keys() + [TRANSPORT_ID]
 
     for uid in notification_list:
-        send_presence(jid, get_friend_jid(uid, jid), status, reason=reason)
+        send_presence(jid, get_friend_jid(uid), status, reason=reason)
 
 
 def delete_user(jid, roster=False):
@@ -191,7 +191,7 @@ def delete_user(jid, roster=False):
     if roster and friends:
         logger.debug("user api: removing %s roster" % jid)
         for friend_id in friends:
-            friend_jid = get_friend_jid(friend_id, jid)
+            friend_jid = get_friend_jid(friend_id)
             send_presence(jid, friend_jid, "unsubscribe")
             send_presence(jid, friend_jid, "unsubscribed")
         database.set_offline(jid)
@@ -238,7 +238,7 @@ def update_friends(jid):
     roster_subscribe(jid, subscriptions)
 
     for uid, status in update_status_dict.items():
-        send_presence(jid, get_friend_jid(uid, jid), status)
+        send_presence(jid, get_friend_jid(uid), status)
 
     database.set_friends(jid, friends_vk)
 
@@ -383,12 +383,12 @@ def _long_polling_get(jid):
     for update in data['updates']:
         updates.process_data(jid, update)
 
-    logger.debug('response: %s' % data)
+    # logger.debug('response: %s' % data)
 
     if database.is_client(jid):
         _long_polling_get(jid)
     else:
-        logger.debug('finishing polling')
+        logger.debug('finishing polling for %s' % jid)
     # process_client(jid)
 
 def process_client(jid):
@@ -419,11 +419,14 @@ def process_client(jid):
         return
 
 
-    t = threading.Thread(target=_long_polling_get, args=(jid, ), name='long polling thread for %s' % jid)
-    t.start()
+    t = threading.Thread(target=_long_polling_get, args=(jid, ), name='long polling for %s' % jid)
 
-    update_friends(jid)
-    send_messages(jid)
+    if not database.is_polling(jid):
+        update_friends(jid)
+        send_messages(jid)
+        t.start()
+    else:
+        logger.debug('updates for %s are handled by polling' % jid)
 
     database.unset_processing(jid)
 

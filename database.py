@@ -342,7 +342,6 @@ def is_processing(jid):
     result =  r.get(_get_processing_key(jid))
     if result == 'False':
         return False
-    logger.debug('result: %s (%s)' % (result, type(result)))
     return result
 
 def _get_polling_key(jid):
@@ -362,5 +361,4 @@ def is_polling(jid):
     result =  r.get(_get_polling_key(jid))
     if result == 'False':
         return False
-    logger.debug('result: %s (%s)' % (result, type(result)))
     return result

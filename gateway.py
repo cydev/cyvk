@@ -123,7 +123,7 @@ def halt_handler(sig=None, frame=None):
         presence_status = "unavailable"
         friends = database.get_friends(jid)
         for friend in friends:
-           user_api.send_presence(jid, get_friend_jid(friend, jid), presence_status, reason=status)
+           user_api.send_presence(jid, get_friend_jid(friend), presence_status, reason=status)
         user_api.send_presence(jid, TRANSPORT_ID, presence_status, reason=status)
         # send_presence(client.jidFrom, TRANSPORT_ID, presence_status, reason=status)
 

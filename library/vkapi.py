@@ -18,11 +18,11 @@ from config import APP_ID, APP_SCOPE, API_MAXIMUM_RATE
 VK_ERROR_BURST = 6
 
 
-def method(m, user, values=None, additional_timeout=None):
+def method(m, jid, values=None, additional_timeout=None):
     logger.debug('api method %s' % m)
     values = values or {}
     url = "https://api.vk.com/method/%s" % m
-    token =  get_token(user)
+    token =  get_token(jid)
     # logger.debug('api with token %s' % token)
     values["access_token"] = token
     values["v"] = "3.0"
@@ -56,7 +56,7 @@ def method(m, user, values=None, additional_timeout=None):
                 additional_timeout *= 2
             else:
                 additional_timeout = API_MAXIMUM_RATE
-            return method(m, user, values, additional_timeout=additional_timeout)
+            return method(m, jid, values, additional_timeout=additional_timeout)
 
 
     raise NotImplementedError('unsecure method: %s' %  body)

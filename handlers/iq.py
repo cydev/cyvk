@@ -261,7 +261,7 @@ class IQHandler(Handler):
     #             stanza_send(cl, result)
 
     @staticmethod
-    def iq_disco_handler(transport, iq_raw):
+    def iq_disco_handler(iq_raw):
         logger.debug('handling disco')
 
         iq = IQ(iq_raw)
@@ -276,7 +276,7 @@ class IQHandler(Handler):
                 result.setQueryPayload(query)
             elif iq.ns == NS_DISCO_ITEMS:
                 result.setQueryPayload(query)
-            stanza_send(transport, str(result))
+            database.queue_stanza(result)
         raise NodeProcessed()
 
     @staticmethod

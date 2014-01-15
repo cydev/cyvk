@@ -16,6 +16,7 @@ import database
 
 from messaging import extract_message
 from captcha import captcha_accept
+import friends
 
 logger = logging.getLogger("vk4xmpp")
 
@@ -80,7 +81,7 @@ class MessageHandler(Handler):
                     answer = get_answer(msg, jid_from, jid_to)
                 # TODO: evaluate and others
         else:
-            uid = jid_to.getNode()
+            uid = friends.get_friend_uid(jid_to.getNode(), jid)
             logger.debug('message to user (%s->%s)' % (jid, uid))
             if user_api.send_message(jid, msg_body, uid):
                 answer = get_answer(msg, jid_from, jid_to)
