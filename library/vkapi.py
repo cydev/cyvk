@@ -43,7 +43,7 @@ def method(m, user, values=None):
     if "response" in body:
         return body["response"]
 
-    raise NotImplementedError('method: %s' %  body)
+    raise NotImplementedError('unsecure method: %s' %  body)
 
 
 class APIBinding:
