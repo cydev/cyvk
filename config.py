@@ -71,8 +71,10 @@ ROSTER_UPDATE_TIMEOUT = 6
 # maximum forwarded messages depth
 MAXIMUM_FORWARD_DEPTH = 5
 
+LOGO_URL = 'https://raw.github.com/cydev/cyvk/master/logo.png'
+
 # image replace for avatars
-URL_VCARD_NO_IMAGE = "http://simpleapps.ru/vk4xmpp.png"
+URL_VCARD_NO_IMAGE = LOGO_URL
 
 # debug mode for xmppy library
 DEBUG_XMPPPY = False

@@ -4,11 +4,11 @@ import logging
 import urllib
 
 import config
-from config import WHITE_LIST, IDENTIFIER, TRANSPORT_ID
+from config import WHITE_LIST, IDENTIFIER, TRANSPORT_ID, LOGO_URL
 from friends import get_friend_jid
 from library.xmpp.protocol import (NodeProcessed, NS_REGISTER, NS_CAPTCHA, NS_GATEWAY,
                                    NS_DISCO_ITEMS, NS_DISCO_INFO, NS_VCARD, NS_PING, ERR_FEATURE_NOT_IMPLEMENTED,
-                                   Error, NS_DATA, ERR_BAD_REQUEST, Node, ERR_REGISTRATION_REQUIRED)
+                                   Error, NS_DATA, ERR_BAD_REQUEST, Node, ERR_REGISTRATION_REQUIRED,)
 
 import library.xmpp.simplexml
 
@@ -354,7 +354,7 @@ class IQHandler(Handler):
             if jid_to_str == config.TRANSPORT_ID:
                 vcard = self.iq_vcard_build({"NICKNAME": "VK4XMPP Transport",
                                              "DESC": _DESC,
-                                             "PHOTO": "https://raw.github.com/mrDoctorWho/vk4xmpp/master/vk4xmpp.png",
+                                             "PHOTO": LOGO_URL,
                                              "URL": "http://simpleapps.ru"})
                 result.setPayload([vcard])
             elif database.is_client(jid):
