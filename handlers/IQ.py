@@ -340,14 +340,14 @@ class IQHandler(Handler):
                 vcard.setTagData(key, tags[key])
         return vcard
 
-    def iq_vcard_handler(self, cl, iq):
+    def iq_vcard_handler(self, transport, stanza):
         logger.debug('iq_vcard_handler')
-        jid_from = iq.getFrom()
-        jid_to = iq.getTo()
+        jid_from = stanza.getFrom()
+        jid_to = stanza.getTo()
         jid = jid_from.getStripped()
         jid_to_str = jid_to.getStripped()
-        i_type = iq.getType()
-        result = iq.buildReply("result")
+        i_type = stanza.getType()
+        result = stanza.buildReply("result")
         if i_type == "get":
             _DESC = '\n'.join(
                 (config.DESC, "_" * 16, config.ADDITIONAL_ABOUT)) if config.ADDITIONAL_ABOUT else config.DESC
@@ -370,13 +370,12 @@ class IQHandler(Handler):
                     vcard = self.iq_vcard_build(values)
                     result.setPayload([vcard])
                 else:
-                    result = self.iq_build_error(iq, ERR_BAD_REQUEST, "Your friend-list is null.")
+                    result = generate_error(stanza, ERR_BAD_REQUEST, 'Your friend list is empty')
             else:
-                result = self.iq_build_error(iq, ERR_REGISTRATION_REQUIRED,
-                                             "You're not registered for this action.")
+                result = generate_error(stanza, ERR_REGISTRATION_REQUIRED, 'You are not registered for this action')
         else:
             raise NodeProcessed()
-        stanza_send(cl, result)
+        stanza_send(transport, result)
 
 
 def get_handler(gateway):
