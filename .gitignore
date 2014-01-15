@@ -1,5 +1,4 @@
 *.pyc
-Config.txt
 crash*
 pidFile.txt
 # exclude custom users.db names
