@@ -2,7 +2,7 @@
 
 from datetime import datetime
 from extensions import attachments
-from messaging import escape_message, msg_sort
+from messaging import escape_message, sort_message
 from library.webtools import unescape
 import user as user_api
 
@@ -23,7 +23,7 @@ def parse_forwarded_messages(jid, msg, depth=0):
 
     body += "\nForward messages:"
 
-    for fwd in sorted(msg["fwd_messages"], msg_sort):
+    for fwd in sorted(msg["fwd_messages"], sort_message):
 
         id_from = fwd["uid"]
         date = fwd["date"]

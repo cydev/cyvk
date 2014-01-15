@@ -3,7 +3,7 @@ import logging
 
 from config import TRANSPORT_ID, USE_LAST_MESSAGE_ID, IDENTIFIER, ACTIVE_TIMEOUT
 from friends import get_friend_jid
-from messaging import msg_send, msg_sort, escape_name, escape_message
+from messaging import send_message, sort_message, escape_name, escape_message
 import library.webtools as webtools
 import library.xmpp as xmpp
 import vklogin as login_api
@@ -83,7 +83,7 @@ def send_messages(gateway, jid):
         return
 
     messages = messages[1:]
-    messages = sorted(messages, msg_sort)
+    messages = sorted(messages, sort_message)
 
     if not messages:
         return
@@ -124,7 +124,7 @@ def send_messages(gateway, jid):
         #     else:
         #         body += result
         # else:
-        msg_send(gateway.component, jid, escape_message("", body), from_jid, message["date"])
+        send_message(gateway.component, jid, escape_message("", body), from_jid, message["date"])
 
     mark_messages_as_read(jid, read)
     # self.vk.msg_mark_as_read(read)
@@ -355,7 +355,7 @@ def connect(gateway, jid, token):
             logger.critical("user api: %s" % token_error.message)
             delete_user(jid)
         elif token_error.message == "User authorization failed: invalid access_token.":
-            msg_send(gateway.component, jid,
+            send_message(gateway.component, jid,
                      token_error.message + " Please, register again", TRANSPORT_ID)
         raise AuthenticationException('invalid token')
         # except Exception as e:

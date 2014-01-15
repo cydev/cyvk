@@ -14,7 +14,7 @@ import library.xmpp.simplexml
 
 from sender import stanza_send
 from handler import Handler
-from messaging import watcher_msg
+from messaging import send_watcher_message
 from captcha import captcha_accept
 import user as user_api
 from errors import AuthenticationException
@@ -101,7 +101,7 @@ def _process_form(gateway, iq, jid):
 
     database.set_last_activity_now(jid)
     gateway.add_user(jid)
-    watcher_msg(gateway.component, "new user registered: %s" % jid)
+    send_watcher_message(gateway.component, "new user registered: %s" % jid)
     logger.debug('registration for %s completed' % jid)
 
     return result

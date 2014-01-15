@@ -4,7 +4,7 @@ import logging
 
 from config import TRANSPORT_ID
 from friends import get_friend_jid
-from messaging import msg_send, watcher_msg
+from messaging import send_message, send_watcher_message
 import library.xmpp as xmpp
 import database
 import user as user_api
@@ -162,7 +162,7 @@ def _unsubscribe(presence, jid, _):
 
     if database.is_client(jid) and presence.destination_id == TRANSPORT_ID:
         database.remove_user(jid)
-        watcher_msg("User removed registration: %s" % jid, None)
+        send_watcher_message("User removed registration: %s" % jid, None)
 
 
 @presence_handler_wrapper
@@ -186,7 +186,7 @@ def _attempt_to_add_client(_, jid, gateway):
         message = "Authentication failed! " \
                   "If this error repeated, please register again. " \
                   "Error: %s" % e
-        msg_send(gateway.component, jid, message, TRANSPORT_ID)
+        send_message(gateway.component, jid, message, TRANSPORT_ID)
 
 @presence_handler_wrapper
 def _update_client_status(presence, jid, gateway):

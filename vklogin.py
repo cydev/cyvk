@@ -2,7 +2,7 @@ from friends import get_friend_jid
 import library.vkapi as api
 
 import logging
-from messaging import msg_send, escape_name
+from messaging import send_message, escape_name
 from config import TRANSPORT_ID
 from library.stext import _ as _
 import database
@@ -101,7 +101,7 @@ class VKLogin(object):
             raise NotImplementedError('Captcha')
         except NotAllowed:
             # if self.engine.lastMethod[0] == "messages.send":
-            msg_send(gateway.component, jid, _("You're not allowed to perform this action."),
+            send_message(gateway.component, jid, _("You're not allowed to perform this action."),
                     get_friend_jid(m_args.get("user_id", TRANSPORT_ID), jid))
         except APIError as vk_e:
             if vk_e.message == "User authorization failed: user revoke access for this token.":
@@ -112,7 +112,7 @@ class VKLogin(object):
                 except KeyError:
                     pass
             elif vk_e.message == "User authorization failed: invalid access_token.":
-                msg_send(gateway.component, jid, _(vk_e.message + " Please, register again"), TRANSPORT_ID)
+                send_message(gateway.component, jid, _(vk_e.message + " Please, register again"), TRANSPORT_ID)
             database.set_offline(jid)
 
             logger.error("VKLogin: apiError %s for user %s" % (vk_e.message, jid))
@@ -172,7 +172,7 @@ def method_wrapped(gateway, jid, m, m_args=None):
         raise NotImplementedError('Captcha')
     except NotAllowed:
         # if self.engine.lastMethod[0] == "messages.send":
-        msg_send(gateway.component, jid, _("You're not allowed to perform this action."),
+        send_message(gateway.component, jid, _("You're not allowed to perform this action."),
                 get_friend_jid(m_args.get("user_id", TRANSPORT_ID), jid))
     except APIError as vk_e:
         if vk_e.message == "User authorization failed: user revoke access for this token.":
@@ -183,7 +183,7 @@ def method_wrapped(gateway, jid, m, m_args=None):
             except KeyError:
                 pass
         elif vk_e.message == "User authorization failed: invalid access_token.":
-            msg_send(gateway.component, jid, _(vk_e.message + " Please, register again"), TRANSPORT_ID)
+            send_message(gateway.component, jid, _(vk_e.message + " Please, register again"), TRANSPORT_ID)
         database.set_offline(jid)
 
         logger.error("VKLogin: apiError %s for user %s" % (vk_e.message, jid))

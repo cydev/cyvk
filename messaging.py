@@ -1,32 +1,39 @@
 # coding=utf-8
-__author__ = 'ernado'
+
+from __future__ import unicode_literals
+
 import logging
 import time
 import re
 
-import library.xmpp as xmpp
+from library.xmpp.protocol import Message
 from sender import stanza_send
 from config import BANNED_CHARS, WATCHER_LIST, TRANSPORT_ID
 
 logger = logging.getLogger("vk4xmpp")
 
-def msg_send(cl, jid_to, body, jid_from, timestamp=None):
+def send_message(transport, jid_to, body, jid_from, timestamp=None):
     logger.debug('msg_send %s -> %s' % (jid_from, jid_to))
-    msg = xmpp.Message(jid_to, body, "chat", frm=jid_from)
+
+    assert isinstance(jid_to, unicode)
+    assert isinstance(jid_from, unicode)
+    assert isinstance(body, unicode)
+
+    message = Message(jid_to, body, "chat", frm=jid_from)
 
     if timestamp:
         timestamp = time.gmtime(timestamp)
-        msg.setTimestamp(time.strftime("%Y%m%dT%H:%M:%S", timestamp))
+        message.setTimestamp(time.strftime("%Y%m%dT%H:%M:%S", timestamp))
 
-    stanza_send(cl, msg)
+    stanza_send(transport, message)
 
 escape_name = re.compile(u"[^-0-9a-zа-яёë\._\'\ ґїє]", re.IGNORECASE | re.UNICODE | re.DOTALL).sub
 escape_message = re.compile("|".join(BANNED_CHARS)).sub
 
 
-msg_sort = lambda b_r, b_a: b_r["date"] - b_a["date"]
+sort_message = lambda b_r, b_a: b_r["date"] - b_a["date"]
 
-def msg_extract(msg):
+def extract_message(msg):
     """
     Extracts message attributes into dictionary
     """
@@ -42,6 +49,6 @@ def msg_extract(msg):
             'jid_from_str': jid_from_str
             }
 
-def watcher_msg(component, text):
+def send_watcher_message(transport, text):
     for jid in WATCHER_LIST:
-        msg_send(component, jid, text, TRANSPORT_ID)
+        send_message(transport, jid, text, TRANSPORT_ID)

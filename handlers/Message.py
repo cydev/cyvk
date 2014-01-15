@@ -14,7 +14,7 @@ from config import TRANSPORT_ID
 
 import database
 
-from messaging import msg_extract
+from messaging import extract_message
 from captcha import captcha_accept
 
 logger = logging.getLogger("vk4xmpp")
@@ -49,7 +49,7 @@ class MessageHandler(Handler):
 
     def handle(self, cl, msg):
 
-        m = msg_extract(msg)
+        m = extract_message(msg)
         msg_body = m['body']
 
         if not msg_body:

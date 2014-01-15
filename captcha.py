@@ -3,7 +3,7 @@ import logging
 
 import library.vkapi as api
 import library.xmpp as xmpp
-from messaging import msg_send
+from messaging import send_message
 from config import TRANSPORT_ID
 from errors import CaptchaNeeded
 
@@ -42,7 +42,7 @@ def captcha_accept(gateway, cl, args, jid_to, jid_from_str):
     else:
         answer = "Not now. Ok?"
     if answer:
-        msg_send(cl, jid_from_str, answer, jid_to)
+        send_message(cl, jid_from_str, answer, jid_to)
 
 def captcha_challenge(gateway, jid):
     raise NotImplementedError('Captcha')
