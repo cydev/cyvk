@@ -7,12 +7,12 @@ import time
 import re
 
 from library.xmpp.protocol import Message
-from sender import stanza_send
 from config import BANNED_CHARS, WATCHER_LIST, TRANSPORT_ID
+import database
 
 logger = logging.getLogger("vk4xmpp")
 
-def send_message(transport, jid_to, body, jid_from, timestamp=None):
+def send_message(jid_to, body, jid_from, timestamp=None):
     logger.debug('msg_send %s -> %s' % (jid_from, jid_to))
 
     assert isinstance(jid_to, unicode)
@@ -25,7 +25,7 @@ def send_message(transport, jid_to, body, jid_from, timestamp=None):
         timestamp = time.gmtime(timestamp)
         message.setTimestamp(time.strftime("%Y%m%dT%H:%M:%S", timestamp))
 
-    stanza_send(transport, message)
+    database.queue_stanza(message)
 
 escape_name = re.compile(u"[^-0-9a-zа-яёë\._\'\ ґїє]", re.IGNORECASE | re.UNICODE | re.DOTALL).sub
 escape_message = re.compile("|".join(BANNED_CHARS)).sub

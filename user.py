@@ -12,6 +12,8 @@ from errors import CaptchaNeeded, TokenError, AuthenticationException
 
 from library.vkapi import method
 
+import parsers.message
+
 import database
 
 logger = logging.getLogger("vk4xmpp")
@@ -46,30 +48,31 @@ def get_friends(jid, fields=None):
     return friends
 
 
-def send_presence(gateway, target, jid_from, presence_type=None, nick=None, reason=None):
+def send_presence(target, jid_from, presence_type=None, nick=None, reason=None):
     logger.debug('sending presence for %s about %s' % (target, jid_from))
     presence = xmpp.Presence(target, presence_type, frm=jid_from, status=reason)
     if nick:
         presence.setTag("nick", namespace=xmpp.NS_NICK)
         presence.setTagData("nick", nick)
-    gateway.send(presence)
+    database.queue_stanza(presence)
+    # gateway.send(presence)
 
 
-def roster_subscribe(gateway, jid, subscriptions=None):
+def roster_subscribe(jid, subscriptions=None):
     """
     Subscribe user for jids in dist
     """
     logger.debug('roster_subscribe for %s: %s' % (jid, subscriptions.keys()))
 
     if not subscriptions:
-        send_presence(gateway, jid, TRANSPORT_ID, "subscribe", IDENTIFIER["name"])
+        send_presence(jid, TRANSPORT_ID, "subscribe", IDENTIFIER["name"])
         return
 
     for uid, value in subscriptions.iteritems():
-        send_presence(gateway, jid, get_friend_jid(uid, jid), "subscribe", value["name"])
+        send_presence(jid, get_friend_jid(uid, jid), "subscribe", value["name"])
 
 
-def send_messages(gateway, jid):
+def send_messages(jid):
     logger.debug('user api: send_messages for %s' % jid)
 
     if not jid:
@@ -99,32 +102,8 @@ def send_messages(gateway, jid):
         read.append(str(message["mid"]))
         from_jid = get_friend_jid(message["uid"], jid)
         body = webtools.unescape(message["body"])
-
-        def process_handler(func):
-            # try:
-            return func(jid, message)
-            # except Exception as e:
-            #     logger.error('Error while processing handlers: %s' % e)
-            #     dump_crash("handle.%s" % func.func_name)
-            #     raise e
-
-        body += u''.join(map(process_handler, gateway.handlers))
-
-        # for func in self.gateway.handlers:
-        #     try:
-        #         result = func(self, message)
-        #     except Exception as e:
-        #         logger.error('Error while processing handlers: %s' % e)
-        #         dump_crash("handle.%s" % func.func_name)
-        #         raise e
-        #     if result is None:
-        #         for func in self.gateway.handlers:
-        #             f_apply(func, (self, message))
-        #         break
-        #     else:
-        #         body += result
-        # else:
-        messaging.send_message(gateway.component, jid, messaging.escape_message("", body), from_jid, message["date"])
+        body += parsers.message.parse_message(jid, message)
+        messaging.send_message(jid, messaging.escape_message("", body), from_jid, message["date"])
 
     mark_messages_as_read(jid, read)
     # self.vk.msg_mark_as_read(read)
@@ -165,12 +144,10 @@ def send_message(jid, body, destination_uid):
     return method(method_name, jid, method_values)
 
 
-def send_init_presence(gateway, jid):
+def send_init_presence(jid):
     """
     Sends initial presences to user about friends and transport
     @type jid: unicode
-    @type gateway: Gateway
-    @param gateway: Gateway object
     @param jid: user jid
     @return: None
     """
@@ -181,13 +158,13 @@ def send_init_presence(gateway, jid):
     logger.debug('user api: sending initial status to %s, with friends: %s' % (jid, online_friends != {}))
 
     for friend_uid in online_friends:
-        send_presence(gateway, jid, get_friend_jid(friend_uid, jid), nick=friends[friend_uid]['name'])
+        send_presence(jid, get_friend_jid(friend_uid, jid), nick=friends[friend_uid]['name'])
 
     # sending transport presence
-    send_presence(gateway, jid, TRANSPORT_ID, nick=IDENTIFIER["name"])
+    send_presence(jid, TRANSPORT_ID, nick=IDENTIFIER["name"])
 
 
-def send_out_presence(gateway, jid, reason=None):
+def send_out_presence(jid, reason=None):
     assert isinstance(jid, unicode)
 
     status = "unavailable"
@@ -195,7 +172,7 @@ def send_out_presence(gateway, jid, reason=None):
     notification_list = database.get_friends(jid).keys() + [TRANSPORT_ID]
 
     for uid in notification_list:
-        send_presence(gateway, jid, get_friend_jid(uid, jid), status, reason=reason)
+        send_presence(jid, get_friend_jid(uid, jid), status, reason=reason)
 
 
 def delete_user(jid, roster=False):
@@ -218,7 +195,7 @@ def delete_user(jid, roster=False):
     database.remove_online_user(jid)
 
 
-def update_friends(gateway, jid):
+def update_friends(jid):
     friends_vk = get_friends(jid)
     friends_db = database.get_friends(jid)
 
@@ -253,10 +230,10 @@ def update_friends(gateway, jid):
             status = None if friend["online"] else "unavailable"
             update_status_dict.update({uid: status})
 
-    roster_subscribe(gateway, jid, subscriptions)
+    roster_subscribe(jid, subscriptions)
 
     for uid, status in update_status_dict.items():
-        send_presence(gateway, jid, get_friend_jid(uid, jid), status)
+        send_presence(jid, get_friend_jid(uid, jid), status)
 
     database.set_friends(jid, friends_vk)
 
@@ -278,12 +255,10 @@ def is_timed_out(jid):
     return user_inactive
 
 
-def initialize(gateway, jid, send=True):
+def initialize(jid, send=True):
     """
     Initializes user by subscribing to friends and sending initial presence
-    @type gateway: Gateway
     @type jid: unicode
-    @param gateway: Gateway object
     @param jid: client jid
     @param send: send presence flab
     """
@@ -295,11 +270,11 @@ def initialize(gateway, jid, send=True):
 
     if friends:
         logger.debug("user api: subscribing friends for %s" % jid)
-        roster_subscribe(gateway, jid, friends)
+        roster_subscribe(jid, friends)
 
     if send:
         logger.debug('sending initial presence')
-        send_init_presence(gateway, jid)
+        send_init_presence(jid)
 
 
 def load(jid):
@@ -325,7 +300,7 @@ def load(jid):
     logger.debug("user api: %s data loaded" % jid)
 
 
-def connect(gateway, jid, token):
+def connect(jid, token):
     logger.debug("user api: connecting %s" % jid)
     # vk = VKLogin(gateway, token, jid)
 
@@ -336,11 +311,11 @@ def connect(gateway, jid, token):
     try:
         logger.debug('user api: trying to auth with token')
         database.set_token(jid, token)
-        login_api.check_token(gateway, jid, token)
+        login_api.check_user(jid)
         logger.debug("user api: authenticated %s" % jid)
     except CaptchaNeeded:
         logger.debug("user api: captcha needed for %s" % jid)
-        roster_subscribe(gateway, jid)
+        roster_subscribe(jid)
         raise NotImplementedError('Captcha')
         # self.vk.captcha_challenge()
         # return True
@@ -349,8 +324,7 @@ def connect(gateway, jid, token):
             logger.critical("user api: %s" % token_error.message)
             delete_user(jid)
         elif token_error.message == "User authorization failed: invalid access_token.":
-            send_message(gateway.component, jid,
-                     token_error.message + " Please, register again", TRANSPORT_ID)
+            send_message(jid, token_error.message + " Please, register again", TRANSPORT_ID)
         raise AuthenticationException('invalid token')
         # except Exception as e:
     #     # TODO: We can crash there

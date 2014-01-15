@@ -82,8 +82,8 @@ def _unavailable(presence, jid, gateway):
         return
 
     logger.warning('unavailable presence may be not implemented')
-    user_api.send_out_presence(gateway, jid)
-    gateway.send(xmpp.Presence(jid, "unavailable", frm=TRANSPORT_ID))
+    user_api.send_out_presence(jid)
+    database.queue_stanza(xmpp.Presence(jid, "unavailable", frm=TRANSPORT_ID))
     database.remove_online_user(jid)
 
 
@@ -101,10 +101,10 @@ def _subscribe(presence, jid, gateway):
     @return:
     """
     if presence.destination_id == TRANSPORT_ID:
-        gateway.send(xmpp.Presence(presence.origin, "subscribed", frm=TRANSPORT_ID))
-        gateway.send(xmpp.Presence(presence.origin, frm=TRANSPORT_ID))
+        database.queue_stanza(xmpp.Presence(presence.origin, "subscribed", frm=TRANSPORT_ID))
+        database.queue_stanza(xmpp.Presence(presence.origin, frm=TRANSPORT_ID))
     else:
-        gateway.send(xmpp.Presence(presence.origin, "subscribed", frm=presence.destination_id))
+        database.queue_stanza(xmpp.Presence(presence.origin, "subscribed", frm=presence.destination_id))
 
         client_friends = database.get_friends(jid)
 
@@ -121,7 +121,7 @@ def _subscribe(presence, jid, gateway):
         if client_friends[friend_id]['online']:
             return
 
-        gateway.send(xmpp.Presence(presence.origin, frm=presence.origin))
+        database.queue_stanza(xmpp.Presence(presence.origin, frm=presence.origin))
 
 
 @presence_handler_wrapper
@@ -178,8 +178,8 @@ def _attempt_to_add_client(_, jid, gateway):
     token = user['token']
 
     try:
-        user_api.connect(gateway, jid, token)
-        user_api.initialize(gateway, jid, send=True)
+        user_api.connect(jid, token)
+        user_api.initialize(jid, send=True)
         gateway.add_user(jid)
     except AuthenticationException as e:
         logger.error('unable to authenticate %s: %s' % (jid, e))

@@ -154,7 +154,7 @@ class VKLogin(object):
     #     return self.method("messages.get", values)
 
 
-def method_wrapped(gateway, jid, m, m_args=None):
+def method_wrapped(jid, m, m_args=None):
     if not jid:
         raise ValueError('jid is None')
     m_args = m_args or {}
@@ -172,7 +172,7 @@ def method_wrapped(gateway, jid, m, m_args=None):
         raise NotImplementedError('Captcha')
     except NotAllowed:
         # if self.engine.lastMethod[0] == "messages.send":
-        send_message(gateway.component, jid, _("You're not allowed to perform this action."),
+        send_message(jid, _("You're not allowed to perform this action."),
                 get_friend_jid(m_args.get("user_id", TRANSPORT_ID), jid))
     except APIError as vk_e:
         if vk_e.message == "User authorization failed: user revoke access for this token.":
@@ -183,20 +183,20 @@ def method_wrapped(gateway, jid, m, m_args=None):
             except KeyError:
                 pass
         elif vk_e.message == "User authorization failed: invalid access_token.":
-            send_message(gateway.component, jid, _(vk_e.message + " Please, register again"), TRANSPORT_ID)
+            send_message(jid, _(vk_e.message + " Please, register again"), TRANSPORT_ID)
         database.set_offline(jid)
 
         logger.error("VKLogin: apiError %s for user %s" % (vk_e.message, jid))
     return result
 
 
-def check_token(gateway, jid, token):
+def check_user(jid):
     # logger.debug('Token: %s' % token)
     logger.debug('login api: checking token')
     # logger.debug("VKLogin.auth %s token" % ("with" if token else "without"))
     try:
         # engine = api.APIBinding(token)
-        method_wrapped(gateway, jid, "isAppUser")
+        method_wrapped(jid, "isAppUser")
     except AuthenticationException as e:
         logger.debug('checking token failed: %s' % e)
         # logger.error("VKLogin.auth failed with error %s" % e.message)

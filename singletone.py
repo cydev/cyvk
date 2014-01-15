@@ -4,11 +4,14 @@ import time
 import logging
 
 logger = logging.getLogger("vk4xmpp")
+import json
 
 from config import TRANSPORT_FEATURES
 from errors import ConnectionError
 import user as user_api
 import database
+
+import pickle
 
 
 class Gateway(object):
@@ -54,8 +57,8 @@ class Gateway(object):
             database.remove_online_user(jid)
             return
 
-        user_api.update_friends(self, jid)
-        user_api.send_messages(self, jid)
+        user_api.update_friends(jid)
+        user_api.send_messages(jid)
 
 
     def add_user(self, jid):
@@ -116,3 +119,4 @@ class Gateway(object):
             return True
         else:
             raise ConnectionError
+

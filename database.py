@@ -7,6 +7,10 @@ import logging
 from config import DB_FILE, TRANSPORT_ID, REDIS_PREFIX, REDIS_HOST, REDIS_PORT, USE_LAST_MESSAGE_ID
 import library.xmpp as xmpp
 
+import pickle
+
+from library.xmpp.protocol import Protocol as Stanza
+
 import json
 
 logger = logging.getLogger("vk4xmpp")
@@ -32,10 +36,10 @@ def remove_user(jid):
         logger.debug('DB: removed %s' % jid)
 
 
-def get_all_users():
-    with Database(DB_FILE) as db:
-        users = db("SELECT * FROM users").fetchall()
-        return map(lambda user: user[0], users)
+# def get_all_users():
+#     with Database(DB_FILE) as db:
+#         users = db("SELECT * FROM users").fetchall()
+#         return map(lambda user: user[0], users)
 
 
 def probe_users(gateway):
@@ -299,3 +303,23 @@ def set_last_status(jid, status):
 # statuses:
 
 
+# message queue
+
+def _get_stanza_queue_key():
+    return ':'.join([REDIS_PREFIX, 'queue'])
+
+def queue_stanza(stanza):
+    assert isinstance(stanza, Stanza)
+
+    pickled = pickle.dumps(stanza)
+
+    r.rpush(_get_stanza_queue_key(), pickled)
+
+def enqueue_stanza():
+    pickled =  r.brpop(_get_stanza_queue_key())[1]
+
+    stanza = pickle.loads(pickled)
+
+    assert isinstance(stanza, Stanza)
+
+    return stanza

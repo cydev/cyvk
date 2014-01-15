@@ -20,7 +20,7 @@ logger = log.get_logger()
 
 import library.xmpp as xmpp
 import handlers
-from extensions import message
+from parsers import message
 from daemon import get_pid
 from singletone import Gateway
 import database
@@ -87,12 +87,7 @@ def initialize():
     g.register_handler("message", handlers.MessageHandler)
     g.register_disconnect_handler(disconnect_handler)
     g.register_parser(message.parse_message)
-
-    # TODO: Group chats
-
     reset_online_users()
-
-    probe_users(g)
 
     logger.info('initialization finished')
 
@@ -122,8 +117,8 @@ def halt_handler(sig=None, frame=None):
         presence_status = "unavailable"
         friends = database.get_friends(jid)
         for friend in friends:
-           user_api.send_presence(g, jid, get_friend_jid(friend, jid), presence_status, reason=status)
-        user_api.send_presence(g, jid, TRANSPORT_ID, presence_status, reason=status)
+           user_api.send_presence(jid, get_friend_jid(friend, jid), presence_status, reason=status)
+        user_api.send_presence(jid, TRANSPORT_ID, presence_status, reason=status)
         # send_presence(client.jidFrom, TRANSPORT_ID, presence_status, reason=status)
 
     map_clients(send_unavailable_presence)
@@ -148,6 +143,10 @@ def component_loop():
     while True:
         transport_iteration()
 
+def stanza_sender_iteration():
+    stanza = database.enqueue_stanza()
+    g.send(stanza)
+
 if __name__ == "__main__":
     signal.signal(signal.SIGTERM, halt_handler)
     signal.signal(signal.SIGINT, halt_handler)
@@ -160,9 +159,15 @@ if __name__ == "__main__":
 
     main_loop = get_loop_thread(g.main_loop_iteration, 'main loop', 5)
     transport_loop = get_loop_thread(transport_iteration, 'transport loop')
+    sender_loop = get_loop_thread(stanza_sender_iteration, 'stanza sender loop')
 
     main_loop.start()
     transport_loop.start()
+    sender_loop.start()
+
+    time.sleep(0.5)
+
+    probe_users(g)
 
     while True:
         # allow main thread to catch ctrl+c

@@ -1,7 +1,7 @@
 # coding: utf-8
 
 from datetime import datetime
-from extensions import attachments
+from parsers import attachments
 from messaging import escape_message, sort_message
 from library.webtools import unescape
 import user as user_api
