@@ -5,7 +5,7 @@
 # This module contains main web\
 # functions for site parsing.
 
-import urllib, urllib2, re
+import re
 
 ## HTML Unescape and <br> tag replace.
 import htmlentitydefs
@@ -15,7 +15,6 @@ edefs = dict()
 for Name, Numb in htmlentitydefs.name2codepoint.iteritems():
     edefs[Name] = unichr(Numb)
 
-del Name, Numb, htmlentitydefs
 
 compile_ehtmls = re.compile("&(#?[xX]?(?:[0-9a-fA-F]+|\w{1,8}));")
 
@@ -82,6 +81,7 @@ def stripTags(data, subBy=str(), pattern="<[^<>]+>"):
 ## Format size.
 def byteFormat(size):
     if size < 1024: return '%sb' % int(size)
+    t = 'kB'
     for t in ('kB', 'MB', 'GB'):
         size = size / 1024.0
         if size < 1024: break

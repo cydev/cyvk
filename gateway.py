@@ -10,7 +10,7 @@ import time
 
 from errors import AuthenticationException, all_errors
 from friends import get_friend_jid
-from database import init_db, init_users, set_burst, reset_online_users
+from database import init_db, probe_users, set_burst, reset_online_users
 from config import (PID_FILE, DATABASE_FILE,
                     HOST, SERVER, PORT, TRANSPORT_ID,
                     DEBUG_XMPPPY, PASSWORD)
@@ -90,14 +90,15 @@ def initialize():
 
     # TODO: Group chats
 
-    init_users(g)
     reset_online_users()
+
+    probe_users(g)
 
     logger.info('initialization finished')
 
 
 def map_clients(f):
-    clients = database.get_users()
+    clients = database.get_clients()
     map(f, clients)
 
 

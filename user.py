@@ -3,7 +3,7 @@ import logging
 
 from config import TRANSPORT_ID, USE_LAST_MESSAGE_ID, IDENTIFIER, ACTIVE_TIMEOUT
 from friends import get_friend_jid
-from messaging import send_message, sort_message, escape_name, escape_message
+import messaging
 import library.webtools as webtools
 import library.xmpp as xmpp
 import vklogin as login_api
@@ -34,7 +34,7 @@ def get_friends(jid, fields=None):
     friends = {}
     for friend in friends_raw:
         uid = friend["uid"]
-        name = escape_name("", u"%s %s" % (friend["first_name"], friend["last_name"]))
+        name = messaging.escape_name("", u"%s %s" % (friend["first_name"], friend["last_name"]))
         try:
             friends[uid] = {"name": name, "online": friend["online"]}
             for key in fields:
@@ -83,7 +83,7 @@ def send_messages(gateway, jid):
         return
 
     messages = messages[1:]
-    messages = sorted(messages, sort_message)
+    messages = sorted(messages, messaging.sort_message)
 
     if not messages:
         return
@@ -124,7 +124,7 @@ def send_messages(gateway, jid):
         #     else:
         #         body += result
         # else:
-        send_message(gateway.component, jid, escape_message("", body), from_jid, message["date"])
+        messaging.send_message(gateway.component, jid, messaging.escape_message("", body), from_jid, message["date"])
 
     mark_messages_as_read(jid, read)
     # self.vk.msg_mark_as_read(read)
@@ -142,7 +142,7 @@ def get_user_data(uid, target_uid, fields=None):
     print data
     if data:
         data = data[0]
-        data["name"] = escape_name("", u"%s %s" % (data["first_name"], data["last_name"]))
+        data["name"] = messaging.escape_name("", u"%s %s" % (data["first_name"], data["last_name"]))
         del data["first_name"], data["last_name"]
     else:
         data = {}
@@ -151,17 +151,18 @@ def get_user_data(uid, target_uid, fields=None):
     return data
 
 
-def send_message(jid, body, recipient_uid, m_type="user_id"):
-    logger.debug('user api: message to %s' % recipient_uid)
+def send_message(jid, body, destination_uid):
+    logger.debug('user api: message to %s' % destination_uid)
+
+    assert isinstance(jid, unicode)
+    assert isinstance(destination_uid, unicode)
+    assert isinstance(body, unicode)
+
     method_name = "messages.send"
-    method_values = {m_type: recipient_uid, "message": body, "type": 0}
-    # try:
+    method_values = {'user_id': destination_uid, "message": body, "type": 0}
     update_last_activity(jid)
+
     return method(method_name, jid, method_values)
-    # except Exception as e:
-    #     logger.error('messages.send: %s' % e)
-    #     dump_crash("messages.send")
-    #     return False
 
 
 def send_init_presence(gateway, jid):
@@ -176,18 +177,11 @@ def send_init_presence(gateway, jid):
     assert isinstance(jid, unicode)
     friends = database.get_friends(jid)
     assert isinstance(friends, dict)
+    online_friends = filter(lambda uid: friends[uid]['online'], friends)
+    logger.debug('user api: sending initial status to %s, with friends: %s' % (jid, online_friends != {}))
 
-    # friends = get_friends(jid)
-    # TODO: Check friend list relevance
-    logger.debug("user api: sending initial status to %s (friends %s)" % \
-                 (jid, "exist" if friends else "empty"))
-
-    # sending friends presence
-    for friend_uid in friends:
-        friend = friends[friend_uid]
-        if not friend['online']:
-            continue
-        send_presence(gateway, jid, get_friend_jid(friend_uid, jid), nick=friend['name'])
+    for friend_uid in online_friends:
+        send_presence(gateway, jid, get_friend_jid(friend_uid, jid), nick=friends[friend_uid]['name'])
 
     # sending transport presence
     send_presence(gateway, jid, TRANSPORT_ID, nick=IDENTIFIER["name"])
@@ -261,7 +255,7 @@ def update_friends(gateway, jid):
 
     roster_subscribe(gateway, jid, subscriptions)
 
-    for uid, status in update_status_dict.iteritems():
+    for uid, status in update_status_dict.items():
         send_presence(gateway, jid, get_friend_jid(uid, jid), status)
 
     database.set_friends(jid, friends_vk)

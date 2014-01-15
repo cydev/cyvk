@@ -7,16 +7,8 @@ Copyright (2010-2013) Al Korgun (alkorgun@gmail.com)
 Distributed under the GNU GPLv3.
 """
 
-try:
-    import sqlite3
-except ImportError:
-    sqlite3 = None
-
-    def connect(*args, **kwargs):
-        raise RuntimeError("py-sqlite3 is not installed")
-
-else:
-    connect = sqlite3.connect
+import sqlite3
+connect = sqlite3.connect
 
 __all__ = [
     "Number",

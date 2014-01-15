@@ -31,7 +31,14 @@ def remove_user(jid):
         db.commit()
         logger.debug('DB: removed %s' % jid)
 
-def init_users(gateway):
+
+def get_all_users():
+    with Database(DB_FILE) as db:
+        users = db("SELECT * FROM users").fetchall()
+        return map(lambda user: user[0], users)
+
+
+def probe_users(gateway):
     logger.info('DB: Initializing users')
     with Database(DB_FILE) as db:
         users = db("SELECT * FROM users").fetchall()
@@ -159,7 +166,7 @@ def set_last_update_now(uid):
     last_update = time.time()
     r.set(_get_last_update_key(uid), last_update)
 
-def get_users():
+def get_clients():
     # getting user list as raw strings
     raw_data = r.smembers(clients_set_key)
 

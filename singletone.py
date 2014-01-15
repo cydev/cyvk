@@ -91,7 +91,7 @@ class Gateway(object):
 
     def main_loop_iteration(self):
         now = time.time()
-        clients = database.get_users()
+        clients = database.get_clients()
         if not clients:
             logger.debug('no clients')
             return
