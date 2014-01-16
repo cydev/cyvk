@@ -3,8 +3,8 @@
 from datetime import datetime
 import logging
 
-from parsers import attachments
-from messaging import escape_message, sort_message
+from message import attachments
+from message.messaging import escape_message, sort_message
 from webtools import unescape
 import user as user_api
 from config import MAXIMUM_FORWARD_DEPTH

@@ -2,7 +2,7 @@ import logging
 
 from friends import get_friend_jid
 import vkapi as api
-from messaging import send_message, escape_name
+from messaging.messaging import send_message, escape_name
 from config import TRANSPORT_ID
 # from stext import _ as _
 import database

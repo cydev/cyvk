@@ -6,6 +6,7 @@ import urllib
 import config
 from config import WHITE_LIST, IDENTIFIER, TRANSPORT_ID, LOGO_URL, TRANSPORT_FEATURES
 from friends import get_friend_jid
+from realtime import queue_stanza
 from xmpp.protocol import (NodeProcessed, NS_REGISTER, NS_CAPTCHA, NS_GATEWAY,
                                    NS_DISCO_ITEMS, NS_DISCO_INFO, NS_VCARD, NS_PING, ERR_FEATURE_NOT_IMPLEMENTED,
                                    Error, NS_DATA, ERR_BAD_REQUEST, Node, ERR_REGISTRATION_REQUIRED,)
@@ -14,12 +15,13 @@ import xmpp.simplexml
 
 from sender import stanza_send
 from handler import Handler
-from messaging import send_watcher_message
+from messaging import send_to_watcher
 from captcha import captcha_accept
 import user as user_api
 from errors import AuthenticationException
 import database
 import forms
+import realtime
 
 
 logger = logging.getLogger("vk4xmpp")
@@ -100,9 +102,9 @@ def _process_form(iq, jid):
         logger.error("user %s connection failed (from iq)" % jid)
         result = generate_error(iq, ERR_BAD_REQUEST, "Incorrect password or access token")
 
-    database.set_last_activity_now(jid)
+    realtime.set_last_activity_now(jid)
     user_api.make_client(jid)
-    send_watcher_message("new user registered: %s" % jid)
+    send_to_watcher("new user registered: %s" % jid)
     logger.debug('registration for %s completed' % jid)
 
     return result
@@ -125,10 +127,10 @@ class IQHandler(Handler):
         jid_to = stanza.getTo()
 
         if WHITE_LIST and jid_from and jid_from.getDomain() not in WHITE_LIST:
-            database.queue_stanza(generate_error(stanza, ERR_BAD_REQUEST, "You are not in white list"))
+            queue_stanza(generate_error(stanza, ERR_BAD_REQUEST, "You are not in white list"))
             raise NodeProcessed()
 
-        from_is_client = database.is_client(jid_from_str)
+        from_is_client = realtime.is_client(jid_from_str)
         destination_is_transport = jid_to == config.TRANSPORT_ID
         ns_is_captcha = stanza.getTagAttr("captcha", "xmlns") == NS_CAPTCHA
 
@@ -156,7 +158,7 @@ class IQHandler(Handler):
                 self.iq_vcard_handler(stanza)
             elif tag and tag.getNamespace() == NS_PING:
                 if jid_to == config.TRANSPORT_ID:
-                    database.queue_stanza(stanza.buildReply("result"))
+                    queue_stanza(stanza.buildReply("result"))
 
         raise NodeProcessed()
 
@@ -184,9 +186,9 @@ class IQHandler(Handler):
 
         try:
             handler = {'get': _send_form, 'set': _process_form}[stanza.getType()]
-            database.queue_stanza(handler(stanza, jid))
+            queue_stanza(handler(stanza, jid))
         except (NotImplementedError, KeyError) as e:
-            database.queue_stanza(generate_error(stanza, 0, "Requested feature not implemented: %s" % e))
+            queue_stanza(generate_error(stanza, 0, "Requested feature not implemented: %s" % e))
 
 
     # def calc_stats(self):
@@ -279,7 +281,7 @@ class IQHandler(Handler):
                 result.setQueryPayload(query)
             elif iq.ns == NS_DISCO_ITEMS:
                 result.setQueryPayload(query)
-            database.queue_stanza(result)
+            queue_stanza(result)
         raise NodeProcessed()
 
     @staticmethod
@@ -355,8 +357,8 @@ class IQHandler(Handler):
                                              "PHOTO": LOGO_URL,
                                              "URL": "http://simpleapps.ru"})
                 result.setPayload([vcard])
-            elif database.is_client(jid):
-                friends = database.get_friends(jid)
+            elif realtime.is_client(jid):
+                friends = realtime.get_friends(jid)
                 if friends:
                     friend_jid = get_friend_jid(jid_to_str)
                     json = user_api.get_user_data(jid, friend_jid, ["screen_name", config.PHOTO_SIZE])
@@ -373,7 +375,7 @@ class IQHandler(Handler):
                 result = generate_error(stanza, ERR_REGISTRATION_REQUIRED, 'You are not registered for this action')
         else:
             raise NodeProcessed()
-        database.queue_stanza(result)
+        queue_stanza(result)
 
 
 def get_handler():

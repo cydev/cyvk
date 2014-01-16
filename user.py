@@ -7,15 +7,19 @@ import json
 import urllib2
 
 from config import TRANSPORT_ID, USE_LAST_MESSAGE_ID, IDENTIFIER, POLLING_WAIT
+from database import set_token
 from friends import get_friend_jid
-import messaging
 import webtools as webtools
+
+import messaging
+import realtime
+
 import xmpp as xmpp
 from errors import CaptchaNeeded, TokenError, AuthenticationException
 from async_api import tail_call_optimized
 import updates
 from vkapi import method, is_application_user, mark_messages_as_read, get_messages
-import parsers.message
+
 import database
 
 
@@ -29,7 +33,7 @@ def set_online(user):
 
 def update_last_activity(uid):
     logger.debug('updating last activity')
-    database.set_last_activity(uid, time.time())
+    realtime.set_last_activity(uid, time.time())
 
 
 def get_friends(jid, fields=None):
@@ -57,7 +61,7 @@ def send_presence(target, jid_from, presence_type=None, nick=None, reason=None):
     if nick:
         presence.setTag("nick", namespace=xmpp.NS_NICK)
         presence.setTagData("nick", nick)
-    database.queue_stanza(presence)
+    realtime.queue_stanza(presence)
     # gateway.send(presence)
 
 
@@ -81,15 +85,14 @@ def send_messages(jid):
     if not jid:
         raise ValueError('user api: unable to send messages for blank jid')
 
-    last_message = database.get_last_message(jid)
+    last_message = realtime.get_last_message(jid)
 
     messages = get_messages(jid, 200, last_message)
 
     if not messages:
         return
 
-    messages = messages[1:]
-    messages = sorted(messages, messaging.sort_message)
+    messages = sorted(messages[1:], messaging.sorting)
 
     if not messages:
         return
@@ -105,8 +108,8 @@ def send_messages(jid):
         read.append(str(message["mid"]))
         from_jid = get_friend_jid(message["uid"])
         body = webtools.unescape(message["body"])
-        body += parsers.message.parse_message(jid, message)
-        messaging.send_message(jid, messaging.escape_message("", body), from_jid, message["date"])
+        body += messaging.parse(jid, message)
+        messaging.send(jid, messaging.escape("", body), from_jid, message["date"])
 
     mark_messages_as_read(jid, read)
     # self.vk.msg_mark_as_read(read)
@@ -154,7 +157,7 @@ def send_init_presence(jid):
     @return: None
     """
     assert isinstance(jid, unicode)
-    friends = database.get_friends(jid)
+    friends = realtime.get_friends(jid)
     assert isinstance(friends, dict)
     online_friends = filter(lambda uid: friends[uid]['online'], friends)
     logger.debug('user api: sending initial status to %s, with friends: %s' % (jid, online_friends != {}))
@@ -171,7 +174,7 @@ def send_out_presence(jid, reason=None):
 
     status = "unavailable"
     logger.debug("user api: sending out presence for %s" % jid)
-    notification_list = database.get_friends(jid).keys() + [TRANSPORT_ID]
+    notification_list = realtime.get_friends(jid).keys() + [TRANSPORT_ID]
 
     for uid in notification_list:
         send_presence(jid, get_friend_jid(uid), status, reason=reason)
@@ -183,7 +186,7 @@ def delete_user(jid, roster=False):
     assert isinstance(jid, unicode)
 
     database.remove_user(jid)
-    friends = database.get_friends(jid)
+    friends = realtime.get_friends(jid)
 
     if roster and friends:
         logger.debug("user api: removing %s roster" % jid)
@@ -191,7 +194,7 @@ def delete_user(jid, roster=False):
             friend_jid = get_friend_jid(friend_id)
             send_presence(jid, friend_jid, "unsubscribe")
             send_presence(jid, friend_jid, "unsubscribed")
-        database.set_offline(jid)
+        realtime.set_offline(jid)
 
     database.remove_user(jid)
     database.remove_online_user(jid)
@@ -199,7 +202,7 @@ def delete_user(jid, roster=False):
 
 def update_friends(jid):
     friends_vk = get_friends(jid)
-    friends_db = database.get_friends(jid)
+    friends_db = realtime.get_friends(jid)
 
     assert isinstance(jid, unicode)
     assert isinstance(friends_vk, dict)
@@ -273,9 +276,9 @@ def initialize(jid, send=True):
 
     # updating user in redis
     database.set_friends(jid, friends)
-    database.unset_polling(jid)
-    database.unset_processing(jid)
-    database.set_online(jid)
+    realtime.unset_polling(jid)
+    realtime.unset_processing(jid)
+    realtime.set_online(jid)
 
     if friends:
         logger.debug("user api: subscribing friends for %s" % jid)
@@ -319,7 +322,7 @@ def connect(jid, token):
     # logger.debug("user api: vk api initialized")
     try:
         logger.debug('user api: trying to auth with token')
-        database.set_token(jid, token)
+        set_token(jid, token)
         is_application_user(jid)
         logger.debug("user api: authenticated %s" % jid)
     except CaptchaNeeded:
@@ -343,7 +346,7 @@ def connect(jid, token):
     #     # return False
 
     logger.debug("user api: updating db for %s" % jid)
-    if not database.is_user(jid):
+    if not realtime.is_user(jid):
         raise NotImplementedError('insertion to database')
         # database.insert_user(jid, self.username, token, self.last_msg_id, self.roster_set)
     # elif self.password:
@@ -358,25 +361,25 @@ def connect(jid, token):
 
     # self.gateway.jid_to_id[self.user_id] = self.jid
     # self.friends = self.vk.get_friends()
-    database.set_online(jid)
-    database.set_last_activity_now(jid)
+    realtime.set_online(jid)
+    realtime.set_last_activity_now(jid)
 
 @tail_call_optimized
 def _long_polling_get(jid):
-    if database.is_polling(jid):
+    if realtime.is_polling(jid):
         logger.debug('already polling %s' % jid)
         return
 
-    database.set_polling(jid)
+    realtime.set_polling(jid)
     logger.debug('getting data via long polling')
     long_polling = method('messages.getLongPollServer', jid)
     long_polling['wait'] = POLLING_WAIT
     url = 'http://{server}?act=a_check&key={key}&ts={ts}&wait={wait}&mode=2'.format(**long_polling)
     logger.debug('got url, starting polling')
-    database.wait_for_api_call(jid)
+    realtime.wait_for_api_call(jid)
     data = json.loads(urllib2.urlopen(url).read())
     logger.debug('got data from polling server')
-    database.unset_polling(jid)
+    realtime.unset_polling(jid)
 
     if not data['updates']:
         logger.debug('no updates for %s' % jid)
@@ -387,7 +390,7 @@ def _long_polling_get(jid):
 
     # logger.debug('response: %s' % data)
 
-    if database.is_client(jid):
+    if realtime.is_client(jid):
         _long_polling_get(jid)
     else:
         logger.debug('finishing polling for %s' % jid)
@@ -402,15 +405,15 @@ def process_client(jid):
     """
     assert isinstance(jid, unicode)
 
-    if database.is_processing(jid):
+    if realtime.is_processing(jid):
         logger.debug('already processing client %s' % jid)
         return
 
     # blocking processing
-    database.set_processing(jid)
+    realtime.set_processing(jid)
 
     # checking user status
-    if not database.is_user_online(jid):
+    if not realtime.is_user_online(jid):
         logger.debug('user %s offline' % jid)
         database.remove_online_user(jid)
         return
@@ -424,21 +427,21 @@ def process_client(jid):
 
     t = threading.Thread(target=_long_polling_get, args=(jid, ), name='long polling for %s' % jid)
 
-    if not database.is_polling(jid):
+    if not realtime.is_polling(jid):
         update_friends(jid)
         send_messages(jid)
         t.start()
     else:
         logger.debug('updates for %s are handled by polling' % jid)
 
-    database.unset_processing(jid)
+    realtime.unset_processing(jid)
 
 
 def update_transports_list(jid, add=True):
-    is_client = database.is_client(jid)
+    is_client = realtime.is_client(jid)
     if not is_client:
         if add:
-            database.add_online_user(jid)
+            realtime.add_online_user(jid)
         else:
             database.remove_online_user(jid)
 
@@ -446,7 +449,7 @@ def update_transports_list(jid, add=True):
 
 def remove_user(jid):
     logger.debug('remove_user %s' % jid)
-    is_client = database.is_client(jid)
+    is_client = realtime.is_client(jid)
     if not is_client:
         logger.debug('%s already not in transport')
         return
@@ -455,7 +458,7 @@ def remove_user(jid):
 
 def process_users():
     now = time.time()
-    clients = database.get_clients()
+    clients = realtime.get_clients()
 
     if not clients:
         logger.debug('no clients')
@@ -469,10 +472,10 @@ def make_client(jid):
     assert isinstance(jid, unicode)
 
     logger.debug('add_user %s' % jid)
-    if database.is_client(jid):
+    if realtime.is_client(jid):
        logger.debug('%s already a client' % jid)
        return
-    database.add_online_user(jid)
+    realtime.add_online_user(jid)
     process_client(jid)
 
     # def connect(gateway, jid):

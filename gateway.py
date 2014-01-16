@@ -11,10 +11,12 @@ import time
 
 from errors import AuthenticationException, all_errors, ConnectionError
 from friends import get_friend_jid
-from database import initialize_database, probe_users, initialize_burst_protection, reset_online_users
+from database import initialize_database
+import realtime
 from config import (PID_FILE, DATABASE_FILE,
                     HOST, SERVER, PORT, TRANSPORT_ID,
                     DEBUG_XMPPPY, PASSWORD)
+from realtime import enqueue_stanza
 
 
 logger = log.get_logger()
@@ -22,7 +24,6 @@ logger = log.get_logger()
 import xmpp
 import handlers
 from daemon import get_pid
-import database
 import user as user_api
 
 
@@ -73,7 +74,6 @@ def register_handler(c, name, handler_class):
 def initialize():
     get_pid(PID_FILE)
     initialize_database(DATABASE_FILE)
-    initialize_burst_protection()
 
     transport = get_transport()
 
@@ -86,8 +86,7 @@ def initialize():
     register_handler(transport, "presence", handlers.PresenceHandler)
     register_handler(transport, "message", handlers.MessageHandler)
     transport.RegisterDisconnectHandler(get_disconnect_handler(transport))
-
-    reset_online_users()
+    realtime.reset_online_users()
 
     logger.info('initialization finished')
 
@@ -95,7 +94,7 @@ def initialize():
 
 
 def map_clients(f):
-    clients = database.get_clients()
+    clients = realtime.get_clients()
     map(f, clients)
 
 
@@ -121,7 +120,7 @@ def halt_handler(sig=None, frame=None):
 
     def send_unavailable_presence(jid):
         presence_status = "unavailable"
-        friends = database.get_friends(jid)
+        friends = realtime.get_friends(jid)
         for friend in friends:
            user_api.send_presence(jid, get_friend_jid(friend), presence_status, reason=status)
         user_api.send_presence(jid, TRANSPORT_ID, presence_status, reason=status)
@@ -152,7 +151,7 @@ def get_transport_iteration(c):
 def get_sender_iteration(c):
 
     def stanza_sender_iteration():
-        stanza = database.enqueue_stanza()
+        stanza = enqueue_stanza()
         # noinspection PyUnresolvedReferences
         c.send(stanza)
 
@@ -180,7 +179,7 @@ if __name__ == "__main__":
         # probe all users from database and add them to client list
         # if they are online
         time.sleep(0.5)
-        probe_users()
+        realtime.probe_users()
     except all_errors as e:
         logger.critical('unable to initialize: %s' % e)
         halt_handler()

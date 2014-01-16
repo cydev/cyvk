@@ -1,15 +1,14 @@
 from __future__ import unicode_literals
-
 import logging
 import json
-import database
-from friends import get_friend_jid
-from messaging import send_message
-import webtools
-from request_processor import RequestProcessor
 import urllib2
 
-from database import get_token, wait_for_api_call
+import database
+from friends import get_friend_jid
+import messaging
+import webtools
+from request_processor import RequestProcessor
+import realtime
 from errors import AuthenticationException, CaptchaNeeded, NotAllowed, APIError
 
 logger = logging.getLogger("vk4xmpp")
@@ -40,12 +39,12 @@ def method(method_name, jid, args=None, additional_timeout=0):
 
     args = args or {}
     url = "https://api.vk.com/method/%s" % method_name
-    token =  get_token(jid)
+    token =  realtime.get_token(jid)
     # logger.debug('api with token %s' % token)
     args["access_token"] = token
     args["v"] = "3.0"
 
-    wait_for_api_call(jid)
+    realtime.wait_for_api_call(jid)
 
     rp = RequestProcessor()
 
@@ -389,7 +388,7 @@ def method_wrapped(jid, m, m_args=None):
     result = {}
 
     # TODO: Captcha too
-    if not database.is_user_online(jid):
+    if not realtime.is_user_online(jid):
         return result
 
     try:
@@ -400,7 +399,7 @@ def method_wrapped(jid, m, m_args=None):
         raise NotImplementedError('Captcha')
     except NotAllowed:
         # if self.engine.lastMethod[0] == "messages.send":
-        send_message(jid, "You're not allowed to perform this action.",
+        messaging.send(jid, "You're not allowed to perform this action.",
                 get_friend_jid(m_args.get("user_id", TRANSPORT_ID)))
     except APIError as vk_e:
         if vk_e.message == "User authorization failed: user revoke access for this token.":
@@ -411,8 +410,8 @@ def method_wrapped(jid, m, m_args=None):
             except KeyError:
                 pass
         elif vk_e.message == "User authorization failed: invalid access_token.":
-            send_message(jid, vk_e.message + " Please, register again", TRANSPORT_ID)
-        database.set_offline(jid)
+            messaging.send(jid, vk_e.message + " Please, register again", TRANSPORT_ID)
+        realtime.set_offline(jid)
 
         logger.error("VKLogin: apiError %s for user %s" % (vk_e.message, jid))
     return result

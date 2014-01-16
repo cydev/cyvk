@@ -10,8 +10,8 @@ from sender import stanza_send
 from handler import Handler
 from hashers import get_hash
 from config import TRANSPORT_ID
-import database
-from messaging import extract_message
+import realtime
+import messaging
 from captcha import captcha_accept
 import friends
 
@@ -46,12 +46,12 @@ class MessageHandler(Handler):
     def captcha_accept(self, args, jid_to, jid_from_str):
         captcha_accept(args, jid_to, jid_from_str)
 
-    def handle(self, cl, msg):
+    def handle(self, transport, stanza):
 
-        m = extract_message(msg)
-        msg_body = m['body']
+        m = messaging.from_stanza(stanza)
+        body = m['body']
 
-        if not msg_body:
+        if not body:
             return
 
         jid_to = m['jid_to']
@@ -61,30 +61,30 @@ class MessageHandler(Handler):
 
         jid = unicode(jid_from_str)
 
-        logger.debug('message_handler handling: %s (%s->%s)' % (get_hash(msg_body), jid_from_str, jid_to_str))
+        logger.debug('message_handler handling: %s (%s->%s)' % (get_hash(body), jid_from_str, jid_to_str))
 
-        if not database.is_client(jid) or m['type'] != "chat":
+        if not realtime.is_client(jid) or m['type'] != "chat":
             logger.debug('client %s not in list' % jid)
 
         answer = None
 
         if jid_to == TRANSPORT_ID:
             logger.debug('message to transport_id')
-            msg_raw = msg_body.split(None, 1)
+            msg_raw = body.split(None, 1)
             if len(msg_raw) > 1:
                 text, args = msg_raw
                 args = args.strip()
                 if text == "!captcha" and args:
                     captcha_accept(args, jid_to, jid_from_str)
-                    answer = get_answer(msg, jid_from, jid_to)
+                    answer = get_answer(stanza, jid_from, jid_to)
                 # TODO: evaluate and others
         else:
             uid = unicode(friends.get_friend_uid(jid_to.getNode()))
             logger.debug('message to user (%s->%s)' % (jid, uid))
-            if user_api.send_message(jid, msg_body, uid):
-                answer = get_answer(msg, jid_from, jid_to)
+            if user_api.send_message(jid, body, uid):
+                answer = get_answer(stanza, jid_from, jid_to)
         if answer:
-            stanza_send(cl, answer)
+            stanza_send(transport, answer)
 
         # TODO: Group handlers
 

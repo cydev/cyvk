@@ -1,4 +1,6 @@
 # coding=utf-8
+import messaging
+
 __author__ = 'ernado'
 
 #
@@ -28,7 +30,6 @@ import user as user_api
 
 logger = logging.getLogger("vk4xmpp")
 
-import messaging
 import friends
 
 def process_data(jid, data):
@@ -38,14 +39,14 @@ def process_data(jid, data):
         friend_id = data[1]
         if friend_id < 0:
             friend_id = -friend_id
-        status.send_friend_status(jid, friend_id, presence_type=None)
+        status.update_friend_status(jid, friend_id, status=None)
         return
 
     if code == FRIEND_OFFLINE:
         friend_id = data[1]
         if friend_id < 0:
             friend_id = -friend_id
-        status.send_friend_status(jid, friend_id, presence_type='unavailable')
+        status.update_friend_status(jid, friend_id, status='unavailable')
         return
 
     if code == NEW_MESSAGE:

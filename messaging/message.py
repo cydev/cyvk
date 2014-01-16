@@ -1,6 +1,6 @@
 __author__ = 'ernado'
 
-from attachments import parse_attachments
+from messaging.attachments import parse_attachments
 from forwarded_messages import parse_forwarded_messages
 from geo import parse_geo
 from hashers import get_hash
@@ -11,7 +11,7 @@ logger = logging.getLogger("vk4xmpp")
 
 mapping = {'geo': parse_geo, 'fwd_messages': parse_forwarded_messages, 'attachments': parse_attachments}
 
-def parse_message(jid, message):
+def parse(jid, message):
     h = get_hash(message['body'])
 
     if not jid:
