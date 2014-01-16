@@ -312,7 +312,7 @@ class HTTPPROXYsocket(TCPSocket):
         try:
             proto, code, desc = reply.split("\n")[0].split(" ", 2)
         except Exception:
-            raise Error("Invalid proxy reply")
+            raise Error(None, 'Invalid proxy reply')
         if code != "200":
             self.DEBUG("Invalid proxy reply: %s %s %s" % (proto, code, desc), "error")
             self._owner.disconnected()
@@ -327,11 +327,11 @@ class HTTPPROXYsocket(TCPSocket):
         self.DEBUG("Authentification successfull. Jabber server contacted.", "ok")
         return "ok"
 
-    def DEBUG(self, text, severity):
-        """
-        Overwrites DEBUG tag to allow debug output be presented as 'CONNECTproxy'.
-        """
-        return self._owner.DEBUG(DBG_CONNECT_PROXY, text, severity)
+    # def DEBUG(self, text, severity):
+    #     """
+    #     Overwrites DEBUG tag to allow debug output be presented as 'CONNECTproxy'.
+    #     """
+    #     return self._owner.DEBUG(DBG_CONNECT_PROXY, text, severity)
 
 
 class TLS(PlugIn):

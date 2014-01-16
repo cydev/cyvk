@@ -86,7 +86,7 @@ def discoverInfo(disp, jid, node=None):
     return identities, features
 
 
-def getRegInfo(disp, host, info={}, sync=True):
+def getRegInfo(disp, host, info=None, sync=True):
     """
     Gets registration form from remote host.
     You can pre-fill the info dictionary.
@@ -94,6 +94,7 @@ def getRegInfo(disp, host, info={}, sync=True):
     info as {"username": "joey"}. See JEP-0077 for details.
     "disp" must be connected dispatcher instance.
     """
+    if not info: info = {}
     iq = Iq("get", NS_REGISTER, to=host)
     for i in info.keys():
         iq.setTagData(i, info[i])

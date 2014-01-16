@@ -11,7 +11,7 @@ from config import BANNED_CHARS
 logger = logging.getLogger("vk4xmpp")
 
 
-escape_name = re.compile(u"[^-0-9a-zа-яёë\._\'\ ґїє]", re.IGNORECASE | re.UNICODE | re.DOTALL).sub
+escape_name = re.compile(u"[^-0-9a-zа-яёë\._\' ґїє]", re.IGNORECASE | re.UNICODE | re.DOTALL).sub
 escape = re.compile("|".join(BANNED_CHARS)).sub
 sorting = lambda b_r, b_a: b_r["date"] - b_a["date"]
 

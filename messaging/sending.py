@@ -1,6 +1,5 @@
 import time
 from config import WATCHER_LIST, TRANSPORT_ID
-from messaging.processing import logger
 from realtime import queue_stanza
 from xmpp import Message
 import logging

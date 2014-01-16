@@ -35,7 +35,7 @@ _ = gettext.gettext
 
 
 def init_localization():
-  '''prepare l10n'''
+  """prepare l10n"""
   locale.setlocale(locale.LC_ALL, '') # use user's preferred locale
   # take first two characters of country code
   loc = locale.getlocale()

@@ -122,23 +122,23 @@ STATUS_ONLINE = 'online'
 STATUS_OFFLINE = 'offline'
 ONLINE_TIMEOUT = 60
 
-def set_online(uid):
-    key = _get_status_key(uid)
-    r.set(key, STATUS_ONLINE)
-    r.expire(key, ONLINE_TIMEOUT)
-
-
-def set_offline(uid):
-    logger.log('setting offline %s' % uid)
-    raise RuntimeError('fuck off, thats why')
-    # key = _get_status_key(uid)
-    # r.set(key, STATUS_OFFLINE)
-
-# def set_status(uid):
-#     key =
-
-def is_user_online(uid):
-    return r.get(_get_status_key(uid)) == STATUS_ONLINE
+# def set_online(uid):
+#     key = _get_status_key(uid)
+#     r.set(key, STATUS_ONLINE)
+#     r.expire(key, ONLINE_TIMEOUT)
+#
+#
+# def set_offline(uid):
+#     logger.log('setting offline %s' % uid)
+#     raise RuntimeError('fuck off, thats why')
+#     # key = _get_status_key(uid)
+#     # r.set(key, STATUS_OFFLINE)
+#
+# # def set_status(uid):
+# #     key =
+#
+# def is_user_online(uid):
+#     return r.get(_get_status_key(uid)) == STATUS_ONLINE
 
 
 def set_friends(uid, friends):
@@ -221,7 +221,7 @@ def get_last_message(jid):
 
     try:
         return int(r.get(_get_last_message_key(jid)))
-    except (TypeError, ValueError) as e:
+    except (TypeError, ValueError):
         # logger.error('get_last_message for %s error: %s' % (jid, e))
         return None
 

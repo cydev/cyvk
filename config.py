@@ -18,7 +18,7 @@ SERVER = "vk.s1.cydev"
 PORT = 5556
 
 # transport ID
-TRANSPORT_ID = "vk.s1.cydev"
+TRANSPORT_ID = u"vk.s1.cydev"
 
 # connection password.
 PASSWORD = "secret"

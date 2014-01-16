@@ -138,7 +138,7 @@ class Commands(PlugIn):
             if items:
                 for each in items:
                     i = self._handlers[each[0]][each[1]]["disco"](conn, request, "list")
-                    if i != None:
+                    if i is not None:
                         list.append(Node(tag="item", attrs={"jid": i[0], "node": i[1], "name": i[2]}))
                 iq = request.buildReply("result")
                 if request.getQuerynode():
@@ -279,7 +279,7 @@ class Command_Handler_Prototype(PlugIn):
             action = request.getTagAttr("command", "action")
         except Exception:
             action = None
-        if action == None:
+        if action is None:
             action = "execute"
         # Check session is in session list
         if self.sessions.has_key(session):
@@ -296,7 +296,7 @@ class Command_Handler_Prototype(PlugIn):
                 # Jid and session don't match. Go away imposter
                 self._owner.send(Error(request, ERR_BAD_REQUEST))
                 raise NodeProcessed()
-        elif session != None:
+        elif session is not None:
             # Not on this sessionid you won't.
             self._owner.send(Error(request, ERR_BAD_REQUEST))
             raise NodeProcessed()
@@ -340,7 +340,7 @@ class TestCommand(Command_Handler_Prototype):
             session = request.getTagAttr("command", "sessionid")
         except Exception:
             session = None
-        if session == None:
+        if session is None:
             session = self.getSessionID()
             self.sessions[session] = {
             "jid": request.getFrom(),

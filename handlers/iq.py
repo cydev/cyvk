@@ -1,11 +1,13 @@
 # coding: utf-8
+from __future__ import unicode_literals, absolute_import
+
 
 import logging
 import urllib
 
 import config
 from config import WHITE_LIST, IDENTIFIER, TRANSPORT_ID, LOGO_URL, TRANSPORT_FEATURES
-from friends import get_friend_jid, get_friend_uid
+from friends import get_friend_uid
 from realtime import queue_stanza
 from xmpp.protocol import (NodeProcessed, NS_REGISTER, NS_CAPTCHA, NS_GATEWAY,
                                    NS_DISCO_ITEMS, NS_DISCO_INFO, NS_VCARD, NS_PING, ERR_FEATURE_NOT_IMPLEMENTED,
@@ -14,7 +16,7 @@ from xmpp.protocol import (NodeProcessed, NS_REGISTER, NS_CAPTCHA, NS_GATEWAY,
 import xmpp.simplexml
 
 from sender import stanza_send
-from handler import Handler
+from .handler import Handler
 from messaging import send_to_watcher
 from captcha import captcha_accept
 import user as user_api
@@ -55,8 +57,10 @@ def generate_error(stanza, error=None, text=None):
 
 def _send_form(iq, jid):
     logger.debug("sending register form to %s" % jid)
+    logger.debug('recieved: %s' % iq)
     result = iq.buildReply("result")
     result.setQueryPayload((forms.get_form(),))
+    logger.debug('register form: %s' % result)
     return result
 
 
@@ -76,8 +80,8 @@ def _process_form(iq, jid):
 
     try:
         token = token.split("#access_token=")[1].split("&")[0].strip()
-    except (IndexError, AttributeError) as e:
-        logger.debug('access token in raw format')
+    except (IndexError, AttributeError):
+        logger.debug('access token is probably in raw format')
 
     logger.debug('form processed')
 

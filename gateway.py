@@ -140,7 +140,7 @@ def get_transport_iteration(c):
 
     def transport_iteration():
         try:
-            c.Process(2)
+            c.Process()
         except xmpp.StreamError as stream_error:
             logger.critical('StreamError while iterating: %s' % stream_error)
             raise

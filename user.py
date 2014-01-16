@@ -186,6 +186,7 @@ def delete_user(jid, roster=False):
 
     assert isinstance(jid, unicode)
 
+    # realtime.remove_online_user(jid)
     database.remove_user(jid)
     friends = realtime.get_friends(jid)
 
@@ -195,7 +196,7 @@ def delete_user(jid, roster=False):
             friend_jid = get_friend_jid(friend_id)
             send_presence(jid, friend_jid, "unsubscribe")
             send_presence(jid, friend_jid, "unsubscribed")
-        realtime.set_offline(jid)
+        # realtime.set_offline(jid)
 
     database.remove_user(jid)
     database.remove_online_user(jid)
@@ -261,12 +262,12 @@ def update_friends(jid):
 #     return user_inactive
 
 
-def initialize(jid, send=True):
+def initialize(jid, send_prescense=True):
     """
     Initializes user by subscribing to friends and sending initial presence
     @type jid: unicode
     @param jid: client jid
-    @param send: send presence flag
+    @param send_prescense: send presence flag
     """
     logger.debug("user api: called init for user %s" % jid)
 
@@ -279,13 +280,13 @@ def initialize(jid, send=True):
     database.set_friends(jid, friends)
     realtime.unset_polling(jid)
     realtime.unset_processing(jid)
-    realtime.set_online(jid)
+    # realtime.set_online(jid)
 
     if friends:
         logger.debug("user api: subscribing friends for %s" % jid)
         roster_subscribe(jid, friends)
 
-    if send:
+    if send_prescense:
         logger.debug('sending initial presence')
         send_init_presence(jid)
 
@@ -362,7 +363,7 @@ def connect(jid, token):
 
     # self.gateway.jid_to_id[self.user_id] = self.jid
     # self.friends = self.vk.get_friends()
-    realtime.set_online(jid)
+    # realtime.set_online(jid)
     realtime.set_last_activity_now(jid)
 
 @tail_call_optimized
@@ -414,10 +415,10 @@ def process_client(jid):
     realtime.set_processing(jid)
 
     # checking user status
-    if not realtime.is_user_online(jid):
-        logger.debug('user %s offline' % jid)
-        database.remove_online_user(jid)
-        return
+    # if not realtime.is_user_online(jid):
+    #     logger.debug('user %s offline' % jid)
+    #     database.remove_online_user(jid)
+    #     return
 
     # checking user time out
     # if is_timed_out(jid):

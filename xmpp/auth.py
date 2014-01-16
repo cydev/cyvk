@@ -28,8 +28,9 @@ from re import findall as re_findall
 from plugin import PlugIn
 from protocol import *
 from xmpp import dispatcher
-import hashlib
 
+import logging
+logger = logging.getLogger("xmpp")
 
 def md5_hex(some):
     return __md5(some).hexdigest()
@@ -57,6 +58,7 @@ class NonSASL(PlugIn):
         self.user = user
         self.password = password
         self.resource = resource
+        self.handshake = 0
 
     def plugin(self, owner):
         """
@@ -65,18 +67,19 @@ class NonSASL(PlugIn):
         """
         if not self.resource:
             return self.authComponent(owner)
-        self.DEBUG("Querying server about possible auth methods", "start")
+
+        logger.info('querying server about possible auth methods')
         resp = owner.Dispatcher.SendAndWaitForResponse(
             Iq("get", NS_AUTH, payload=[Node("username", payload=[self.user])]))
         if not isResultNode(resp):
-            self.DEBUG("No result node arrived! Aborting...", "error")
+            logger.error('No result node arrived! Aborting')
             return None
         iq = Iq(typ="set", node=resp)
         query = iq.getTag("query")
         query.setTagData("username", self.user)
         query.setTagData("resource", self.resource)
         if query.getTag("digest"):
-            self.DEBUG("Performing digest authentication", "ok")
+            logger.debug('Performing digest authentication')
             query.setTagData("digest",
                              sha.new(owner.Dispatcher.Stream._document_attrs["id"] + self.password).hexdigest())
             if query.getTag("password"):
@@ -85,37 +88,46 @@ class NonSASL(PlugIn):
         elif query.getTag("token"):
             token = query.getTagData("token")
             seq = query.getTagData("sequence")
-            self.DEBUG("Performing zero-k authentication", "ok")
+            logger.debug('performing zero-k authentication')
             hash = sha.new(sha.new(self.password).hexdigest() + token).hexdigest()
             for foo in xrange(int(seq)):
                 hash = sha.new(hash).hexdigest()
             query.setTagData("hash", hash)
             method = "0k"
         else:
-            self.DEBUG("Sequre methods unsupported, performing plain text authentication", "warn")
+            logger.warning('secure methods unsupported, performing plain text authentication')
+            # self.DEBUG("Secure methods unsupported, performing plain text authentication", "warn")
             query.setTagData("password", self.password)
             method = "plain"
         resp = owner.Dispatcher.SendAndWaitForResponse(iq)
         if isResultNode(resp):
-            self.DEBUG("Sucessfully authenticated with remove host.", "ok")
+            logger.debug('Sucessfully authenticated with remove host')
+            # self.DEBUG("Sucessfully authenticated with remove host.", "ok")
             owner.User = self.user
             owner.Resource = self.resource
             owner._registered_name = owner.User + "@" + owner.Server + "/" + owner.Resource
             return method
-        self.DEBUG("Authentication failed!", "error")
+        logger.error('Authentication failed!')
+        # self.DEBUG("Authentication failed!", "error")
 
     def authComponent(self, owner):
         """
         Authenticate component. Send handshake stanza and wait for result. Returns "ok" on success.
         """
-        self.handshake = 0
+
+        logger.debug('authenticating component')
+
         owner.send(Node(NS_COMPONENT_ACCEPT + " handshake",
                         payload=[sha.new(owner.Dispatcher.Stream._document_attrs["id"] + self.password).hexdigest()]))
         owner.RegisterHandler("handshake", self.handshakeHandler, xmlns=NS_COMPONENT_ACCEPT)
+
         while not self.handshake:
-            self.DEBUG("waiting on handshake", "notify")
+            logger.info('waiting on handshake')
+            # self.DEBUG("waiting on handshake", "notify")
             owner.Process(1)
+
         owner._registered_name = self.user
+
         if self.handshake + 1:
             return "ok"
 
@@ -123,6 +135,9 @@ class NonSASL(PlugIn):
         """
         Handler for registering in dispatcher for accepting transport authentication.
         """
+
+        logger.debug('handshake handler')
+
         if stanza.getName() == "handshake":
             self.handshake = 1
         else:
@@ -156,6 +171,7 @@ class SASL(PlugIn):
         and will beeither "success" or "failure". Note that successfull
         auth will take at least two Dispatcher.Process() calls.
         """
+        logger.debug('Auth auth')
         if self.startsasl:
             pass
         elif self._owner.Dispatcher.Stream.features:
@@ -193,7 +209,7 @@ class SASL(PlugIn):
         self._owner.RegisterHandler("challenge", self.SASLHandler, xmlns=NS_SASL)
         self._owner.RegisterHandler("failure", self.SASLHandler, xmlns=NS_SASL)
         self._owner.RegisterHandler("success", self.SASLHandler, xmlns=NS_SASL)
-        if "ANONYMOUS" in mecs and self.username == None:
+        if "ANONYMOUS" in mecs and self.username is not None:
             node = Node("auth", attrs={"xmlns": NS_SASL, "mechanism": "ANONYMOUS"})
         elif "DIGEST-MD5" in mecs:
             node = Node("auth", attrs={"xmlns": NS_SASL, "mechanism": "DIGEST-MD5"})
@@ -242,15 +258,12 @@ class SASL(PlugIn):
                 value = value[1:-1]
             chal[key] = value
         if chal.has_key("qop") and "auth" in [x.strip() for x in chal["qop"].split(",")]:
-            resp = {}
-            resp["username"] = self.username
-            resp["realm"] = self._owner.Server
-            resp["nonce"] = chal["nonce"]
+            resp = {"username": self.username, "realm": self._owner.Server, "nonce": chal["nonce"]}
             cnonce = ""
             for i in range(7):
                 cnonce += hex(int(_random() * 65536 * 4096))[2:]
             resp["cnonce"] = cnonce
-            resp["nc"] = ("00000001")
+            resp["nc"] = "00000001"
             resp["qop"] = "auth"
             resp["digest-uri"] = "xmpp/" + self._owner.Server
             A1 = _join([md5_digest(_join([resp["username"], resp["realm"], self.password])), resp["nonce"], resp["cnonce"]])
@@ -411,7 +424,7 @@ class ComponentBind(PlugIn):
         else:
             xmlns = None
         self.bindresponse = None
-        ttl = dispatcher.DefaultTimeout
+        ttl = dispatcher.TIMEOUT
         self._owner.RegisterHandler("bind", self.BindHandler, xmlns=xmlns)
         self._owner.send(Protocol("bind", attrs={"name": domain}, xmlns=NS_COMPONENT_1))
         while self.bindresponse is None and self._owner.Process(1) and ttl > 0:

@@ -332,28 +332,28 @@ def isResultNode(node):
     """
     Returns true if the node is a positive reply.
     """
-    return (node and node.getType() == "result")
+    return node and node.getType() == "result"
 
 
 def isGetNode(node):
     """
     Returns true if the node is a positive reply.
     """
-    return (node and node.getType() == "get")
+    return node and node.getType() == "get"
 
 
 def isSetNode(node):
     """
     Returns true if the node is a positive reply.
     """
-    return (node and node.getType() == "set")
+    return node and node.getType() == "set"
 
 
 def isErrorNode(node):
     """
     Returns true if the node is a negative reply.
     """
-    return (node and node.getType() == "error")
+    return node and node.getType() == "error"
 
 
 class NodeProcessed(Exception):

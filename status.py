@@ -26,9 +26,11 @@ def update_friend_status(jid, friend_uid, status=None, friend_nickname=None, rea
     # updating friend list
     # it must be atomic in ideal implementation
     friends = realtime.get_friends(jid)
-    friends[friend_uid]['online'] = status is None
+    friends[friend_uid]['online'] = status == 'online'
     realtime.set_friends(jid, friends)
 
+    if status == 'online':
+        status = None
     # generating stanza
     presence = Presence(jid, status, frm=get_friend_jid(friend_uid), status=reason)
 

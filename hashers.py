@@ -1,4 +1,4 @@
-__author__ = 'ernado'
+from __future__ import unicode_literals
 
 from hashlib import sha1
 import string

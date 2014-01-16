@@ -1,6 +1,5 @@
 import os
 import time
-from writer import dump_to_file
 
 __author__ = 'ernado'
 
@@ -14,7 +13,7 @@ def get_pid(pid):
     if os.path.exists(pid):
         old_pid = open(pid).read()
         if old_pid:
-            logger.info("Killing old transport instance")
+            logger.info("killing old transport instance")
             old_pid = int(old_pid)
             if current_pid != old_pid:
                 try:
@@ -25,4 +24,5 @@ def get_pid(pid):
                     logger.debug('OS error %s' % os_error)
 
                 logger.info("%d killed" % old_pid)
-    dump_to_file(pid, str(current_pid))
+    # dump_to_file(pid, str(current_pid))
+    logger.warning('already exists')

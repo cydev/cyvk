@@ -30,9 +30,9 @@ def unescape(data):
                 else:
                     Char, c06 = co[1:], 10
                 try:
-                    Numb = int(Char, c06)
-                    assert (-1 < Numb < 65535)
-                    Char = unichr(Numb)
+                    n = int(Char, c06)
+                    assert (-1 < n < 65535)
+                    Char = unichr(n)
                 except:
                     Char = edefs.get(Char, "&%s;" % co)
             else:

@@ -1,5 +1,6 @@
 # coding=utf-8
-import messaging
+from __future__ import unicode_literals
+
 from messaging import send_typing_status
 
 __author__ = 'ernado'
@@ -40,7 +41,7 @@ def process_data(jid, data):
         friend_id = data[1]
         if friend_id < 0:
             friend_id = -friend_id
-        status.update_friend_status(jid, friend_id, status=None)
+        status.update_friend_status(jid, friend_id, status='online')
         return
 
     if code == FRIEND_OFFLINE:

@@ -1,8 +1,10 @@
+from __future__ import unicode_literals
+
 from config import TRANSPORT_ID
 
 __author__ = 'ernado'
 
-from hashers import get_hash
+# from hashers import get_hash
 # def jid_from_uid(t_id):
 #     if not is_number(t_id) and "@" in t_id:
 #         t_id = t_id.split("@")[0]
@@ -24,7 +26,7 @@ def get_friend_jid(friend_uid):
 
     friend_uid = int(friend_uid)
 
-    hash_jid = u'%s@%s' % (friend_uid, TRANSPORT_ID)
+    hash_jid = '%s@%s' % (friend_uid, TRANSPORT_ID)
 
     return hash_jid
 

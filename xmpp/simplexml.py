@@ -705,7 +705,7 @@ class NodeBuilder:
         """
         Return True if at least one end tag was seen (at level).
         """
-        return self.__depth <= level and self.__max_depth > level
+        return self.__depth <= level < self.__max_depth
 
     def _inc_depth(self):
         self.__last_depth = self.__depth

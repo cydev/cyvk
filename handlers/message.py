@@ -2,6 +2,8 @@
 # This file is a part of VK4XMPP transport
 # © simpleApps, 2013.
 
+from __future__ import unicode_literals
+
 import logging
 
 import xmpp as xmpp
@@ -78,6 +80,10 @@ class MessageHandler(Handler):
                     captcha_accept(args, jid_to, jid_from_str)
                     answer = get_answer(stanza, jid_from, jid_to)
                 # TODO: evaluate and others
+        if jid_from == TRANSPORT_ID:
+            # logger.debug('sending message from transport to %s' % jid_to)
+            # user_api.send_message(jid_to_str, body, jid_from_str)
+            logger.error('not implemented - messages to watcher')
         else:
             uid = unicode(friends.get_friend_uid(jid_to.getNode()))
             logger.debug('message to user (%s->%s)' % (jid, uid))

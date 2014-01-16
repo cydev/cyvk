@@ -56,7 +56,7 @@ class CommonClient:
     Base for Client and Component classes.
     """
 
-    def __init__(self, server, port=5222, debug=["always", "nodebuilder"]):
+    def __init__(self, server, port=5222, debug=None):
         """
         Caches server name and (optionally) port to connect to. "debug" parameter specifies
         the debug IDs that will go into debug output. You can either specifiy an "include"
@@ -64,6 +64,7 @@ class CommonClient:
         Full list: ["nodebuilder", "dispatcher", "gen_auth", "SASL_auth", "bind", "socket",
         "CONNECTproxy", "TLS", "roster", "browser", "ibb"].
         """
+        if not debug: debug = ["always", "nodebuilder"]
         if isinstance(self, Client):
             self.Namespace, self.DBG = "jabber:client", DBG_CLIENT
         elif isinstance(self, Component):
@@ -117,10 +118,11 @@ class CommonClient:
         """
         raise IOError("Disconnected!")
 
-    def event(self, eventName, args={}):
+    def event(self, eventName, args=None):
         """
         Default event handler. To be overriden.
         """
+        if not args: args = {}
         print("Event: %s-%s" % (eventName, args))
 
     def isConnected(self):
@@ -210,7 +212,7 @@ class Client(CommonClient):
         Example: connect(("192.168.5.5", 5222), {"host": "proxy.my.net", "port": 8080, "user": "me", "password": "secret"})
         Returns "" or "tcp" or "tls", depending on the result.
         """
-        if not CommonClient.connect(self, server, proxy, secure, use_srv) or secure != None and not secure:
+        if not CommonClient.connect(self, server, proxy, secure, use_srv) or secure is not None and not secure:
             return self.connected
         transports.TLS().PlugIn(self)
         if not hasattr(self, "Dispatcher"):
@@ -225,7 +227,7 @@ class Client(CommonClient):
         while not self.TLS.starttls and self.Process(1):
             pass
         if not hasattr(self, "TLS") or self.TLS.starttls != "success":
-            self.event("tls_failed");
+            self.event("tls_failed")
             return self.connected
         self.connected = "tls"
         return self.connected
@@ -295,8 +297,7 @@ class Component(CommonClient):
     Component class. The only difference from CommonClient is ability to perform component authentication.
     """
 
-    def __init__(self, transport, port=5347, typ=None, debug=["always", "nodebuilder"], domains=None, sasl=0, bind=0,
-                 route=0, xcp=0):
+    def __init__(self, transport, port=5347, typ=None, debug=None, domains=None, sasl=0, bind=0, route=0, xcp=0):
         """
         Init function for Components.
         As components use a different auth mechanism which includes the namespace of the component.
@@ -309,6 +310,7 @@ class Component(CommonClient):
         in the "domains" argument.
         For jabberd2 servers you should set typ="jabberd2" argument.
         """
+        if not debug: debug = ["always", "nodebuilder"]
         CommonClient.__init__(self, transport, port=port, debug=debug)
         self.typ = typ
         self.sasl = sasl
@@ -330,7 +332,7 @@ class Component(CommonClient):
             self.Namespace = auth.NS_COMPONENT_1
             self.Server = server[0]
         CommonClient.connect(self, server=server, proxy=proxy)
-        if self.connected and (self.typ == "jabberd2" or not self.typ and self.Dispatcher.Stream.features != None) and (
+        if self.connected and (self.typ == "jabberd2" or not self.typ and self.Dispatcher.Stream.features is not None) and (
         not self.xcp):
             self.defaultNamespace = auth.NS_CLIENT
             self.Dispatcher.RegisterNamespace(self.defaultNamespace)
@@ -347,7 +349,7 @@ class Component(CommonClient):
                 auth.ComponentBind(sasl).PlugIn(self)
                 while self.ComponentBind.bound is None:
                     self.Process(1)
-                if (not self.ComponentBind.Bind(domain)):
+                if not self.ComponentBind.Bind(domain):
                     self.ComponentBind.PlugOut()
                     return None
                 self.ComponentBind.PlugOut()

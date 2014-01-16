@@ -186,7 +186,7 @@ def _attempt_to_add_client(jid, _):
 
     try:
         user_api.connect(jid, token)
-        user_api.initialize(jid, send=True)
+        user_api.initialize(jid, send_prescense=True)
         user_api.add_client(jid)
         user_api.set_online(jid)
     except AuthenticationException as e:

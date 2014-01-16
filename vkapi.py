@@ -5,7 +5,6 @@ import urllib2
 
 import database
 from friends import get_friend_jid
-import messaging
 from messaging import send
 import webtools
 from request_processor import RequestProcessor
@@ -389,8 +388,8 @@ def method_wrapped(jid, m, m_args=None):
     result = {}
 
     # TODO: Captcha too
-    if not realtime.is_user_online(jid):
-        return result
+    # if not realtime.is_user_online(jid):
+    #     return result
 
     try:
         result = method(m, jid, m_args)
@@ -412,7 +411,8 @@ def method_wrapped(jid, m, m_args=None):
                 pass
         elif vk_e.message == "User authorization failed: invalid access_token.":
             send(jid, vk_e.message + " Please, register again", TRANSPORT_ID)
-        realtime.set_offline(jid)
+        # realtime.set_offline(jid)
+        realtime.remove_online_user(jid)
 
         logger.error("VKLogin: apiError %s for user %s" % (vk_e.message, jid))
     return result

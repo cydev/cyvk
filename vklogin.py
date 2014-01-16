@@ -1,8 +1,10 @@
+from __future__ import unicode_literals
+
 import logging
 
 from friends import get_friend_jid
 import vkapi as api
-from messaging.messaging import send_message, escape_name
+import messaging
 from config import TRANSPORT_ID
 # from stext import _ as _
 import database
@@ -91,8 +93,8 @@ class VKLogin(object):
         # if self.engine.captcha or not self.is_online:
         #     return result
 
-        if not database.is_user_online(jid):
-            return result
+        # if not database.is_user_online(jid):
+        #     return result
 
         try:
             result = method(m, jid, m_args)
@@ -102,7 +104,7 @@ class VKLogin(object):
             raise NotImplementedError('Captcha')
         except NotAllowed:
             # if self.engine.lastMethod[0] == "messages.send":
-            send_message(gateway.component, jid, "You're not allowed to perform this action.",
+            messaging.send(jid, "You're not allowed to perform this action.",
                     get_friend_jid(m_args.get("user_id", TRANSPORT_ID)))
         except APIError as vk_e:
             if vk_e.message == "User authorization failed: user revoke access for this token.":
@@ -113,8 +115,8 @@ class VKLogin(object):
                 except KeyError:
                     pass
             elif vk_e.message == "User authorization failed: invalid access_token.":
-                send_message(gateway.component, jid, vk_e.message + " Please, register again"), TRANSPORT_ID
-            database.set_offline(jid)
+                messaging.send(jid, vk_e.message + " Please, register again", TRANSPORT_ID)
+            # database.set_offline(jid)
 
             logger.error("VKLogin: apiError %s for user %s" % (vk_e.message, jid))
         return result
@@ -124,7 +126,8 @@ class VKLogin(object):
         m = "account.setOffline"
         # TODO: async
         method(m, self.jid)
-        database.set_offline(self.jid)
+        database.remove_online_user(self.jid)
+        # database.set_offline(self.jid)
 
     def get_token(self):
         return self.engine.token

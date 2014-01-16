@@ -1,5 +1,4 @@
 import os
-import pickle
 from config import DB_FILE
 from itypes import Database
 from realtime import logger, remove_online_user, r, _users_key, set_roster_flag, set_last_message, set_friends, _get_token_key

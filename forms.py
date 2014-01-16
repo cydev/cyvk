@@ -3,8 +3,52 @@ __author__ = 'ernado'
 from xmpp import DataForm, Node
 from config import URL_ACCEPT_APP
 
+import sys
+
+try:
+    # not using lxml for pypy
+    if "__pypy__" in sys.builtin_module_names:
+        raise ImportError
+
+    from lxml import etree
+except ImportError:
+    import xml.etree.ElementTree as etree
+
+# 
+# <x xmlns="jabber:x:data">
+# <instructions>Type data in fields</instructions>
+# <field var="link" type="text-single" label="Autorization page">
+#   <value>https://oauth.vk.com/authorize?client_id=3789129&amp;scope=69634&amp;redirect_uri=http://oauth.vk.com/blank.html&amp;display=page&amp;response_type=token</value>
+#   <desc>If you won&apos;t get access-token automatically, please, follow authorization link and authorize app,
+#   and then paste url to password field.
+# </desc></field>
+#
+# <field var="password" type="text-single" label="Access-token">
+#   <desc>access-token or url</desc>
+# </field></x>
+#
+
+def get_form_lxml():
+    x = etree.Element('html', xmlns='jabber:x:data')
+    r = etree.SubElement(x, 'instructions')
+    r.text = 'Type data in fields'
+
+    link_field = etree.SubElement(x, 'field', var='link', type='text-single', label='Autorization page')
+    description = etree.SubElement(link_field, 'desc')
+    description.text = 'If you won\'t get access-token automatically, please, ' \
+                       'follow authorization link and authorize app, and then paste url to password field.'
+    link_value = etree.SubElement(link_field, 'value')
+    link_value.text = URL_ACCEPT_APP
+
+    password_field = etree.SubElement(x, 'field', var='token', type='text-single', label='token')
+    description = etree.SubElement(password_field, 'desc')
+    description.text = 'access token from url'
+
+    return etree.tostring(x)
 
 def get_form():
+    # TODO: use lxml
+
     form = DataForm()
     form.addChild(node=Node("instructions")).setData("Type data in fields")
     link = form.setField("link", URL_ACCEPT_APP)
@@ -23,4 +67,4 @@ def get_form():
     # password.setType("text-private")
     password.setDesc("access-token or url")
 
-    return form
+    return str(form)
