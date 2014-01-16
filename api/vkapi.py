@@ -2,14 +2,14 @@ from __future__ import unicode_literals
 import logging
 import json
 import urllib2
+from api import webtools
 
 import database
 from friends import get_friend_jid
 from messaging import send
-import webtools
-from request_processor import RequestProcessor
-import realtime
+from api.request_processor import RequestProcessor
 from errors import AuthenticationException, CaptchaNeeded, NotAllowed, APIError
+from parallel import realtime
 
 logger = logging.getLogger("vk4xmpp")
 

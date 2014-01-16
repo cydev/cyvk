@@ -30,7 +30,7 @@ Also exception 'error' is defined to allow capture of this module specific excep
 import sys
 import socket
 
-from base64 import encodestring
+# from base64 import encodestring
 from select import select
 from xmpp.simplexml import ustr
 from xmpp.plugin import PlugIn
@@ -256,82 +256,82 @@ class TCPSocket(PlugIn):
         self.DEBUG("Socket operation failed.", "error")
 
 
-class HTTPPROXYsocket(TCPSocket):
-    """
-    HTTP (CONNECT) proxy connection class. Uses TCPsocket as the base class
-    redefines only connect method. Allows to use HTTP proxies like squid with
-    (optionally) simple authentication (using login and password).
-    """
-
-    def __init__(self, proxy, server, use_srv=True):
-        """
-        Caches proxy and target addresses.
-        'proxy' argument is a dictionary with mandatory keys 'host' and 'port' (proxy address)
-        and optional keys 'user' and 'password' to use for authentication.
-        'server' argument is a tuple of host and port - just like TCPsocket uses.
-        """
-        TCPSocket.__init__(self, server, use_srv)
-        self.DBG_LINE = DBG_CONNECT_PROXY
-        self._proxy = proxy
-
-    def plugin(self, owner):
-        """
-        Starts connection. Used interally. Returns non-empty string on success.
-        """
-        owner.debug_flags.append(DBG_CONNECT_PROXY)
-        return TCPSocket.plugin(self, owner)
-
-    def connect(self, dupe=None):
-        """
-        Starts connection. Connects to proxy, supplies login and password to it
-        (if were specified while creating instance). Instructs proxy to make
-        connection to the target server. Returns non-empty sting on success.
-        """
-        if not TCPSocket.connect(self, (self._proxy["host"], self._proxy["port"])):
-            return None
-        self.DEBUG("Proxy server contacted, performing authentification.", "start")
-        connector = [
-            "CONNECT %s:%s HTTP/1.0" % self._server,
-            "Proxy-Connection: Keep-Alive",
-            "Pragma: no-cache",
-            "Host: %s:%s" % self._server,
-            "User-Agent: HTTPPROXYsocket/v0.1"
-        ]
-        if "user" in self._proxy and "password" in self._proxy:
-            credentials = "%s:%s" % (self._proxy["user"], self._proxy["password"])
-            credentials = encodestring(credentials).strip()
-            connector.append("Proxy-Authorization: Basic " + credentials)
-        connector.append("\r\n")
-        self.send("\r\n".join(connector))
-        try:
-            reply = self.receive().replace("\r", "")
-        except IOError:
-            self.DEBUG("Proxy suddenly disconnected.", "error")
-            self._owner.disconnected()
-            return None
-        try:
-            proto, code, desc = reply.split("\n")[0].split(" ", 2)
-        except Exception:
-            raise Error(None, 'Invalid proxy reply')
-        if code != "200":
-            self.DEBUG("Invalid proxy reply: %s %s %s" % (proto, code, desc), "error")
-            self._owner.disconnected()
-            return None
-        while reply.find("\n\n") == -1:
-            try:
-                reply += self.receive().replace("\r", "")
-            except IOError:
-                self.DEBUG("Proxy suddenly disconnected.", "error")
-                self._owner.disconnected()
-                return None
-        self.DEBUG("Authentification successfull. Jabber server contacted.", "ok")
-        return "ok"
-
-    # def DEBUG(self, text, severity):
-    #     """
-    #     Overwrites DEBUG tag to allow debug output be presented as 'CONNECTproxy'.
-    #     """
-    #     return self._owner.DEBUG(DBG_CONNECT_PROXY, text, severity)
+# class HTTPPROXYsocket(TCPSocket):
+#     """
+#     HTTP (CONNECT) proxy connection class. Uses TCPsocket as the base class
+#     redefines only connect method. Allows to use HTTP proxies like squid with
+#     (optionally) simple authentication (using login and password).
+#     """
+#
+#     def __init__(self, proxy, server, use_srv=True):
+#         """
+#         Caches proxy and target addresses.
+#         'proxy' argument is a dictionary with mandatory keys 'host' and 'port' (proxy address)
+#         and optional keys 'user' and 'password' to use for authentication.
+#         'server' argument is a tuple of host and port - just like TCPsocket uses.
+#         """
+#         TCPSocket.__init__(self, server, use_srv)
+#         self.DBG_LINE = DBG_CONNECT_PROXY
+#         self._proxy = proxy
+#
+#     def plugin(self, owner):
+#         """
+#         Starts connection. Used interally. Returns non-empty string on success.
+#         """
+#         owner.debug_flags.append(DBG_CONNECT_PROXY)
+#         return TCPSocket.plugin(self, owner)
+#
+#     def connect(self, dupe=None):
+#         """
+#         Starts connection. Connects to proxy, supplies login and password to it
+#         (if were specified while creating instance). Instructs proxy to make
+#         connection to the target server. Returns non-empty sting on success.
+#         """
+#         if not TCPSocket.connect(self, (self._proxy["host"], self._proxy["port"])):
+#             return None
+#         self.DEBUG("Proxy server contacted, performing authentification.", "start")
+#         connector = [
+#             "CONNECT %s:%s HTTP/1.0" % self._server,
+#             "Proxy-Connection: Keep-Alive",
+#             "Pragma: no-cache",
+#             "Host: %s:%s" % self._server,
+#             "User-Agent: HTTPPROXYsocket/v0.1"
+#         ]
+#         if "user" in self._proxy and "password" in self._proxy:
+#             credentials = "%s:%s" % (self._proxy["user"], self._proxy["password"])
+#             credentials = encodestring(credentials).strip()
+#             connector.append("Proxy-Authorization: Basic " + credentials)
+#         connector.append("\r\n")
+#         self.send("\r\n".join(connector))
+#         try:
+#             reply = self.receive().replace("\r", "")
+#         except IOError:
+#             self.DEBUG("Proxy suddenly disconnected.", "error")
+#             self._owner.disconnected()
+#             return None
+#         try:
+#             proto, code, desc = reply.split("\n")[0].split(" ", 2)
+#         except Exception:
+#             raise Error(None, 'Invalid proxy reply')
+#         if code != "200":
+#             self.DEBUG("Invalid proxy reply: %s %s %s" % (proto, code, desc), "error")
+#             self._owner.disconnected()
+#             return None
+#         while reply.find("\n\n") == -1:
+#             try:
+#                 reply += self.receive().replace("\r", "")
+#             except IOError:
+#                 self.DEBUG("Proxy suddenly disconnected.", "error")
+#                 self._owner.disconnected()
+#                 return None
+#         self.DEBUG("Authentification successfull. Jabber server contacted.", "ok")
+#         return "ok"
+#
+#     # def DEBUG(self, text, severity):
+#     #     """
+#     #     Overwrites DEBUG tag to allow debug output be presented as 'CONNECTproxy'.
+#     #     """
+#     #     return self._owner.DEBUG(DBG_CONNECT_PROXY, text, severity)
 
 
 class TLS(PlugIn):
@@ -348,7 +348,7 @@ class TLS(PlugIn):
         if hasattr(owner, "TLS"):
             return None
         PlugIn.PlugIn(self, owner)
-        DBG_LINE = "TLS"
+        # DBG_LINE = "TLS"
         if now:
             return self._startSSL()
         if self._owner.Dispatcher.Stream.features:
@@ -358,6 +358,9 @@ class TLS(PlugIn):
                 pass
         else:
             self._owner.RegisterHandlerOnce("features", self.FeaturesHandler, xmlns=NS_STREAMS)
+
+        self.starttls = None
+        self._tcpsock = None
         self.starttls = None
 
     def plugout(self, now=0):
@@ -390,19 +393,20 @@ class TLS(PlugIn):
         return self._tcpsock._seen_data or select([self._tcpsock._sock], [], [], timeout)[0]
 
     def _startSSL(self):
-        tcpsock = self._owner.Connection
-        tcpsock._sslObj = socket.ssl(tcpsock._sock, None, None)
-        tcpsock._sslIssuer = tcpsock._sslObj.issuer()
-        tcpsock._sslServer = tcpsock._sslObj.server()
-        tcpsock._recv = tcpsock._sslObj.read
-        tcpsock._send = tcpsock._sslObj.write
-        tcpsock._seen_data = 1
-        self._tcpsock = tcpsock
-        tcpsock.pending_data = self.pending_data
-        tcpsock._sock.setblocking(0)
+        tcp_socket = self._owner.Connection
+        # TODO: fix deprecation
+        tcp_socket._sslObj = socket.ssl(tcp_socket._sock, None, None)
+        tcp_socket._sslIssuer = tcp_socket._sslObj.issuer()
+        tcp_socket._sslServer = tcp_socket._sslObj.server()
+        tcp_socket._recv = tcp_socket._sslObj.read
+        tcp_socket._send = tcp_socket._sslObj.write
+        tcp_socket._seen_data = 1
+        self._tcpsock = tcp_socket
+        tcp_socket.pending_data = self.pending_data
+        tcp_socket._sock.setblocking(0)
         self.starttls = "success"
 
-    def StartTLSHandler(self, conn, starttls):
+    def StartTLSHandler(self, _, starttls):
         """
         Handle server reply if TLS is allowed to process. Behaves accordingly.
         Used internally.

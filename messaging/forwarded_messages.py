@@ -5,8 +5,8 @@ import logging
 
 from messaging.attachments import parse_attachments
 from messaging.processing import escape, sorting
-from webtools import unescape
-import user as user_api
+from transport import user as user_api
+from api.webtools import unescape
 from config import MAXIMUM_FORWARD_DEPTH
 
 

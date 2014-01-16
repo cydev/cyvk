@@ -5,21 +5,21 @@ import logging
 import threading
 import json
 import urllib2
+from api import webtools as webtools
 
 from config import TRANSPORT_ID, USE_LAST_MESSAGE_ID, IDENTIFIER, POLLING_WAIT
 from database import set_token
 from friends import get_friend_jid
 from messaging import send
-import webtools as webtools
 
 import messaging.message
-import realtime
+from parallel import realtime, updates
+from transport.stanza_queue import push
 
 import xmpp as xmpp
 from errors import CaptchaNeeded, TokenError, AuthenticationException
 from async_api import tail_call_optimized
-import updates
-from vkapi import method, is_application_user, mark_messages_as_read, get_messages
+from api.vkapi import method, is_application_user, mark_messages_as_read, get_messages
 
 import database
 
@@ -62,7 +62,7 @@ def send_presence(target, jid_from, presence_type=None, nick=None, reason=None):
     if nick:
         presence.setTag("nick", namespace=xmpp.NS_NICK)
         presence.setTagData("nick", nick)
-    realtime.queue_stanza(presence)
+    push(presence)
     # gateway.send(presence)
 
 

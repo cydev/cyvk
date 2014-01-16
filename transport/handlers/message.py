@@ -5,16 +5,16 @@
 from __future__ import unicode_literals
 
 import logging
+from parallel import realtime
+from transport import user as user_api
 
 import xmpp as xmpp
-import user as user_api
-from sender import stanza_send
-from handler import Handler
+from transport.handlers.handler import Handler
 from hashers import get_hash
 from config import TRANSPORT_ID
-import realtime
 import messaging
-from captcha import captcha_accept
+from transport.captcha import captcha_accept
+from transport.stanza_queue import push
 import friends
 
 
@@ -90,7 +90,7 @@ class MessageHandler(Handler):
             if user_api.send_message(jid, body, uid):
                 answer = get_answer(stanza, jid_from, jid_to)
         if answer:
-            stanza_send(transport, answer)
+            push(answer)
 
         # TODO: Group handlers
 

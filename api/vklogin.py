@@ -1,14 +1,14 @@
 from __future__ import unicode_literals
 
 import logging
+from api import vkapi as api
 
 from friends import get_friend_jid
-import vkapi as api
 import messaging
 from config import TRANSPORT_ID
 # from stext import _ as _
 import database
-from vkapi import method, method_wrapped
+from api.vkapi import method, method_wrapped
 from errors import AuthenticationException, APIError, TokenError, CaptchaNeeded, NotAllowed
 
 

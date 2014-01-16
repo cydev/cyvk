@@ -2,6 +2,8 @@
 from __future__ import unicode_literals
 
 from messaging import send_typing_status
+from parallel import status
+import transport.user as user_api
 
 __author__ = 'ernado'
 
@@ -26,9 +28,7 @@ FRIEND_OFFLINE = 9
 FRIEND_TYPING_CHAT = 61
 FRIEND_TYPING_GROUP = 62
 
-import status
 import logging
-import user as user_api
 
 logger = logging.getLogger("vk4xmpp")
 

@@ -1,8 +1,10 @@
 import time
-from config import WATCHER_LIST, TRANSPORT_ID
-from realtime import queue_stanza
-from xmpp import Message
 import logging
+
+from config import WATCHER_LIST, TRANSPORT_ID
+from transport.stanza_queue import push
+from xmpp import Message
+
 
 logger = logging.getLogger("vk4xmpp")
 
@@ -20,7 +22,7 @@ def send(jid_to, body, jid_from, timestamp=None):
         timestamp = time.gmtime(timestamp)
         message.setTimestamp(time.strftime("%Y%m%dT%H:%M:%S", timestamp))
 
-    queue_stanza(message)
+    push(message)
 
 
 def send_typing_status(jid_to, jid_from):
@@ -32,7 +34,7 @@ def send_typing_status(jid_to, jid_from):
     message = Message(jid_to, typ='chat', frm=jid_from)
     message.setTag('composing', namespace='http://jabber.org/protocol/chatstates')
 
-    queue_stanza(message)
+    push(message)
 
 
 def send_to_watcher(text):

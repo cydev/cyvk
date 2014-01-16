@@ -1,30 +1,28 @@
 #!/usr/bin/env python2
 # coding: utf-8
 from __future__ import unicode_literals
-
 import signal
-import log
 import os
 import threading
 from multiprocessing import Process
 import time
 
+import log
 from errors import AuthenticationException, all_errors, ConnectionError
 from friends import get_friend_jid
 from database import initialize_database
-import realtime
 from config import (PID_FILE, DATABASE_FILE,
                     HOST, SERVER, PORT, TRANSPORT_ID,
                     DEBUG_XMPPPY, PASSWORD)
-from realtime import enqueue_stanza
+from parallel import realtime
+from transport import user as user_api, handlers
+from transport.stanza_queue import enqueue
 
 
 logger = log.get_logger()
 
 import xmpp
-import handlers
 from daemon import get_pid
-import user as user_api
 
 
 def get_disconnect_handler(c):
@@ -151,7 +149,7 @@ def get_transport_iteration(c):
 def get_sender_iteration(c):
 
     def stanza_sender_iteration():
-        stanza = enqueue_stanza()
+        stanza = enqueue()
         # noinspection PyUnresolvedReferences
         c.send(stanza)
 

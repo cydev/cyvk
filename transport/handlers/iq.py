@@ -8,22 +8,23 @@ import urllib
 import config
 from config import WHITE_LIST, IDENTIFIER, TRANSPORT_ID, LOGO_URL, TRANSPORT_FEATURES
 from friends import get_friend_uid
-from realtime import queue_stanza
+from parallel import realtime
+from transport import forms
+from transport.stanza_queue import push
+import transport.user as user_api
+
 from xmpp.protocol import (NodeProcessed, NS_REGISTER, NS_CAPTCHA, NS_GATEWAY,
                                    NS_DISCO_ITEMS, NS_DISCO_INFO, NS_VCARD, NS_PING, ERR_FEATURE_NOT_IMPLEMENTED,
                                    Error, NS_DATA, ERR_BAD_REQUEST, Node, ERR_REGISTRATION_REQUIRED,)
 
 import xmpp.simplexml
 
-from sender import stanza_send
-from .handler import Handler
+# from sender import stanza_send
+from .transport.handlers.handler import Handler
 from messaging import send_to_watcher
-from captcha import captcha_accept
-import user as user_api
+from transport.captcha import captcha_accept
 from errors import AuthenticationException
 import database
-import forms
-import realtime
 
 
 logger = logging.getLogger("vk4xmpp")
@@ -131,7 +132,7 @@ class IQHandler(Handler):
         jid_to = stanza.getTo()
 
         if WHITE_LIST and jid_from and jid_from.getDomain() not in WHITE_LIST:
-            queue_stanza(generate_error(stanza, ERR_BAD_REQUEST, "You are not in white list"))
+            push(generate_error(stanza, ERR_BAD_REQUEST, "You are not in white list"))
             raise NodeProcessed()
 
         from_is_client = realtime.is_client(jid_from_str)
@@ -162,7 +163,7 @@ class IQHandler(Handler):
                 self.iq_vcard_handler(stanza)
             elif tag and tag.getNamespace() == NS_PING:
                 if jid_to == config.TRANSPORT_ID:
-                    queue_stanza(stanza.buildReply("result"))
+                    push(stanza.buildReply("result"))
 
         raise NodeProcessed()
 
@@ -190,9 +191,9 @@ class IQHandler(Handler):
 
         try:
             handler = {'get': _send_form, 'set': _process_form}[stanza.getType()]
-            queue_stanza(handler(stanza, jid))
+            push(handler(stanza, jid))
         except (NotImplementedError, KeyError) as e:
-            queue_stanza(generate_error(stanza, 0, "Requested feature not implemented: %s" % e))
+            push(generate_error(stanza, 0, "Requested feature not implemented: %s" % e))
 
 
     # def calc_stats(self):
@@ -285,7 +286,7 @@ class IQHandler(Handler):
                 result.setQueryPayload(query)
             elif iq.ns == NS_DISCO_ITEMS:
                 result.setQueryPayload(query)
-            queue_stanza(result)
+            push(result)
         raise NodeProcessed()
 
     @staticmethod
@@ -316,7 +317,7 @@ class IQHandler(Handler):
                     result.setQueryPayload([x_node])
             else:
                 raise NodeProcessed()
-            stanza_send(cl, result)
+            push(result)
 
 
     @staticmethod
@@ -379,7 +380,7 @@ class IQHandler(Handler):
                 result = generate_error(stanza, ERR_REGISTRATION_REQUIRED, 'You are not registered for this action')
         else:
             raise NodeProcessed()
-        queue_stanza(result)
+        push(result)
 
 
 def get_handler():

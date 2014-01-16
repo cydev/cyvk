@@ -6,14 +6,13 @@ import logging
 
 from config import TRANSPORT_ID
 from friends import get_friend_jid
-import messaging
 from messaging import send, send_to_watcher
-from realtime import queue_stanza
+from parallel import realtime
+from transport import user as user_api
+from transport.stanza_queue import push
 import xmpp as xmpp
 import database
-import realtime
-import user as user_api
-from handler import Handler
+from transport.handlers.handler import Handler
 from errors import AuthenticationException
 
 
@@ -88,7 +87,7 @@ def _unavailable(jid, presence):
 
     logger.warning('unavailable presence may be not implemented')
     user_api.send_out_presence(jid)
-    queue_stanza(xmpp.Presence(jid, "unavailable", frm=TRANSPORT_ID))
+    push(xmpp.Presence(jid, "unavailable", frm=TRANSPORT_ID))
     database.remove_online_user(jid)
 
 
@@ -104,10 +103,10 @@ def _subscribe(jid, presence):
     @return:
     """
     if presence.destination_id == TRANSPORT_ID:
-        queue_stanza(xmpp.Presence(presence.origin, "subscribed", frm=TRANSPORT_ID))
-        queue_stanza(xmpp.Presence(presence.origin, frm=TRANSPORT_ID))
+        push(xmpp.Presence(presence.origin, "subscribed", frm=TRANSPORT_ID))
+        push(xmpp.Presence(presence.origin, frm=TRANSPORT_ID))
     else:
-        queue_stanza(xmpp.Presence(presence.origin, "subscribed", frm=presence.destination_id))
+        push(xmpp.Presence(presence.origin, "subscribed", frm=presence.destination_id))
 
         client_friends = realtime.get_friends(jid)
 
@@ -124,7 +123,7 @@ def _subscribe(jid, presence):
         if client_friends[friend_id]['online']:
             return
 
-        queue_stanza(xmpp.Presence(presence.origin, frm=presence.origin))
+        push(xmpp.Presence(presence.origin, frm=presence.origin))
 
 
 @presence_handler_wrapper

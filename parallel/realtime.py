@@ -4,15 +4,11 @@ import logging
 import json
 import database
 
-try:
-    import cPickle as pickle
-except ImportError:
-    import pickle
+from transport.stanza_queue import push
+from transport.statuses import get_probe_stanza
 
 
-from config import TRANSPORT_ID, REDIS_PREFIX, REDIS_HOST, REDIS_PORT, USE_LAST_MESSAGE_ID, API_MAXIMUM_RATE, POLLING_WAIT
-import xmpp as xmpp
-from xmpp.protocol import Protocol as Stanza
+from config import REDIS_PREFIX, REDIS_HOST, REDIS_PORT, USE_LAST_MESSAGE_ID, API_MAXIMUM_RATE, POLLING_WAIT
 
 
 logger = logging.getLogger("vk4xmpp")
@@ -21,23 +17,15 @@ logger = logging.getLogger("vk4xmpp")
 r = redis.StrictRedis(REDIS_HOST, REDIS_PORT, )
 
 
-
-# def get_all_users():
-#     with Database(DB_FILE) as db:
-#         users = db("SELECT * FROM users").fetchall()
-#         return map(lambda user: user[0], users)
-
-
-
-
 def probe_users():
     logger.info('probing users')
 
     users = database.get_all_users()
 
     for user in users:
-        logger.debug('probing %s' % user[0])
-        queue_stanza(xmpp.Presence(user[0], "probe", frm=TRANSPORT_ID))
+        jid = user[0]
+        logger.debug('probing %s' % jid)
+        push(get_probe_stanza(jid))
 
 def _get_last_message_key(jid):
     return _get_user_attribute_key(jid, 'last_message')
@@ -318,31 +306,10 @@ def is_polling(jid):
     return result
 
 
-def queue_stanza(stanza):
-    """
-    Add stanza to sending queue
-    @type stanza: Stanza
-    @return:
-    """
-
-    if not isinstance(stanza, Stanza):
-        raise ValueError('expected stanza, got %s' % type(stanza))
-
-    # todo: serialization to json
-    pickled = pickle.dumps(stanza)
-
-    r.rpush(_get_stanza_queue_key(), pickled)
 
 
-def enqueue_stanza():
-    pickled =  r.brpop(_get_stanza_queue_key())[1]
 
-    stanza = pickle.loads(pickled)
 
-    if not isinstance(stanza, Stanza):
-        raise ValueError('expected stanza, deserialized %s' % type(stanza))
-
-    return stanza
 
 
 def set_processing(jid):
