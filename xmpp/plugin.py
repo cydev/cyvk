@@ -29,23 +29,37 @@ class PlugIn:
         self._exported_methods = []
         self._owner = None
         self.DBG_LINE = self.__class__.__name__.lower()
+        self._old_owners_methods = []
+
+    def plugin(self, owner):
+        raise NotImplementedError('plugin did not implemented plugin')
+
+    def plugout(self, owner=None):
+        raise NotImplementedError('plugin did not implemented plugin')
 
     def PlugIn(self, owner):
         """
-        Attach to main instance and register ourself and all our staff in it.
+        Attach to main instance and register plugin and all our staff in it.
         """
         self._owner = owner
+
         if self.DBG_LINE not in owner.debug_flags:
             owner.debug_flags.append(self.DBG_LINE)
+
         self.DEBUG("Plugging %s into %s" % (self, self._owner), "start")
+
         if owner.__dict__.has_key(self.__class__.__name__):
             return self.DEBUG("Plugging ignored: another instance already plugged.", "error")
+
         self._old_owners_methods = []
+
         for method in self._exported_methods:
             if owner.__dict__.has_key(method.__name__):
                 self._old_owners_methods.append(owner.__dict__[method.__name__])
             owner.__dict__[method.__name__] = method
+
         owner.__dict__[self.__class__.__name__] = self
+
         if self.__class__.__dict__.has_key("plugin"):
             return self.plugin(owner)
 
@@ -55,14 +69,20 @@ class PlugIn:
         """
         self.DEBUG("Plugging %s out of %s." % (self, self._owner), "stop")
         ret = None
+
         if self.__class__.__dict__.has_key("plugout"):
             ret = self.plugout()
+
         self._owner.debug_flags.remove(self.DBG_LINE)
+
         for method in self._exported_methods:
             del self._owner.__dict__[method.__name__]
+
         for method in self._old_owners_methods:
             self._owner.__dict__[method.__name__] = method
+
         del self._owner.__dict__[self.__class__.__name__]
+
         return ret
 
     def DEBUG(self, text, severity="info"):

@@ -21,12 +21,12 @@ Contains one tunable attribute: DefaultTimeout (25 seconds by default). It defin
 Dispatcher.SendAndWaitForResponce method will wait for reply stanza before giving up.
 """
 
-import simplexml
 import sys
-
-from plugin import PlugIn
-from protocol import *
 from xml.parsers.expat import ExpatError
+
+from xmpp.plugin import PlugIn
+from xmpp.protocol import *
+from xmpp import simplexml
 
 DefaultTimeout = 25
 ID = 0
@@ -63,7 +63,7 @@ class Dispatcher(PlugIn):
             self.send,
             self.SendAndCallForResponse,
             self.disconnect,
-            self.iter
+            # self.iter
         ]
 
     def dumpHandlers(self):
@@ -476,5 +476,6 @@ class Dispatcher(PlugIn):
         while self.Process(1):
             pass
 
-    iter = type(send)(Process.func_code, Process.func_globals, name="iter", argdefs=Process.func_defaults,
-                      closure=Process.func_closure)
+
+    # iter = type(send)(Process.func_code, Process.func_globals, name="iter", argdefs=Process.func_defaults,
+    #                   closure=Process.func_closure)

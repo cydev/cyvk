@@ -2,7 +2,7 @@ __author__ = 'ernado'
 
 import logging
 
-from library.xmpp.protocol import Presence, NS_NICK
+from xmpp.protocol import Presence, NS_NICK
 from friends import get_friend_jid
 import database
 

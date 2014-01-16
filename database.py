@@ -1,17 +1,15 @@
 import os
 import redis
 import time
-from library.itypes import Database
-
 import logging
-from config import DB_FILE, TRANSPORT_ID, REDIS_PREFIX, REDIS_HOST, REDIS_PORT, USE_LAST_MESSAGE_ID, API_MAXIMUM_RATE, POLLING_WAIT
-import library.xmpp as xmpp
-
 import pickle
-
-from library.xmpp.protocol import Protocol as Stanza
-
 import json
+
+from itypes import Database
+from config import DB_FILE, TRANSPORT_ID, REDIS_PREFIX, REDIS_HOST, REDIS_PORT, USE_LAST_MESSAGE_ID, API_MAXIMUM_RATE, POLLING_WAIT
+import xmpp as xmpp
+from xmpp.protocol import Protocol as Stanza
+
 
 logger = logging.getLogger("vk4xmpp")
 
@@ -41,15 +39,19 @@ def remove_user(jid):
 #         users = db("SELECT * FROM users").fetchall()
 #         return map(lambda user: user[0], users)
 
+def get_all_users():
+    with Database(DB_FILE) as db:
+        return db("SELECT * FROM users").fetchall()
+
 
 def probe_users():
     logger.info('DB: Initializing users')
-    with Database(DB_FILE) as db:
-        users = db("SELECT * FROM users").fetchall()
 
-        for user in users:
-            logger.debug('DB: user %s initialized' % user[0])
-            queue_stanza(xmpp.Presence(user[0], "probe", frm=TRANSPORT_ID))
+    users = get_all_users()
+
+    for user in users:
+        logger.debug('DB: user %s initialized' % user[0])
+        queue_stanza(xmpp.Presence(user[0], "probe", frm=TRANSPORT_ID))
 
 def _get_last_message_key(jid):
     return _get_user_attribute_key(jid, 'last_message')
@@ -79,20 +81,35 @@ def is_client(jid):
 def is_user(jid):
     return r.sismember(users_set_key, jid)
 
-def burst_protection():
+
+def _last_method_time_key(jid):
+    return _get_user_attribute_key(jid, 'last_method_time')
+
+def get_last_method_time(jid):
+    try:
+        return float(r.get(_last_method_time_key(jid)))
+    except (TypeError, ValueError):
+        return 0
+
+def set_last_method_time_now(jid):
+    now = time.time()
+    r.set(_last_method_time_key(jid), now)
+
+
+def wait_for_api_call(jid):
     """
-    Waits until there is BURST_RATE seconds between api calls
+    Waits until there is API_MAXIMUM_RATE seconds between api calls
     """
 
     now = time.time()
-    last_time = float(r.get(burst_protection_key))
-
+    last_time = get_last_method_time(jid)
     diff = now - last_time
+
     if diff < API_MAXIMUM_RATE:
         # logger.debug('Burst protection succeeded')
         time.sleep(abs(diff - API_MAXIMUM_RATE))
 
-    initialize_burst_protection()
+    set_last_method_time_now(jid)
 
 def _get_friends_key(uid):
     return _get_user_attribute_key(uid, 'friends')
@@ -127,6 +144,8 @@ def set_online(uid):
 
 
 def set_offline(uid):
+    logger.log('setting offline %s' % uid)
+    raise RuntimeError('fuck off, thats why')
     key = _get_status_key(uid)
     r.set(key, STATUS_OFFLINE)
 

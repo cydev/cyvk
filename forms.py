@@ -1,6 +1,6 @@
 __author__ = 'ernado'
 
-from library.xmpp import DataForm, Node
+from xmpp import DataForm, Node
 from config import URL_ACCEPT_APP
 
 

@@ -69,6 +69,7 @@ class Debug:
     def __init__(self, active_flags=None, log_file=sys.stderr, prefix="DEBUG: ", sufix="\n", time_stamp=0,
                  flag_show=None, validate_flags=False, welcome=-1):
         self.debug_flags = []
+        self.active = []
         if welcome == -1:
             if active_flags and len(active_flags):
                 welcome = 1
@@ -94,6 +95,7 @@ class Debug:
         self.flag_show = None # must be initialised after possible welcome
         self.validate_flags = validate_flags
         self.active_set(active_flags)
+
         if welcome:
             self.show("")
             caller = sys._getframe(1) # used to get name of caller
@@ -135,8 +137,8 @@ class Debug:
         if self.time_stamp == 2:
             output = "%s%s " % (
             pre,
-            trftime("%b %d %H:%M:%S",
-                    caltime(time.time()))
+            time.strftime("%b %d %H:%M:%S",
+                    time.localtime(time.time()))
             )
         elif self.time_stamp == 1:
             output = "%s %s" % (
@@ -213,15 +215,18 @@ class Debug:
             # assume comma string
             try:
                 flags = active_flags.split(",")
+
+                for f in flags:
+                    s = f.strip()
+                    ok_flags.append(s)
+
             except Exception:
                 self.show("***")
                 self.show("*** Invalid debug param given: %s" % active_flags)
                 self.show("*** please correct your param!")
                 self.show("*** due to this, full debuging is enabled")
                 self.active = self.debug_flags
-            for f in flags:
-                s = f.strip()
-                ok_flags.append(s)
+
             self.active = ok_flags
         self._remove_dupe_flags()
         return r
@@ -304,12 +309,12 @@ class Debug:
         prefix = self.prefix + prefixcolor + (flag + " " * 12)[:12] + " " + (prefix + " " * 6)[:6]
         self.show(msg, flag, prefix)
 
-    def is_active(self, flag):
-        if not self.active:
-            return 0
-        if not flag or flag in self.active and DBG_ALWAYS not in self.active or flag not in self.active and DBG_ALWAYS in self.active:
-            return 1
-        return 0
+    # def is_active(self, flag):
+    #     if not self.active:
+    #         return 0
+    #     if not flag or flag in self.active and DBG_ALWAYS not in self.active or flag not in self.active and DBG_ALWAYS in self.active:
+    #         return 1
+    #     return 0
 
 
 DBG_ALWAYS = "always"

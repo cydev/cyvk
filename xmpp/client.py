@@ -21,11 +21,7 @@ examples of xmpppy structures usage.
 These classes can be used for simple applications "AS IS" though.
 """
 
-import debug
-import transports
-import dispatcher
-import auth
-import roster
+from xmpp import auth, dispatcher, roster, transports, debug
 
 Debug = debug
 Debug.DEBUGGING_IS_ON = 1
@@ -174,7 +170,7 @@ class CommonClient:
         if proxy:
             sock = transports.HTTPPROXYsocket(proxy, server, use_srv)
         else:
-            sock = transports.TCPsocket(server, use_srv)
+            sock = transports.TCPSocket(server, use_srv)
         connected = sock.PlugIn(self)
         if not connected:
             sock.PlugOut()

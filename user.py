@@ -1,26 +1,23 @@
+from __future__ import unicode_literals
+
 import time
 import logging
-
-from config import TRANSPORT_ID, USE_LAST_MESSAGE_ID, IDENTIFIER, ACTIVE_TIMEOUT, POLLING_WAIT
-from friends import get_friend_jid
-import messaging
-import library.webtools as webtools
-import library.xmpp as xmpp
-import vklogin as login_api
-from vklogin import get_messages, mark_messages_as_read
-from errors import CaptchaNeeded, TokenError, AuthenticationException
 import threading
-from async_api import tail_call_optimized
-import updates
-
 import json
 import urllib2
 
-from library.vkapi import method
-
+from config import TRANSPORT_ID, USE_LAST_MESSAGE_ID, IDENTIFIER, POLLING_WAIT
+from friends import get_friend_jid
+import messaging
+import webtools as webtools
+import xmpp as xmpp
+from errors import CaptchaNeeded, TokenError, AuthenticationException
+from async_api import tail_call_optimized
+import updates
+from vkapi import method, is_application_user, mark_messages_as_read, get_messages
 import parsers.message
-
 import database
+
 
 logger = logging.getLogger("vk4xmpp")
 
@@ -243,21 +240,21 @@ def update_friends(jid):
     database.set_friends(jid, friends_vk)
 
 
-def is_timed_out(jid):
-    assert isinstance(jid, unicode)
-
-    now = time.time()
-    last_activity = database.get_last_activity(jid)
-
-    # logger.debug('last activity for %s is %s' % (jid, last_activity))
-    # logger.debug('now is %s' % now)
-
-    # last_update = database.get_last_update(jid)
-
-    user_inactive = (now - last_activity) > ACTIVE_TIMEOUT
-    # roster_timeout = (now - last_update) > ROSTER_TIMEOUT
-
-    return user_inactive
+# def is_timed_out(jid):
+#     assert isinstance(jid, unicode)
+#
+#     now = time.time()
+#     last_activity = database.get_last_activity(jid)
+#
+#     # logger.debug('last activity for %s is %s' % (jid, last_activity))
+#     # logger.debug('now is %s' % now)
+#
+#     # last_update = database.get_last_update(jid)
+#
+#     user_inactive = (now - last_activity) > ACTIVE_TIMEOUT
+#     # roster_timeout = (now - last_update) > ROSTER_TIMEOUT
+#
+#     return user_inactive
 
 
 def initialize(jid, send=True):
@@ -265,15 +262,20 @@ def initialize(jid, send=True):
     Initializes user by subscribing to friends and sending initial presence
     @type jid: unicode
     @param jid: client jid
-    @param send: send presence flab
+    @param send: send presence flag
     """
     logger.debug("user api: called init for user %s" % jid)
 
     assert isinstance(jid, unicode)
+
+    # getting friends from vk api
     friends = get_friends(jid)
+
+    # updating user in redis
     database.set_friends(jid, friends)
     database.unset_polling(jid)
     database.unset_processing(jid)
+    database.set_online(jid)
 
     if friends:
         logger.debug("user api: subscribing friends for %s" % jid)
@@ -318,7 +320,7 @@ def connect(jid, token):
     try:
         logger.debug('user api: trying to auth with token')
         database.set_token(jid, token)
-        login_api.check_user(jid)
+        is_application_user(jid)
         logger.debug("user api: authenticated %s" % jid)
     except CaptchaNeeded:
         logger.debug("user api: captcha needed for %s" % jid)
@@ -371,13 +373,13 @@ def _long_polling_get(jid):
     long_polling['wait'] = POLLING_WAIT
     url = 'http://{server}?act=a_check&key={key}&ts={ts}&wait={wait}&mode=2'.format(**long_polling)
     logger.debug('got url, starting polling')
-    database.burst_protection()
+    database.wait_for_api_call(jid)
     data = json.loads(urllib2.urlopen(url).read())
     logger.debug('got data from polling server')
     database.unset_polling(jid)
 
     if not data['updates']:
-        logger.debug('no updates for %s' % data)
+        logger.debug('no updates for %s' % jid)
         return _long_polling_get(jid)
 
     for update in data['updates']:
@@ -404,6 +406,7 @@ def process_client(jid):
         logger.debug('already processing client %s' % jid)
         return
 
+    # blocking processing
     database.set_processing(jid)
 
     # checking user status
@@ -413,10 +416,10 @@ def process_client(jid):
         return
 
     # checking user time out
-    if is_timed_out(jid):
-        logger.debug('timeout for client %s' % jid)
-        database.remove_online_user(jid)
-        return
+    # if is_timed_out(jid):
+    #     logger.debug('timeout for client %s' % jid)
+    #     database.remove_online_user(jid)
+    #     return
 
 
     t = threading.Thread(target=_long_polling_get, args=(jid, ), name='long polling for %s' % jid)

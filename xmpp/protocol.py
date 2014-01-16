@@ -19,9 +19,9 @@ Protocol module contains tools that is needed for processing of
 xmpp-related data structures.
 """
 
-from simplexml import Node
-
 import time
+
+from xmpp.simplexml import Node
 
 NS_ACTIVITY = "http://jabber.org/protocol/activity"                    # XEP-0108
 NS_ADDRESS = "http://jabber.org/protocol/address"                        # XEP-0033

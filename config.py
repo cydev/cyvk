@@ -1,7 +1,9 @@
 # coding: utf
 
-import library.xmpp as xmpp
 import logging
+
+import xmpp as xmpp
+
 
 # connection host.
 # for Prosody "vk.example.com"
@@ -133,5 +135,5 @@ REDIS_PORT = 6379
 REDIS_DB = 0
 
 API_MAXIMUM_RATE = 1./3
-POLLING_WAIT = 25
+POLLING_WAIT = 60
 

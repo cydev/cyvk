@@ -6,11 +6,11 @@ import urllib
 import config
 from config import WHITE_LIST, IDENTIFIER, TRANSPORT_ID, LOGO_URL, TRANSPORT_FEATURES
 from friends import get_friend_jid
-from library.xmpp.protocol import (NodeProcessed, NS_REGISTER, NS_CAPTCHA, NS_GATEWAY,
+from xmpp.protocol import (NodeProcessed, NS_REGISTER, NS_CAPTCHA, NS_GATEWAY,
                                    NS_DISCO_ITEMS, NS_DISCO_INFO, NS_VCARD, NS_PING, ERR_FEATURE_NOT_IMPLEMENTED,
                                    Error, NS_DATA, ERR_BAD_REQUEST, Node, ERR_REGISTRATION_REQUIRED,)
 
-import library.xmpp.simplexml
+import xmpp.simplexml
 
 from sender import stanza_send
 from handler import Handler
@@ -67,7 +67,10 @@ def _process_form(iq, jid):
 
     query = iq.getTag("query")
 
-    token = query.getTag("x").getTag("field", {"var": "password"}).getTagData("value")
+    try:
+        token = query.getTag("x").getTag("field", {"var": "password"}).getTagData("value")
+    except AttributeError:
+        raise AuthenticationException('no password')
 
     try:
         token = token.split("#access_token=")[1].split("&")[0].strip()
@@ -159,7 +162,7 @@ class IQHandler(Handler):
 
 
     def iq_register_handler(self, stanza):
-        jid = stanza.getFrom().getStripped()
+        jid = unicode(stanza.getFrom().getStripped())
         logger.debug('register handler for %s' % jid)
 
         destination_jid = stanza.getTo().getStripped()
@@ -302,7 +305,7 @@ class IQHandler(Handler):
                         phone = node.getData()
                         break
                 if phone:
-                    x_node = library.xmpp.simplexml.Node("prompt")
+                    x_node = xmpp.simplexml.Node("prompt")
                     x_node.setData(phone[0])
                     result.setQueryPayload([x_node])
             else:
@@ -339,7 +342,7 @@ class IQHandler(Handler):
         logger.debug('iq_vcard_handler')
         jid_from = stanza.getFrom()
         jid_to = stanza.getTo()
-        jid = jid_from.getStripped()
+        jid = unicode(jid_from.getStripped())
         jid_to_str = jid_to.getStripped()
         i_type = stanza.getType()
         result = stanza.buildReply("result")
@@ -355,7 +358,7 @@ class IQHandler(Handler):
             elif database.is_client(jid):
                 friends = database.get_friends(jid)
                 if friends:
-                    friend_jid = get_friend_jid(jid_to_str, jid)
+                    friend_jid = get_friend_jid(jid_to_str)
                     json = user_api.get_user_data(jid, friend_jid, ["screen_name", config.PHOTO_SIZE])
                     values = {"NICKNAME": json.get("name", str(json)),
                               "URL": "http://vk.com/id%s" % friend_jid,

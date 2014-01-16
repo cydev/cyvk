@@ -1,37 +1,61 @@
-# /* coding: utf-8 */
-# © simpleApps CodingTeam, 2013.
-# Warning: Code in this module is ugly,
-# but we can't do better.
+from __future__ import unicode_literals
 
 import logging
 import json
+import database
+from friends import get_friend_jid
+from messaging import send_message
 import webtools
 from request_processor import RequestProcessor
+import urllib2
 
-from database import get_token, burst_protection
-from errors import AuthenticationException
+from database import get_token, wait_for_api_call
+from errors import AuthenticationException, CaptchaNeeded, NotAllowed, APIError
 
 logger = logging.getLogger("vk4xmpp")
 
-from config import APP_ID, APP_SCOPE, API_MAXIMUM_RATE
+from config import APP_ID, APP_SCOPE, API_MAXIMUM_RATE, TRANSPORT_ID
+
 
 VK_ERROR_BURST = 6
 
 
-def method(m, jid, values=None, additional_timeout=None):
-    logger.debug('api method %s' % m)
-    values = values or {}
-    url = "https://api.vk.com/method/%s" % m
+def method(method_name, jid, args=None, additional_timeout=0):
+    """
+    Makes post-request to vk api witch burst protection and exception handling
+    @type jid: unicode
+    @type method_name: unicode
+    @param method_name: vk api method name
+    @param jid: client jid
+    @param args: method parameters
+    @param additional_timeout: time in seconds to wait before reattempting
+    @return: @raise NotImplementedError:
+    """
+    logger.debug('api method %s' % method_name)
+
+    assert isinstance(method_name, unicode)
+    assert isinstance(jid, unicode)
+
+    # TODO: raise exceptions
+
+    args = args or {}
+    url = "https://api.vk.com/method/%s" % method_name
     token =  get_token(jid)
     # logger.debug('api with token %s' % token)
-    values["access_token"] = token
-    values["v"] = "3.0"
+    args["access_token"] = token
+    args["v"] = "3.0"
 
-    burst_protection()
+    wait_for_api_call(jid)
 
     rp = RequestProcessor()
 
-    response = rp.post(url, values)
+
+    try:
+        response = rp.post(url, args)
+    except urllib2.URLError as e:
+        logger.debug('method error: %s' % e)
+        method(method_name, jid, args, additional_timeout=3)
+        return
 
     if not response:
         logger.debug('no response')
@@ -56,7 +80,7 @@ def method(m, jid, values=None, additional_timeout=None):
                 additional_timeout *= 2
             else:
                 additional_timeout = API_MAXIMUM_RATE
-            return method(m, jid, values, additional_timeout=additional_timeout)
+            return method(method_name, jid, args, additional_timeout=additional_timeout)
 
 
     raise NotImplementedError('unsecure method: %s' %  body)
@@ -345,3 +369,84 @@ class APIBinding:
 #                 return response.url.split("=")[1].split("&")[0]
 #             else:
 #                 raise AuthenticationException("Couldn't execute confirmThisApp()!")
+
+
+def method_wrapped(jid, m, m_args=None):
+    """
+
+    @type jid: unicode
+    @param jid: client jid
+    @param m: method name
+    @param m_args: method arguments
+    @return: @raise NotImplementedError:
+    """
+    m_args = m_args or {}
+
+    assert isinstance(jid, unicode)
+    assert isinstance(m, unicode)
+    assert isinstance(m_args, dict)
+
+    result = {}
+
+    # TODO: Captcha too
+    if not database.is_user_online(jid):
+        return result
+
+    try:
+        result = method(m, jid, m_args)
+    except CaptchaNeeded:
+        logger.error("VKLogin: running captcha challenge for %s" % jid)
+        # TODO: Captcha
+        raise NotImplementedError('Captcha')
+    except NotAllowed:
+        # if self.engine.lastMethod[0] == "messages.send":
+        send_message(jid, "You're not allowed to perform this action.",
+                get_friend_jid(m_args.get("user_id", TRANSPORT_ID)))
+    except APIError as vk_e:
+        if vk_e.message == "User authorization failed: user revoke access for this token.":
+            try:
+                logger.critical("VKLogin: %s" % vk_e.message)
+                database.remove_user(jid)
+                database.remove_online_user(jid)
+            except KeyError:
+                pass
+        elif vk_e.message == "User authorization failed: invalid access_token.":
+            send_message(jid, vk_e.message + " Please, register again", TRANSPORT_ID)
+        database.set_offline(jid)
+
+        logger.error("VKLogin: apiError %s for user %s" % (vk_e.message, jid))
+    return result
+
+
+def is_application_user(jid):
+    """
+    Check if client is application user and validate token
+    @type jid: unicode
+    @param jid: client jid
+    @return:
+    """
+    logger.debug('login api: checking token')
+
+    assert isinstance(jid, unicode)
+
+    try:
+        method_wrapped(jid, "isAppUser")
+        logger.debug('token for %s is valud' % jid)
+        return True
+    except AuthenticationException as auth_e:
+        logger.debug('checking token failed: %s' % auth_e)
+        return False
+
+
+def mark_messages_as_read(jid, msg_list):
+    method("messages.markAsRead", jid, {"message_ids": ','.join(msg_list)})
+
+
+def get_messages(jid, count=5, last_msg_id=None):
+    logger.debug('getting messages for %s' % jid)
+    arguments = {"out": 0, "filters": 1, "count": count}
+    if last_msg_id:
+        arguments.update({'last_message_id': last_msg_id})
+    else:
+        arguments.update({'count': count})
+    return method("messages.get", jid, arguments)

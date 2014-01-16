@@ -2,21 +2,19 @@
 # This file is a part of VK4XMPP transport
 # © simpleApps, 2013.
 
-import library.xmpp as xmpp
 import logging
+
+import xmpp as xmpp
 import user as user_api
-
 from sender import stanza_send
-
 from handler import Handler
 from hashers import get_hash
 from config import TRANSPORT_ID
-
 import database
-
 from messaging import extract_message
 from captcha import captcha_accept
 import friends
+
 
 logger = logging.getLogger("vk4xmpp")
 
@@ -61,7 +59,7 @@ class MessageHandler(Handler):
         jid_from = m['jid_from']
         jid_from_str = m['jid_from_str']
 
-        jid = jid_from_str
+        jid = unicode(jid_from_str)
 
         logger.debug('message_handler handling: %s (%s->%s)' % (get_hash(msg_body), jid_from_str, jid_to_str))
 
@@ -81,7 +79,7 @@ class MessageHandler(Handler):
                     answer = get_answer(msg, jid_from, jid_to)
                 # TODO: evaluate and others
         else:
-            uid = friends.get_friend_uid(jid_to.getNode(), jid)
+            uid = unicode(friends.get_friend_uid(jid_to.getNode()))
             logger.debug('message to user (%s->%s)' % (jid, uid))
             if user_api.send_message(jid, msg_body, uid):
                 answer = get_answer(msg, jid_from, jid_to)

@@ -26,24 +26,24 @@ def dump_to_file(filename, data, mode="w"):
 #         return file.read()
 
 
-def dump_crash(name, text=0, is_fixme=True):
-    global last_error
-    logger.error("writing crashlog %s" % name)
-    if is_fixme:
-        fixme_message(name)
-    try:
-        crash_dir = config.CRASH_DIR
-        file_path = "%s/%s.txt" % (crash_dir, name)
-        if not os.path.exists(crash_dir):
-            os.makedirs(crash_dir)
-        exception = dump_exception(True)
-        if exception not in ("None", last_error):
-            timestamp = time.strftime("| %d.%m.%Y (%H:%M:%S) |\n")
-            dump_to_file(file_path, timestamp + exception + "\n", "a")
-        last_error = exception
-    except:
-        fixme_message("crashlog")
-        dump_exception()
+# def dump_crash(name, text=0, is_fixme=True):
+#     global last_error
+#     logger.error("writing crashlog %s" % name)
+#     if is_fixme:
+#         fixme_message(name)
+#     try:
+#         crash_dir = config.CRASH_DIR
+#         file_path = "%s/%s.txt" % (crash_dir, name)
+#         if not os.path.exists(crash_dir):
+#             os.makedirs(crash_dir)
+#         exception = dump_exception(True)
+#         if exception not in ("None", last_error):
+#             timestamp = time.strftime("| %d.%m.%Y (%H:%M:%S) |\n")
+#             dump_to_file(file_path, timestamp + exception + "\n", "a")
+#         last_error = exception
+#     except:
+#         fixme_message("crashlog")
+#         dump_exception()
 
 
 def Print(text, line=True):

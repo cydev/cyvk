@@ -1,6 +1,6 @@
 import os
 import time
-from library.writer import dump_to_file
+from writer import dump_to_file
 
 __author__ = 'ernado'
 

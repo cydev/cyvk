@@ -5,7 +5,7 @@ import logging
 from config import TRANSPORT_ID
 from friends import get_friend_jid
 from messaging import send_message, send_watcher_message
-import library.xmpp as xmpp
+import xmpp as xmpp
 import database
 import user as user_api
 from handler import Handler
@@ -106,7 +106,7 @@ def _subscribe(presence, jid):
             # if not client.friends:
         #     return
 
-        friend_id = get_friend_jid(presence.destination_id, jid)
+        friend_id = get_friend_jid(presence.destination_id)
 
         if friend_id not in client_friends:
             return

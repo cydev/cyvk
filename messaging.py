@@ -6,7 +6,7 @@ import logging
 import time
 import re
 
-from library.xmpp.protocol import Message
+from xmpp.protocol import Message
 from config import BANNED_CHARS, WATCHER_LIST, TRANSPORT_ID
 import database
 
@@ -34,7 +34,7 @@ def send_typing_status(jid_to, jid_from):
     assert isinstance(jid_from, unicode)
 
     message = Message(jid_to, typ='chat', frm=jid_from)
-    message.setTag('composing', 'http://jabber.org/protocol/chatstates')
+    message.setTag('composing', namespace='http://jabber.org/protocol/chatstates')
 
     database.queue_stanza(message)
 
@@ -52,9 +52,9 @@ def extract_message(msg):
     msg_type = msg.getType()
     msg_body = msg.getBody()
     jid_to = msg.getTo()
-    jid_to_str = jid_to.getStripped()
+    jid_to_str = unicode(jid_to.getStripped())
     jid_from = msg.getFrom()
-    jid_from_str = jid_from.getStripped()
+    jid_from_str = unicode(jid_from.getStripped())
 
     return {'type': msg_type, 'body': msg_body, 'jid_to': jid_to,
             'jid_to_str': jid_to_str, 'jid_from': jid_from,

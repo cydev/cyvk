@@ -29,15 +29,16 @@ Also exception 'error' is defined to allow capture of this module specific excep
 
 import sys
 import socket
-import dispatcher
 
 from base64 import encodestring
 from select import select
-from simplexml import ustr
-from plugin import PlugIn
-from protocol import *
+from xmpp.simplexml import ustr
+from xmpp.plugin import PlugIn
+from xmpp.protocol import *
 
 # http://pydns.sourceforge.net
+from xmpp import dispatcher
+
 try:
     import dns
 except ImportError:
@@ -47,10 +48,10 @@ DATA_RECEIVED = 'DATA RECEIVED'
 DATA_SENT = 'DATA SENT'
 DBG_CONNECT_PROXY = 'CONNECTproxy'
 
-BUFLEN = 1024
+BU_FLEN = 1024
 
 
-class error:
+class Error:
     """
     An exception to be raised in case of low-level errors in methods of 'transports' module.
     """
@@ -68,7 +69,7 @@ class error:
         return self._comment
 
 
-class TCPsocket(PlugIn):
+class TCPSocket(PlugIn):
     """
     This class defines direct TCP connection method.
     """
@@ -179,7 +180,7 @@ class TCPsocket(PlugIn):
         In case of disconnection calls owner's disconnected() method and then raises IOError exception.
         """
         try:
-            data = self._recv(BUFLEN)
+            data = self._recv(BU_FLEN)
         except socket.sslerror as e:
             self._seen_data = 0
             if e[0] in (socket.SSL_ERROR_WANT_READ, socket.SSL_ERROR_WANT_WRITE):
@@ -192,7 +193,7 @@ class TCPsocket(PlugIn):
             data = ""
         while self.pending_data(0):
             try:
-                add = self._recv(BUFLEN)
+                add = self._recv(BU_FLEN)
             except Exception:
                 break
             if not add:
@@ -255,7 +256,7 @@ class TCPsocket(PlugIn):
         self.DEBUG("Socket operation failed.", "error")
 
 
-class HTTPPROXYsocket(TCPsocket):
+class HTTPPROXYsocket(TCPSocket):
     """
     HTTP (CONNECT) proxy connection class. Uses TCPsocket as the base class
     redefines only connect method. Allows to use HTTP proxies like squid with
@@ -269,7 +270,7 @@ class HTTPPROXYsocket(TCPsocket):
         and optional keys 'user' and 'password' to use for authentication.
         'server' argument is a tuple of host and port - just like TCPsocket uses.
         """
-        TCPsocket.__init__(self, server, use_srv)
+        TCPSocket.__init__(self, server, use_srv)
         self.DBG_LINE = DBG_CONNECT_PROXY
         self._proxy = proxy
 
@@ -278,7 +279,7 @@ class HTTPPROXYsocket(TCPsocket):
         Starts connection. Used interally. Returns non-empty string on success.
         """
         owner.debug_flags.append(DBG_CONNECT_PROXY)
-        return TCPsocket.plugin(self, owner)
+        return TCPSocket.plugin(self, owner)
 
     def connect(self, dupe=None):
         """
@@ -286,7 +287,7 @@ class HTTPPROXYsocket(TCPsocket):
         (if were specified while creating instance). Instructs proxy to make
         connection to the target server. Returns non-empty sting on success.
         """
-        if not TCPsocket.connect(self, (self._proxy["host"], self._proxy["port"])):
+        if not TCPSocket.connect(self, (self._proxy["host"], self._proxy["port"])):
             return None
         self.DEBUG("Proxy server contacted, performing authentification.", "start")
         connector = [
@@ -311,7 +312,7 @@ class HTTPPROXYsocket(TCPsocket):
         try:
             proto, code, desc = reply.split("\n")[0].split(" ", 2)
         except Exception:
-            raise error("Invalid proxy reply")
+            raise Error("Invalid proxy reply")
         if code != "200":
             self.DEBUG("Invalid proxy reply: %s %s %s" % (proto, code, desc), "error")
             self._owner.disconnected()

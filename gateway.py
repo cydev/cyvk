@@ -19,7 +19,7 @@ from config import (PID_FILE, DATABASE_FILE,
 
 logger = log.get_logger()
 
-import library.xmpp as xmpp
+import xmpp
 import handlers
 from daemon import get_pid
 import database
@@ -116,7 +116,7 @@ def get_loop_thread(iteration_handler, name, iteration_time=0):
     return thread
 
 def halt_handler(sig=None, frame=None):
-    status = "shutting down by %s" % ("SIGTERM" if sig == 15 else "SIGINT")
+    status = 'shutting down'
     logger.debug("%s" % status)
 
     def send_unavailable_presence(jid):
@@ -141,7 +141,7 @@ def get_transport_iteration(c):
 
     def transport_iteration():
         try:
-            c.iter(2)
+            c.Process(2)
         except xmpp.StreamError as stream_error:
             logger.critical('StreamError while iterating: %s' % stream_error)
             raise

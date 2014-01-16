@@ -22,6 +22,9 @@ class TokenError(APIError):
 class NotAllowed(APIError):
     pass
 
+class TooManyRequests(APIError):
+    pass
+
 
 
 

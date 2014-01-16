@@ -1,13 +1,14 @@
-from friends import get_friend_jid
-import library.vkapi as api
-
 import logging
+
+from friends import get_friend_jid
+import vkapi as api
 from messaging import send_message, escape_name
 from config import TRANSPORT_ID
-from library.stext import _ as _
+# from stext import _ as _
 import database
-from library.vkapi import method
+from vkapi import method, method_wrapped
 from errors import AuthenticationException, APIError, TokenError, CaptchaNeeded, NotAllowed
+
 
 logger = logging.getLogger("vk4xmpp")
 
@@ -101,7 +102,7 @@ class VKLogin(object):
             raise NotImplementedError('Captcha')
         except NotAllowed:
             # if self.engine.lastMethod[0] == "messages.send":
-            send_message(gateway.component, jid, _("You're not allowed to perform this action."),
+            send_message(gateway.component, jid, "You're not allowed to perform this action.",
                     get_friend_jid(m_args.get("user_id", TRANSPORT_ID)))
         except APIError as vk_e:
             if vk_e.message == "User authorization failed: user revoke access for this token.":
@@ -112,7 +113,7 @@ class VKLogin(object):
                 except KeyError:
                     pass
             elif vk_e.message == "User authorization failed: invalid access_token.":
-                send_message(gateway.component, jid, _(vk_e.message + " Please, register again"), TRANSPORT_ID)
+                send_message(gateway.component, jid, vk_e.message + " Please, register again"), TRANSPORT_ID
             database.set_offline(jid)
 
             logger.error("VKLogin: apiError %s for user %s" % (vk_e.message, jid))
@@ -154,69 +155,14 @@ class VKLogin(object):
     #     return self.method("messages.get", values)
 
 
-def method_wrapped(jid, m, m_args=None):
-    if not jid:
-        raise ValueError('jid is None')
-    m_args = m_args or {}
-    result = {}
-
-    # TODO: Captcha too
-    if not database.is_user_online(jid):
-        return result
-
-    try:
-        result = method(m, jid, m_args)
-    except CaptchaNeeded:
-        logger.error("VKLogin: running captcha challenge for %s" % jid)
-        # TODO: Captcha
-        raise NotImplementedError('Captcha')
-    except NotAllowed:
-        # if self.engine.lastMethod[0] == "messages.send":
-        send_message(jid, _("You're not allowed to perform this action."),
-                get_friend_jid(m_args.get("user_id", TRANSPORT_ID)))
-    except APIError as vk_e:
-        if vk_e.message == "User authorization failed: user revoke access for this token.":
-            try:
-                logger.critical("VKLogin: %s" % vk_e.message)
-                database.remove_user(jid)
-                database.remove_online_user(jid)
-            except KeyError:
-                pass
-        elif vk_e.message == "User authorization failed: invalid access_token.":
-            send_message(jid, _(vk_e.message + " Please, register again"), TRANSPORT_ID)
-        database.set_offline(jid)
-
-        logger.error("VKLogin: apiError %s for user %s" % (vk_e.message, jid))
-    return result
 
 
-def check_user(jid):
-    # logger.debug('Token: %s' % token)
-    logger.debug('login api: checking token')
-    # logger.debug("VKLogin.auth %s token" % ("with" if token else "without"))
-    try:
-        # engine = api.APIBinding(token)
-        method_wrapped(jid, "isAppUser")
-    except AuthenticationException as e:
-        logger.debug('checking token failed: %s' % e)
-        # logger.error("VKLogin.auth failed with error %s" % e.message)
-        return False
-    logger.debug('login api: token checked')
-    # logger.debug("VKLogin.auth completed")
-    # database.set_online(jid)
-    return True
 
-def mark_messages_as_read(jid, msg_list):
-    method("messages.markAsRead", jid, {"message_ids": ','.join(msg_list)})
 
-def get_messages(jid, count=5, last_msg_id=None):
-    logger.debug('getting messages for %s' % jid)
-    arguments = {"out": 0, "filters": 1, "count": count}
-    if last_msg_id:
-        arguments.update({'last_message_id': last_msg_id})
-    else:
-        arguments.update({'count': count})
-    return method("messages.get", jid, arguments)
+
+
+
+
 
 
 

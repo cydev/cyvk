@@ -19,8 +19,8 @@ Simple roster implementation. Can be used though for different tasks like
 mass-renaming of contacts.
 """
 
-from plugin import PlugIn
-from protocol import NS_ROSTER, Iq, NodeProcessed, JID, Node, Presence
+from xmpp.plugin import PlugIn
+from xmpp.protocol import NS_ROSTER, Iq, NodeProcessed, JID, Node, Presence
 # from protocol import *
 
 

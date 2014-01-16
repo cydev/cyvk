@@ -2,11 +2,6 @@ __author__ = 'ernado'
 import logging
 
 # import library.vkapi as api
-import library.xmpp as xmpp
-from messaging import send_message
-from config import TRANSPORT_ID
-from errors import CaptchaNeeded
-import database
 
 logger = logging.getLogger("vk4xmpp")
 

@@ -24,8 +24,8 @@ Such functionality is achieved via registering "DISCO handlers" that are
 automatically called when user requests some node of your disco tree.
 """
 
-from protocol import NS_DISCO_INFO, NS_DISCO_ITEMS, ERR_ITEM_NOT_FOUND, NodeProcessed, Error
-from plugin import PlugIn
+from xmpp.protocol import NS_DISCO_INFO, NS_DISCO_ITEMS, ERR_ITEM_NOT_FOUND, NodeProcessed, Error
+from xmpp.plugin import PlugIn
 
 
 
@@ -107,7 +107,7 @@ class Browser(PlugIn):
         owner.RegisterHandler("iq", self._DiscoveryHandler, typ="get", ns=NS_DISCO_INFO)
         owner.RegisterHandler("iq", self._DiscoveryHandler, typ="get", ns=NS_DISCO_ITEMS)
 
-    def plugout(self):
+    def plugout(self, _=None):
         """
         Unregisters browser's iq handlers from your application dispatcher instance.
         Used internally.

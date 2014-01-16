@@ -34,11 +34,11 @@ What it supplies:
 	A means of handling requests, by redirection though the command manager.
 """
 
-from plugin import PlugIn
-from protocol import NS_COMMANDS, NS_DATA
-from protocol import NodeProcessed, Node
-from protocol import ERR_BAD_REQUEST, ERR_ITEM_NOT_FOUND, Error
-from protocol import DataForm, DataField
+from xmpp.plugin import PlugIn
+from xmpp.protocol import NS_COMMANDS, NS_DATA
+from xmpp.protocol import NodeProcessed, Node
+from xmpp.protocol import ERR_BAD_REQUEST, ERR_ITEM_NOT_FOUND, Error
+from xmpp.protocol import DataForm, DataField
 
 class Commands(PlugIn):
     """
@@ -61,7 +61,7 @@ class Commands(PlugIn):
         Initialises class and sets up local variables.
         """
         PlugIn.__init__(self)
-        DBG_LINE = "commands"
+        self.DBG_LINE = "commands"
         self._exported_methods = []
         self._handlers = {"": {}}
         self._browser = browser

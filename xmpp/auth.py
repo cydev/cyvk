@@ -19,26 +19,26 @@ Provides library with all Non-SASL and SASL authentication mechanisms.
 Can be used both for client and transport authentication.
 """
 
-import dispatcher
 import sha
-
 from base64 import encodestring, decodestring
 from hashlib import md5 as __md5
-from plugin import PlugIn
-from protocol import *
 from random import random as _random
 from re import findall as re_findall
 
+from plugin import PlugIn
+from protocol import *
+from xmpp import dispatcher
 
-def HH(some):
+
+def md5_hex(some):
     return __md5(some).hexdigest()
 
 
-def H(some):
+def md5_digest(some):
     return __md5(some).digest()
 
 
-def C(some):
+def _join(some):
     return ":".join(some)
 
 
@@ -252,9 +252,9 @@ class SASL(PlugIn):
             resp["nc"] = ("00000001")
             resp["qop"] = "auth"
             resp["digest-uri"] = "xmpp/" + self._owner.Server
-            A1 = C([H(C([resp["username"], resp["realm"], self.password])), resp["nonce"], resp["cnonce"]])
-            A2 = C(["AUTHENTICATE", resp["digest-uri"]])
-            response = HH(C([HH(A1), resp["nonce"], resp["nc"], resp["cnonce"], resp["qop"], HH(A2)]))
+            A1 = _join([md5_digest(_join([resp["username"], resp["realm"], self.password])), resp["nonce"], resp["cnonce"]])
+            A2 = _join(["AUTHENTICATE", resp["digest-uri"]])
+            response = md5_hex(_join([md5_hex(A1), resp["nonce"], resp["nc"], resp["cnonce"], resp["qop"], md5_hex(A2)]))
             resp["response"] = response
             resp["charset"] = "utf-8"
             sasl_data = ""
