@@ -3,8 +3,8 @@
 from datetime import datetime
 import logging
 
-from message import attachments
-from message.messaging import escape_message, sort_message
+from messaging.attachments import parse_attachments
+from messaging.processing import escape, sorting
 from webtools import unescape
 import user as user_api
 from config import MAXIMUM_FORWARD_DEPTH
@@ -23,17 +23,17 @@ def parse_forwarded_messages(jid, msg, depth=0):
 
     body += "\nForward messages:"
 
-    for fwd in sorted(msg["fwd_messages"], sort_message):
+    for fwd in sorted(msg["fwd_messages"], sorting):
 
         id_from = fwd["uid"]
         date = fwd["date"]
-        fwd_body = escape_message("", unescape(fwd["body"]))
+        fwd_body = escape("", unescape(fwd["body"]))
         date = datetime.fromtimestamp(date).strftime("%d.%m.%Y %H:%M:%S")
         # name = user.get_user_data(id_from)["name"]
         name = user_api.get_user_data(jid, id_from)["name"]
 
         body += "\n[%s] <%s> %s" % (date, name, fwd_body)
-        body += attachments.parse_attachments(jid, fwd)
+        body += parse_attachments(jid, fwd)
 
         if depth < MAXIMUM_FORWARD_DEPTH:
             body += parse_forwarded_messages(jid, fwd, depth + 1)

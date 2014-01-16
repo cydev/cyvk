@@ -34,7 +34,7 @@ class PlugIn:
     def plugin(self, owner):
         raise NotImplementedError('plugin did not implemented plugin')
 
-    def plugout(self, owner=None):
+    def plugout(self):
         raise NotImplementedError('plugin did not implemented plugin')
 
     def PlugIn(self, owner):

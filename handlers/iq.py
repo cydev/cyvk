@@ -5,7 +5,7 @@ import urllib
 
 import config
 from config import WHITE_LIST, IDENTIFIER, TRANSPORT_ID, LOGO_URL, TRANSPORT_FEATURES
-from friends import get_friend_jid
+from friends import get_friend_jid, get_friend_uid
 from realtime import queue_stanza
 from xmpp.protocol import (NodeProcessed, NS_REGISTER, NS_CAPTCHA, NS_GATEWAY,
                                    NS_DISCO_ITEMS, NS_DISCO_INFO, NS_VCARD, NS_PING, ERR_FEATURE_NOT_IMPLEMENTED,
@@ -103,7 +103,7 @@ def _process_form(iq, jid):
         result = generate_error(iq, ERR_BAD_REQUEST, "Incorrect password or access token")
 
     realtime.set_last_activity_now(jid)
-    user_api.make_client(jid)
+    user_api.add_client(jid)
     send_to_watcher("new user registered: %s" % jid)
     logger.debug('registration for %s completed' % jid)
 
@@ -359,14 +359,14 @@ class IQHandler(Handler):
                 result.setPayload([vcard])
             elif realtime.is_client(jid):
                 friends = realtime.get_friends(jid)
-                if friends:
-                    friend_jid = get_friend_jid(jid_to_str)
-                    json = user_api.get_user_data(jid, friend_jid, ["screen_name", config.PHOTO_SIZE])
-                    values = {"NICKNAME": json.get("name", str(json)),
-                              "URL": "http://vk.com/id%s" % friend_jid,
-                              "DESC": "Contact uses VK4XMPP Transport\n%s" % _DESC}
-                    if friend_jid in friends:
-                        values["PHOTO"] = json.get(config.PHOTO_SIZE) or config.URL_VCARD_NO_IMAGE
+                friend_id = get_friend_uid(jid_to_str)
+                if friend_id in friends:
+                    friend_id = get_friend_uid(jid_to_str)
+                    json = user_api.get_user_data(jid, friend_id, ["screen_name", config.PHOTO_SIZE])
+                    values = {"NICKNAME": json.get("name", str(json)), "URL": "http://vk.com/id%s" % friend_id,
+                              "DESC": "Contact uses VK4XMPP Transport\n%s" % _DESC,
+                              "PHOTO": json.get(config.PHOTO_SIZE) or config.URL_VCARD_NO_IMAGE}
+                    # if friend_id in friends:
                     vcard = self.iq_vcard_build(values)
                     result.setPayload([vcard])
                 else:

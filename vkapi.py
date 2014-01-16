@@ -6,6 +6,7 @@ import urllib2
 import database
 from friends import get_friend_jid
 import messaging
+from messaging import send
 import webtools
 from request_processor import RequestProcessor
 import realtime
@@ -399,7 +400,7 @@ def method_wrapped(jid, m, m_args=None):
         raise NotImplementedError('Captcha')
     except NotAllowed:
         # if self.engine.lastMethod[0] == "messages.send":
-        messaging.send(jid, "You're not allowed to perform this action.",
+        send(jid, "You're not allowed to perform this action.",
                 get_friend_jid(m_args.get("user_id", TRANSPORT_ID)))
     except APIError as vk_e:
         if vk_e.message == "User authorization failed: user revoke access for this token.":
@@ -410,7 +411,7 @@ def method_wrapped(jid, m, m_args=None):
             except KeyError:
                 pass
         elif vk_e.message == "User authorization failed: invalid access_token.":
-            messaging.send(jid, vk_e.message + " Please, register again", TRANSPORT_ID)
+            send(jid, vk_e.message + " Please, register again", TRANSPORT_ID)
         realtime.set_offline(jid)
 
         logger.error("VKLogin: apiError %s for user %s" % (vk_e.message, jid))

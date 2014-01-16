@@ -9,9 +9,10 @@ import urllib2
 from config import TRANSPORT_ID, USE_LAST_MESSAGE_ID, IDENTIFIER, POLLING_WAIT
 from database import set_token
 from friends import get_friend_jid
+from messaging import send
 import webtools as webtools
 
-import messaging
+import messaging.message
 import realtime
 
 import xmpp as xmpp
@@ -108,8 +109,8 @@ def send_messages(jid):
         read.append(str(message["mid"]))
         from_jid = get_friend_jid(message["uid"])
         body = webtools.unescape(message["body"])
-        body += messaging.parse(jid, message)
-        messaging.send(jid, messaging.escape("", body), from_jid, message["date"])
+        body += messaging.message.parse(jid, message)
+        send(jid, messaging.escape("", body), from_jid, message["date"])
 
     mark_messages_as_read(jid, read)
     # self.vk.msg_mark_as_read(read)
@@ -468,13 +469,14 @@ def process_users():
 
     logger.debug('iterated for %.2f ms - %s users' % ((time.time() - now)*1000, l))
 
-def make_client(jid):
+def add_client(jid):
     assert isinstance(jid, unicode)
 
     logger.debug('add_user %s' % jid)
     if realtime.is_client(jid):
        logger.debug('%s already a client' % jid)
        return
+
     realtime.add_online_user(jid)
     process_client(jid)
 

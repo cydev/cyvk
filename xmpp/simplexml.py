@@ -76,7 +76,7 @@ class Node(object):
     """
     FORCE_NODE_RECREATION = 0
 
-    def __init__(self, tag=None, attrs={}, payload=[], parent=None, nsp=None, node_built=False, node=None):
+    def __init__(self, tag=None, attrs=None, payload=None, parent=None, nsp=None, node_built=False, node=None):
         """
         Takes "tag" argument as the name of node (prepended by namespace, if needed and separated from it
         by a space), attrs dictionary as the set of arguments, payload list as the set of textual strings
@@ -86,6 +86,10 @@ class Node(object):
         "node" and other arguments is provided then the node initially created as replica of "node"
         provided and then modified to be compliant with other arguments.
         """
+
+        attrs = attrs or {}
+        payload = payload or []
+
         if node:
             if self.FORCE_NODE_RECREATION and isinstance(node, Node):
                 node = str(node)
@@ -205,11 +209,15 @@ class Node(object):
             s = s + self.data[cnt]
         return s
 
-    def addChild(self, name=None, attrs={}, payload=[], namespace=None, node=None):
+    def addChild(self, name=None, attrs=None, payload=None, namespace=None, node=None):
         """
         If "node" argument is provided, adds it as child node. Else creates new node from
         the other arguments' values and adds it as well.
         """
+
+        attrs = attrs or {}
+        payload = payload or []
+
         if "xmlns" in attrs:
             raise AttributeError("Use namespace=x instead of attrs={\"xmlns\": x}")
         if node:
@@ -242,11 +250,14 @@ class Node(object):
         """
         del self.attrs[key]
 
-    def delChild(self, node, attrs={}):
+    def delChild(self, node, attrs=None):
         """
         Deletes the "node" from the node's childs list, if "node" is an instance.
         Else deletes the first node that have specified name and (optionally) attributes.
         """
+
+        attrs = attrs or None
+
         if not isinstance(node, Node):
             node = self.getTag(node, attrs)
         self.kids[self.kids.index(node)] = None
@@ -312,11 +323,12 @@ class Node(object):
                 pl.append(self.kids[i])
         return pl
 
-    def getTag(self, name, attrs={}, namespace=None):
+    def getTag(self, name, attrs=None, namespace=None):
         """
         Filters all child nodes using specified arguments as filter.
         Returns the first found or None if not found.
         """
+        attrs = attrs or {}
         return self.getTags(name, attrs, namespace, one=1)
 
     def getTagAttr(self, tag, attr):
@@ -339,12 +351,13 @@ class Node(object):
             data = None
         return data
 
-    def getTags(self, name, attrs={}, namespace=None, one=0):
+    def getTags(self, name, attrs=None, namespace=None, one=0):
         """
         Filters all child nodes using specified arguments as filter.
         Returns the list of nodes found.
         """
         nodes = []
+        attrs = attrs or {}
         for node in self.kids:
             if not node:
                 continue
@@ -361,10 +374,11 @@ class Node(object):
         if not one:
             return nodes
 
-    def iterTags(self, name, attrs={}, namespace=None):
+    def iterTags(self, name, attrs=None, namespace=None):
         """
         Iterate over all children using specified arguments as filter.
         """
+        attrs = attrs or {}
         for node in self.kids:
             if not node:
                 continue
@@ -420,11 +434,12 @@ class Node(object):
         else:
             self.kids = payload
 
-    def setTag(self, name, attrs={}, namespace=None):
+    def setTag(self, name, attrs=None, namespace=None):
         """
         Same as getTag but if the node with specified namespace/attributes not found, creates such
         node and returns it.
         """
+        attrs = attrs or {}
         node = self.getTags(name, attrs, namespace=namespace, one=1)
         if not node:
             node = self.addChild(name, attrs, namespace=namespace)
@@ -440,11 +455,12 @@ class Node(object):
         except Exception:
             self.addChild(tag, attrs={attr: val})
 
-    def setTagData(self, tag, val, attrs={}):
+    def setTagData(self, tag, val, attrs=None):
         """
         Creates new node (if not already present) with name "tag"
         and (optionally) attributes "attrs" and sets it's CDATA to string "val".
         """
+        attrs = attrs or {}
         try:
             self.getTag(tag, attrs).setData(ustr(val))
         except Exception:

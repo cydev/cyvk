@@ -1,5 +1,6 @@
 # coding=utf-8
 import messaging
+from messaging import send_typing_status
 
 __author__ = 'ernado'
 
@@ -65,7 +66,7 @@ def process_data(jid, data):
         friend_id = data[1]
         if friend_id < 0:
             friend_id = -friend_id
-        messaging.send_typing_status(jid, friends.get_friend_jid(friend_id))
+        send_typing_status(jid, friends.get_friend_jid(friend_id))
         return
 
     logger.debug('doing nothing on code %s' % code)

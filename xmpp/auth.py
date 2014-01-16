@@ -28,6 +28,7 @@ from re import findall as re_findall
 from plugin import PlugIn
 from protocol import *
 from xmpp import dispatcher
+import hashlib
 
 
 def md5_hex(some):
@@ -165,7 +166,7 @@ class SASL(PlugIn):
         else:
             self._owner.RegisterHandler("features", self.FeaturesHandler, xmlns=NS_STREAMS)
 
-    def plugout(self):
+    def plugout(self, _=None):
         """
         Remove SASL handlers from owner's dispatcher. Used internally.
         """

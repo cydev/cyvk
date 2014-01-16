@@ -7,6 +7,7 @@ import logging
 from config import TRANSPORT_ID
 from friends import get_friend_jid
 import messaging
+from messaging import send, send_to_watcher
 from realtime import queue_stanza
 import xmpp as xmpp
 import database
@@ -28,25 +29,30 @@ class Presence(object):
         self.origin_id = self.origin.getStripped()
         self.error_code = presence.getErrorCode()
         self.status = presence.getType()
-        self.dict = {'origin': self.origin_id, 'destination': self.destination_id,
-                     'resource': str(self.resource), 'error_code': str(self.error_code),
+        self.dict = {'from': self.origin_id, 'to': self.destination_id,
+                     'resource': str(self.resource), 'error': self.error_code,
                      'status': str(self.status)}
 
+        self.dict_print = {}
+        for k, v in self.dict.items():
+            if v:
+                self.dict_print.update({k: v})
+
     def __str__(self):
-        return '<Presence %s -> %s [%s]>' % (self.origin_id, self.destination_id, self.dict)
+        return str(self.dict_print)
 
 
 def presence_handler_wrapper(handler):
 
-    def wrapper(presence, jid):
+    def wrapper(jid, presence):
         assert isinstance(jid, unicode)
         assert isinstance(presence, Presence)
-        handler(presence, jid)
+        handler(jid, presence)
 
     return wrapper
 
 @presence_handler_wrapper
-def _error(presence, jid):
+def _error(jid, presence):
     """
     Error presence handler
 
@@ -64,7 +70,7 @@ def _error(presence, jid):
         # client.vk.disconnect()
 
 @presence_handler_wrapper
-def _unavailable(presence, jid):
+def _unavailable(jid, presence):
     """
     Unavailable presence handler
 
@@ -87,7 +93,7 @@ def _unavailable(presence, jid):
 
 
 @presence_handler_wrapper
-def _subscribe(presence, jid):
+def _subscribe(jid, presence):
     """
     Subscribe presence handler
 
@@ -122,7 +128,7 @@ def _subscribe(presence, jid):
 
 
 @presence_handler_wrapper
-def _available(presence, jid):
+def _available(jid, presence):
     """
     Available status handler
     @type presence: Presence
@@ -146,7 +152,7 @@ def _available(presence, jid):
 
 
 @presence_handler_wrapper
-def _unsubscribe(presence, jid):
+def _unsubscribe(jid, presence):
     """
     Client unsubscribe handler
     @type jid: str
@@ -157,11 +163,17 @@ def _unsubscribe(presence, jid):
 
     if realtime.is_client(jid) and presence.destination_id == TRANSPORT_ID:
         database.remove_user(jid)
-        messaging.send_to_watcher("user removed registration: %s" % jid)
+        send_to_watcher("user removed registration: %s" % jid)
 
 
 @presence_handler_wrapper
-def _attempt_to_add_client(_, jid):
+def _attempt_to_add_client(jid, _):
+    """
+    Attempt to add client to transport and initialize it
+    @type jid: unicode
+    @param jid: client jid
+    @return:
+    """
     logger.debug("presence: attempting to add %s to transport" % jid)
 
     user = database.get_description(jid)
@@ -175,17 +187,22 @@ def _attempt_to_add_client(_, jid):
     try:
         user_api.connect(jid, token)
         user_api.initialize(jid, send=True)
-        user_api.make_client(jid)
+        user_api.add_client(jid)
         user_api.set_online(jid)
     except AuthenticationException as e:
         logger.error('unable to authenticate %s: %s' % (jid, e))
         message = "Authentication failed! " \
                   "If this error repeated, please register again. " \
                   "Error: %s" % e
-        messaging.send(jid, message, TRANSPORT_ID)
+        send(jid, message, TRANSPORT_ID)
+
+_mapping = {'available': _available, 'probe': _available, None: _available,
+     'unavailable': _unavailable, 'error': _error, 'subscribed': _subscribe,
+     'unsubscribe': _unsubscribe
+}
 
 @presence_handler_wrapper
-def _update_client_status(presence, jid):
+def _update_client_status(jid, presence):
     """
     Status update handler for client
     @type presence: Presence
@@ -194,12 +211,10 @@ def _update_client_status(presence, jid):
     """
     status = presence.status
 
-    mapping = {'available': _available, 'probe': _available, None: _available,
-         'unavailable': _unavailable, 'error': _error, 'subscribed': _subscribe,
-         'unsubscribe': _unsubscribe
-    }
-
-    mapping[status](presence, jid)
+    try:
+        _mapping[status](jid, presence)
+    except KeyError:
+        raise NotImplementedError('unable to handle status %s' % status)
 
     if presence.destination_id == TRANSPORT_ID:
         logger.debug('setting last status %s for %s' % (status, jid))
@@ -212,16 +227,18 @@ class PresenceHandler(Handler):
 
     def handle(self, _, stanza):
         presence = Presence(stanza)
-        logger.debug('presence handling: %s' % presence)
+
         jid = presence.origin_id
+
+        logger.debug('user %s presence handling: %s' % (jid, presence))
 
         if not isinstance(jid, unicode):
             raise ValueError('jid %s (%s) is not str' % (jid, type(jid)))
 
         if realtime.is_client(jid):
-            _update_client_status(presence, jid)
+            _update_client_status(jid, presence)
         elif presence.status in ("available", None):
-            _attempt_to_add_client(presence, jid)
+            _attempt_to_add_client(jid, presence)
 
 def get_handler():
     return PresenceHandler().handle

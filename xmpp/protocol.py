@@ -19,9 +19,13 @@ Protocol module contains tools that is needed for processing of
 xmpp-related data structures.
 """
 
+from __future__ import unicode_literals
+from __future__ import absolute_import
+
 import time
 
-from xmpp.simplexml import Node
+from .simplexml import Node
+# from xmpp.simplexml import Node
 
 NS_ACTIVITY = "http://jabber.org/protocol/activity"                    # XEP-0108
 NS_ADDRESS = "http://jabber.org/protocol/address"                        # XEP-0033
@@ -577,7 +581,7 @@ class Protocol(Node):
     A "stanza" object class. Contains methods that are common for presences, iqs and messages.
     """
 
-    def __init__(self, name=None, to=None, typ=None, frm=None, attrs={}, payload=[], timestamp=None, xmlns=None,
+    def __init__(self, name=None, to=None, typ=None, frm=None, attrs=None, payload=None, timestamp=None, xmlns=None,
                  node=None):
         """
         Constructor, name is the name of the stanza i.e. "message" or "presence" or "iq".
@@ -587,8 +591,10 @@ class Protocol(Node):
         xmlns - namespace of top stanza node
         node - parsed or unparsed stana to be taken as prototype.
         """
-        if not attrs:
-            attrs = {}
+
+        attrs = attrs or {}
+        payload = payload or []
+
         if to:
             attrs["to"] = to
         if frm:
@@ -1071,11 +1077,14 @@ class DataField(Node):
     then you will need to work with instances of this class.
     """
 
-    def __init__(self, name=None, value=None, typ=None, required=0, label=None, desc=None, options=[], node=None):
+    def __init__(self, name=None, value=None, typ=None, required=0, label=None, desc=None, options=None, node=None):
         """
         Create new data field of specified name,value and type. Also "required", "desc" and "options" fields can be set.
         Alternatively other XML object can be passed in as the "node" parameted to replicate it as a new datafiled.
         """
+
+        options = options or []
+
         Node.__init__(self, "field", node=node)
         if name:
             self.setVar(name)
@@ -1382,7 +1391,7 @@ class DataForm(Node):
     Can be used in disco, pub-sub and many other applications.
     """
 
-    def __init__(self, typ=None, data=[], title=None, node=None):
+    def __init__(self, typ=None, data=None, title=None, node=None):
         """
         Create new dataform of type "typ"; "data" is the list of DataReported,
         DataItem and DataField instances that this dataform contains; "title"
@@ -1397,6 +1406,9 @@ class DataForm(Node):
         "cancel" form can not contain any fields. All other forms contains AT LEAST one field.
         "title" MAY be included in forms of type "form" and "result".
         """
+
+        data = data or []
+
         Node.__init__(self, "x", node=node)
         if node:
             newkids = []
