@@ -1,9 +1,10 @@
 __author__ = 'ernado'
 
-from xmpp import DataForm, Node
-from config import URL_ACCEPT_APP
-
 import sys
+
+from xmpp import DataForm, Node
+from transport.config import URL_ACCEPT_APP
+
 
 try:
     # not using lxml for pypy
@@ -68,3 +69,9 @@ def get_form():
     password.setDesc("access-token or url")
 
     return str(form)
+
+def get_form_stanza(iq):
+    result = iq.buildReply("result")
+    result.setQueryPayload((get_form(),))
+
+    return result

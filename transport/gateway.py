@@ -11,7 +11,7 @@ import log
 from errors import AuthenticationException, all_errors, ConnectionError
 from friends import get_friend_jid
 from database import initialize_database
-from config import (PID_FILE, DATABASE_FILE,
+from transport.config import (PID_FILE, DATABASE_FILE,
                     HOST, SERVER, PORT, TRANSPORT_ID,
                     DEBUG_XMPPPY, PASSWORD)
 from parallel import realtime

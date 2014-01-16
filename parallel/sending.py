@@ -1,9 +1,9 @@
-import time
 import logging
 
-from config import WATCHER_LIST, TRANSPORT_ID
+from transport.config import WATCHER_LIST, TRANSPORT_ID
+from transport.messages import get_message_stanza
 from transport.stanza_queue import push
-from xmpp import Message
+from transport.statuses import get_typing_stanza
 
 
 logger = logging.getLogger("vk4xmpp")
@@ -16,11 +16,7 @@ def send(jid_to, body, jid_from, timestamp=None):
     assert isinstance(jid_from, unicode)
     assert isinstance(body, unicode)
 
-    message = Message(jid_to, body, "chat", frm=jid_from)
-
-    if timestamp:
-        timestamp = time.gmtime(timestamp)
-        message.setTimestamp(time.strftime("%Y%m%dT%H:%M:%S", timestamp))
+    message = get_message_stanza(jid_to, body, jid_from, timestamp)
 
     push(message)
 
@@ -31,8 +27,7 @@ def send_typing_status(jid_to, jid_from):
     assert isinstance(jid_to, unicode)
     assert isinstance(jid_from, unicode)
 
-    message = Message(jid_to, typ='chat', frm=jid_from)
-    message.setTag('composing', namespace='http://jabber.org/protocol/chatstates')
+    message = get_typing_stanza(jid_to, jid_from)
 
     push(message)
 

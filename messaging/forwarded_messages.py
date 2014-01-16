@@ -4,10 +4,10 @@ from datetime import datetime
 import logging
 
 from messaging.attachments import parse_attachments
-from messaging.processing import escape, sorting
+from transport.processing import escape, sorting
 from transport import user as user_api
 from api.webtools import unescape
-from config import MAXIMUM_FORWARD_DEPTH
+from transport.config import MAXIMUM_FORWARD_DEPTH
 
 
 logger = logging.getLogger("vk4xmpp")

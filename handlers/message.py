@@ -1,22 +1,18 @@
 # coding: utf-8
-# This file is a part of VK4XMPP transport
-# © simpleApps, 2013.
 
 from __future__ import unicode_literals
 
 import logging
 from parallel import realtime
 from transport import user as user_api
-
-import xmpp as xmpp
 from transport.handlers.handler import Handler
 from hashers import get_hash
-from config import TRANSPORT_ID
-import messaging
+from transport.config import TRANSPORT_ID
 from transport.captcha import captcha_accept
 from transport.stanza_queue import push
+from transport.processing import from_stanza
 import friends
-
+import transport.messages
 
 logger = logging.getLogger("vk4xmpp")
 
@@ -26,19 +22,7 @@ logger = logging.getLogger("vk4xmpp")
 def get_answer(message, jid_from, jid_to):
     logger.debug('msg_recieved from %s to %s' % (jid_from, jid_to))
 
-    if not message.getTag("request"):
-        return None
-
-    m_id = message.getID()
-
-    answer = xmpp.Message(jid_from)
-    answer.setFrom(jid_to)
-    answer.setID(m_id)
-
-    tag = answer.setTag("received", namespace="urn:xmpp:receipts")
-    tag.setAttr("id", m_id)
-
-    return answer
+    return transport.messages.get_answer_stanza(jid_from, jid_to, message)
 
 
 class MessageHandler(Handler):
@@ -48,9 +32,9 @@ class MessageHandler(Handler):
     def captcha_accept(self, args, jid_to, jid_from_str):
         captcha_accept(args, jid_to, jid_from_str)
 
-    def handle(self, transport, stanza):
+    def handle(self, _, stanza):
 
-        m = messaging.from_stanza(stanza)
+        m = from_stanza(stanza)
         body = m['body']
 
         if not body:

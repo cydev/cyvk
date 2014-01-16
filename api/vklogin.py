@@ -5,7 +5,7 @@ from api import vkapi as api
 
 from friends import get_friend_jid
 import messaging
-from config import TRANSPORT_ID
+from transport.config import TRANSPORT_ID
 # from stext import _ as _
 import database
 from api.vkapi import method, method_wrapped
@@ -147,7 +147,7 @@ class VKLogin(object):
         return friends
 
     def msg_mark_as_read(self, msg_list):
-        msg_list = str.join(",", msg_list)
+        msg_list = ','.join(msg_list)
         self.method("messages.markAsRead", {"message_ids": msg_list})
 
     # def get_messages(self, count=5, last_msg_id=0):

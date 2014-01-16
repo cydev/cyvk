@@ -7,7 +7,7 @@ import json
 import urllib2
 from api import webtools as webtools
 
-from config import TRANSPORT_ID, USE_LAST_MESSAGE_ID, IDENTIFIER, POLLING_WAIT
+from transport.config import TRANSPORT_ID, USE_LAST_MESSAGE_ID, IDENTIFIER, POLLING_WAIT
 from database import set_token
 from friends import get_friend_jid
 from messaging import send
@@ -18,7 +18,7 @@ from transport.stanza_queue import push
 
 import xmpp as xmpp
 from errors import CaptchaNeeded, TokenError, AuthenticationException
-from async_api import tail_call_optimized
+from parallel.async_api import tail_call_optimized
 from api.vkapi import method, is_application_user, mark_messages_as_read, get_messages
 
 import database

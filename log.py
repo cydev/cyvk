@@ -1,7 +1,7 @@
 __author__ = 'ernado'
 
 import logging
-from config import LOG_FILE, LOG_LEVEL
+from transport.config import LOG_FILE, LOG_LEVEL
 
 def get_logger():
     logger = logging.getLogger("vk4xmpp")

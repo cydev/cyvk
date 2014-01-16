@@ -4,7 +4,7 @@ from __future__ import unicode_literals
 
 import logging
 
-from config import TRANSPORT_ID
+from transport.config import TRANSPORT_ID
 from friends import get_friend_jid
 from messaging import send, send_to_watcher
 from parallel import realtime

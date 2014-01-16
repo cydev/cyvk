@@ -8,7 +8,7 @@ from transport.stanza_queue import push
 from transport.statuses import get_probe_stanza
 
 
-from config import REDIS_PREFIX, REDIS_HOST, REDIS_PORT, USE_LAST_MESSAGE_ID, API_MAXIMUM_RATE, POLLING_WAIT
+from transport.config import REDIS_PREFIX, REDIS_HOST, REDIS_PORT, USE_LAST_MESSAGE_ID, API_MAXIMUM_RATE, POLLING_WAIT
 
 
 logger = logging.getLogger("vk4xmpp")

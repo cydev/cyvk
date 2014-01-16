@@ -5,11 +5,10 @@ from __future__ import unicode_literals, absolute_import
 import logging
 import urllib
 
-import config
-from config import WHITE_LIST, IDENTIFIER, TRANSPORT_ID, LOGO_URL, TRANSPORT_FEATURES
+from transport.config import WHITE_LIST, IDENTIFIER, TRANSPORT_ID, LOGO_URL, TRANSPORT_FEATURES
 from friends import get_friend_uid
 from parallel import realtime
-from transport import forms
+from transport import forms, config
 from transport.stanza_queue import push
 import transport.user as user_api
 
@@ -20,11 +19,12 @@ from xmpp.protocol import (NodeProcessed, NS_REGISTER, NS_CAPTCHA, NS_GATEWAY,
 import xmpp.simplexml
 
 # from sender import stanza_send
-from .transport.handlers.handler import Handler
-from messaging import send_to_watcher
+from transport.handlers.handler import Handler
+from parallel.sending import send_to_watcher
 from transport.captcha import captcha_accept
 from errors import AuthenticationException
 import database
+import transport.forms
 
 
 logger = logging.getLogger("vk4xmpp")
@@ -59,8 +59,7 @@ def generate_error(stanza, error=None, text=None):
 def _send_form(iq, jid):
     logger.debug("sending register form to %s" % jid)
     logger.debug('recieved: %s' % iq)
-    result = iq.buildReply("result")
-    result.setQueryPayload((forms.get_form(),))
+    result = transport.forms.get_form_stanza(iq)
     logger.debug('register form: %s' % result)
     return result
 

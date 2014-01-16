@@ -13,7 +13,7 @@ from parallel import realtime
 
 logger = logging.getLogger("vk4xmpp")
 
-from config import APP_ID, APP_SCOPE, API_MAXIMUM_RATE, TRANSPORT_ID
+from transport.config import APP_ID, APP_SCOPE, API_MAXIMUM_RATE, TRANSPORT_ID
 
 
 VK_ERROR_BURST = 6

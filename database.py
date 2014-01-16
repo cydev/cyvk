@@ -1,5 +1,5 @@
 import os
-from config import DB_FILE
+from transport.config import DB_FILE
 from parallel.realtime import logger, remove_online_user, r, _users_key, set_roster_flag, set_last_message, set_friends, _get_token_key
 
 __author__ = 'ernado'

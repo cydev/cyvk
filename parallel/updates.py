@@ -1,8 +1,9 @@
 # coding=utf-8
 from __future__ import unicode_literals
 
-from messaging import send_typing_status
+
 from parallel import status
+from parallel.sending import send_typing_status
 import transport.user as user_api
 
 __author__ = 'ernado'

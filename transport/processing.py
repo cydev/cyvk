@@ -6,7 +6,7 @@ import logging
 import re
 
 from xmpp.protocol import Protocol
-from config import BANNED_CHARS
+from transport.config import BANNED_CHARS
 
 logger = logging.getLogger("vk4xmpp")
 
