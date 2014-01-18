@@ -8,16 +8,19 @@ class ConnectionError(Exception):
     pass
 
 class APIError(Exception):
-    pass
+    def __init__(self, message):
+        self.message = message
 
 
 class CaptchaNeeded(APIError):
     pass
 
 
-class TokenError(APIError):
+class InvalidTokenError(APIError):
     pass
 
+class AccesRevokedError(APIError):
+    pass
 
 class NotAllowed(APIError):
     pass

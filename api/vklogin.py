@@ -7,7 +7,7 @@ from friends import get_friend_jid
 from config import TRANSPORT_ID
 import database
 from api.vkapi import method, method_wrapped
-from errors import AuthenticationException, APIError, TokenError, CaptchaNeeded, NotAllowed
+from errors import AuthenticationException, APIError, InvalidTokenError, CaptchaNeeded, NotAllowed
 # from parallel.sending import send
 from messaging.parsing import escape_name
 from parallel.sending import send
@@ -64,12 +64,12 @@ class VKLogin(object):
 
         # elif self.engine.token:
         if not self.token:
-            raise TokenError('no token for %s' % self.jid)
+            raise InvalidTokenError('no token for %s' % self.jid)
 
         logger.debug("VKLogin.checkData: using token")
         if not self.check_token():
             logger.error("VKLogin.checkData: token invalid: " % self.engine.token)
-            raise TokenError("Token %s for user %s invalid: " % (self.jid, self.engine.token))
+            raise InvalidTokenError("Token %s for user %s invalid: " % (self.jid, self.engine.token))
     # else:
     #         logger.error("VKLogin.checkData: no token and password for jid:%s" % self.jid_from)
     #         raise TokenError("%s, Where are your token?" % self.jid_from)

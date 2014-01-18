@@ -40,6 +40,8 @@ WHITE_LIST = []
 # WATCHER_LIST = [] for no notifications
 WATCHER_LIST = ['ernado@vk.s1.cydev']
 
+MAX_API_RETRY = 3
+
 # addition description text for transport vcard
 ADDITIONAL_ABOUT = ""
 
@@ -94,6 +96,7 @@ IDENTIFIER = {"type": "vk",
                 "name": "cyvk transport"}
 
 try:
+    # noinspection PyUnresolvedReferences
     BANNED_CHARS = [unichr(x) for x in xrange(32) if x not in (9, 10, 13)] + [unichr(57003)]
 except NameError:
     BANNED_CHARS = [chr(x) for x in range(32) if x not in (9, 10, 13)] + [chr(57003)]

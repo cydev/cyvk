@@ -14,7 +14,7 @@ from friends import get_friend_jid
 from parallel import realtime
 
 import xmpp as xmpp
-from errors import CaptchaNeeded, TokenError, AuthenticationException
+from errors import CaptchaNeeded, InvalidTokenError, AuthenticationException
 from api.vkapi import is_application_user
 
 import database
@@ -210,7 +210,7 @@ def connect(jid, token):
         raise NotImplementedError('Captcha')
         # self.vk.captcha_challenge()
         # return True
-    except TokenError as token_error:
+    except InvalidTokenError as token_error:
         if token_error.message == "User authorization failed: user revoke access for this token.":
             logger.critical("user api: %s" % token_error.message)
             delete_user(jid)

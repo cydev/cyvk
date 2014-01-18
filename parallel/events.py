@@ -12,8 +12,14 @@ EVENTS_KEY = ':'.join([REDIS_PREFIX, 'events'])
 NAME_KEY = 'name'
 
 
+# user removed from transport
 USER_REMOVED = 'user_removed'
+
+# user registered via form
 USER_REGISTERED = 'user_registered'
+
+# long-polling result is delivered
+UPDATE_RESULT = 'update_result'
 
 all_events = (USER_REGISTERED, USER_REMOVED)
 

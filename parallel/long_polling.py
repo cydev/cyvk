@@ -1,10 +1,12 @@
 from __future__ import unicode_literals
 
 import json
-import urllib2
+
+
 from api.vkapi import method
 from parallel import realtime, updates
 from config import POLLING_WAIT
+from compatibility import urlopen
 
 import logging
 
@@ -39,7 +41,7 @@ def tail_call_optimized(g):
       while 1:
         try:
           return g(*args, **kwargs)
-        except TailRecurseException, e:
+        except TailRecurseException as e:
           args = e.args
           kwargs = e.kwargs
   func.__doc__ = g.__doc__
@@ -59,7 +61,7 @@ def _long_polling_get(jid):
     url = 'http://{server}?act=a_check&key={key}&ts={ts}&wait={wait}&mode=2'.format(**long_polling)
     logger.debug('got url, starting polling')
     realtime.wait_for_api_call(jid)
-    data = json.loads(urllib2.urlopen(url).read())
+    data = json.loads(urlopen(url).read())
     logger.debug('got data from polling server')
     realtime.unset_polling(jid)
 
@@ -69,8 +71,6 @@ def _long_polling_get(jid):
 
     for update in data['updates']:
         updates.process_data(jid, update)
-
-    # logger.debug('response: %s' % data)
 
     if realtime.is_client(jid):
         _long_polling_get(jid)
