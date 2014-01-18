@@ -2,30 +2,16 @@ import redis
 import time
 import logging
 import json
-import database
 
-from transport.stanza_queue import push
-from transport.statuses import get_probe_stanza
+from config import REDIS_PREFIX, REDIS_HOST, REDIS_PORT, USE_LAST_MESSAGE_ID, API_MAXIMUM_RATE, POLLING_WAIT
 
-
-from transport.config import REDIS_PREFIX, REDIS_HOST, REDIS_PORT, USE_LAST_MESSAGE_ID, API_MAXIMUM_RATE, POLLING_WAIT
-
-
-logger = logging.getLogger("vk4xmpp")
+logger = logging.getLogger("cyvk")
 
 
 r = redis.StrictRedis(REDIS_HOST, REDIS_PORT, )
 
 
-def probe_users():
-    logger.info('probing users')
 
-    users = database.get_all_users()
-
-    for user in users:
-        jid = user[0]
-        logger.debug('probing %s' % jid)
-        push(get_probe_stanza(jid))
 
 def _get_last_message_key(jid):
     return _get_user_attribute_key(jid, 'last_message')
@@ -261,8 +247,6 @@ def set_last_status(jid, status):
 
 # message queue
 
-def _get_stanza_queue_key():
-    return ':'.join([REDIS_PREFIX, 'queue'])
 
 
 
@@ -309,6 +293,8 @@ def is_polling(jid):
 
 
 
+def set_token(jid, token):
+    r.set(_get_token_key(jid), token)
 
 
 
@@ -317,3 +303,13 @@ def set_processing(jid):
     k = _get_processing_key(jid)
     r.set(k, True)
     r.expire(k, 10)
+
+def initialize_user(jid, token, last_msg_id, roster_set):
+    r.sadd(_users_key, jid)
+    if roster_set:
+        set_roster_flag(jid)
+    set_last_message(jid, last_msg_id)
+    set_token(jid, token)
+    set_friends(jid, {})
+
+

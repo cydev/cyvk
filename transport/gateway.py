@@ -7,15 +7,18 @@ import threading
 from multiprocessing import Process
 import time
 
+from handlers.presence import PresenceHandler
+
 import log
 from errors import AuthenticationException, all_errors, ConnectionError
 from friends import get_friend_jid
 from database import initialize_database
-from transport.config import (PID_FILE, DATABASE_FILE,
+from config import (PID_FILE, DATABASE_FILE,
                     HOST, SERVER, PORT, TRANSPORT_ID,
                     DEBUG_XMPPPY, PASSWORD)
 from parallel import realtime
-from transport import user as user_api, handlers
+from parallel.probe import probe_users
+from transport import user as user_api, _handlers
 from transport.stanza_queue import enqueue
 
 
@@ -80,9 +83,9 @@ def initialize():
 
     logger.info('registering handlers')
 
-    register_handler(transport, "iq", handlers.IQHandler)
-    register_handler(transport, "presence", handlers.PresenceHandler)
-    register_handler(transport, "message", handlers.MessageHandler)
+    register_handler(transport, "iq", _handlers.IQHandler)
+    register_handler(transport, "presence", PresenceHandler)
+    register_handler(transport, "message", _handlers.MessageHandler)
     transport.RegisterDisconnectHandler(get_disconnect_handler(transport))
     realtime.reset_online_users()
 
@@ -156,8 +159,7 @@ def get_sender_iteration(c):
     return stanza_sender_iteration
 
 
-
-if __name__ == "__main__":
+def start():
     signal.signal(signal.SIGTERM, halt_handler)
     signal.signal(signal.SIGINT, halt_handler)
 
@@ -177,7 +179,7 @@ if __name__ == "__main__":
         # probe all users from database and add them to client list
         # if they are online
         time.sleep(0.5)
-        realtime.probe_users()
+        probe_users()
     except all_errors as e:
         logger.critical('unable to initialize: %s' % e)
         halt_handler()
@@ -186,4 +188,8 @@ if __name__ == "__main__":
     while True:
         # allow main thread to catch ctrl+c
         time.sleep(1)
+
+if __name__ == "__main__":
+    start()
+
 

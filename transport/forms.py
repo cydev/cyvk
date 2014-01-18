@@ -3,7 +3,7 @@ __author__ = 'ernado'
 import sys
 
 from xmpp import DataForm, Node
-from transport.config import URL_ACCEPT_APP
+from config import OAUTH_URL
 
 
 try:
@@ -39,7 +39,7 @@ def get_form_lxml():
     description.text = 'If you won\'t get access-token automatically, please, ' \
                        'follow authorization link and authorize app, and then paste url to password field.'
     link_value = etree.SubElement(link_field, 'value')
-    link_value.text = URL_ACCEPT_APP
+    link_value.text = OAUTH_URL
 
     password_field = etree.SubElement(x, 'field', var='token', type='text-single', label='token')
     description = etree.SubElement(password_field, 'desc')
@@ -52,7 +52,7 @@ def get_form():
 
     form = DataForm()
     form.addChild(node=Node("instructions")).setData("Type data in fields")
-    link = form.setField("link", URL_ACCEPT_APP)
+    link = form.setField("link", OAUTH_URL)
     link.setLabel("Autorization page")
     link.setDesc(
         "If you won't get access-token automatically, please, follow authorization link and authorize app,\n"

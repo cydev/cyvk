@@ -1,12 +1,12 @@
 import logging
 
-from transport.config import WATCHER_LIST, TRANSPORT_ID
+from config import WATCHER_LIST, TRANSPORT_ID
+from parallel.stanzas import push
 from transport.messages import get_message_stanza
-from transport.stanza_queue import push
 from transport.statuses import get_typing_stanza
 
 
-logger = logging.getLogger("vk4xmpp")
+logger = logging.getLogger("cyvk")
 
 
 def send(jid_to, body, jid_from, timestamp=None):

@@ -5,7 +5,7 @@ __author__ = 'ernado'
 
 import logging
 
-logger = logging.getLogger("vk4xmpp")
+logger = logging.getLogger("cyvk")
 
 
 def get_pid(pid):

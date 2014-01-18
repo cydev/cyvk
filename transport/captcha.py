@@ -3,7 +3,7 @@ import logging
 
 # import library.vkapi as api
 
-logger = logging.getLogger("vk4xmpp")
+logger = logging.getLogger("cyvk")
 
 def captcha_accept(args, jid_to, jid_from_str):
 

@@ -1,8 +1,7 @@
 # coding: utf
+from __future__ import unicode_literals
 
 import logging
-
-import xmpp as xmpp
 
 
 # connection host.
@@ -18,7 +17,7 @@ SERVER = "vk.s1.cydev"
 PORT = 5556
 
 # transport ID
-TRANSPORT_ID = u"vk.s1.cydev"
+TRANSPORT_ID = "vk.s1.cydev"
 
 # connection password.
 PASSWORD = "secret"
@@ -39,7 +38,7 @@ WHITE_LIST = []
 
 # users with jid from this list are receiving registration notifications
 # WATCHER_LIST = [] for no notifications
-WATCHER_LIST = [u'ernado@vk.s1.cydev']
+WATCHER_LIST = ['ernado@vk.s1.cydev']
 
 # addition description text for transport vcard
 ADDITIONAL_ABOUT = ""
@@ -94,7 +93,10 @@ IDENTIFIER = {"type": "vk",
                 "category": "gateway",
                 "name": "cyvk transport"}
 
-BANNED_CHARS = [unichr(x) for x in xrange(32) if x not in (9, 10, 13)] + [unichr(57003)]
+try:
+    BANNED_CHARS = [unichr(x) for x in xrange(32) if x not in (9, 10, 13)] + [unichr(57003)]
+except NameError:
+    BANNED_CHARS = [chr(x) for x in range(32) if x not in (9, 10, 13)] + [chr(57003)]
 
 LOCALE = 'ru'
 
@@ -103,25 +105,13 @@ LOCALE_PATH = 'locales'
 DESC = "cyvk transport"
 
 
-TRANSPORT_FEATURES = (xmpp.NS_DISCO_ITEMS,
-                      xmpp.NS_DISCO_INFO,
-                      xmpp.NS_RECEIPTS,
-                      xmpp.NS_REGISTER,
-                      xmpp.NS_GATEWAY,
-                      xmpp.NS_VERSION,
-                      xmpp.NS_CAPTCHA,
-                      xmpp.NS_STATS,
-                      xmpp.NS_VCARD,
-                      xmpp.NS_DELAY,
-                      xmpp.NS_PING,
-                      xmpp.NS_LAST)
 url = 'https://oauth.vk.com/authorize?client_id=%s&scope=%s&redirect_uri=' \
       'http://oauth.vk.com/blank.html&display=page&response_type=token'
 
 APP_ID = 3789129
 APP_SCOPE = 69634
 
-URL_ACCEPT_APP = url % (APP_ID, APP_SCOPE)
+OAUTH_URL = url % (APP_ID, APP_SCOPE)
 
 LOG_LEVEL = logging.DEBUG
 SLICE_STEP = 8
@@ -133,6 +123,7 @@ REDIS_PREFIX = 'cyvk'
 REDIS_HOST = 'localhost'
 REDIS_PORT = 6379
 REDIS_DB = 0
+REDIS_CHARSET = 'utf-8'
 
 API_MAXIMUM_RATE = 1./3
 POLLING_WAIT = 60

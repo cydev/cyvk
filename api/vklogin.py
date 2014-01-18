@@ -4,15 +4,15 @@ import logging
 from api import vkapi as api
 
 from friends import get_friend_jid
-import messaging
-from transport.config import TRANSPORT_ID
-# from stext import _ as _
+from config import TRANSPORT_ID
 import database
 from api.vkapi import method, method_wrapped
 from errors import AuthenticationException, APIError, TokenError, CaptchaNeeded, NotAllowed
+# from parallel.sending import send
+from messaging.parsing import escape_name
+from parallel.sending import send
 
-
-logger = logging.getLogger("vk4xmpp")
+logger = logging.getLogger("cyvk")
 
 # def vcard_get_photo(self, url, encode=True):
 #     try:
@@ -86,7 +86,6 @@ class VKLogin(object):
             raise ValueError('jid is None')
 
         jid = self.jid
-        gateway = self.gateway
 
         m_args = m_args or {}
         result = {}
@@ -104,7 +103,7 @@ class VKLogin(object):
             raise NotImplementedError('Captcha')
         except NotAllowed:
             # if self.engine.lastMethod[0] == "messages.send":
-            messaging.send(jid, "You're not allowed to perform this action.",
+            send(jid, "You're not allowed to perform this action.",
                     get_friend_jid(m_args.get("user_id", TRANSPORT_ID)))
         except APIError as vk_e:
             if vk_e.message == "User authorization failed: user revoke access for this token.":
@@ -115,7 +114,7 @@ class VKLogin(object):
                 except KeyError:
                     pass
             elif vk_e.message == "User authorization failed: invalid access_token.":
-                messaging.send(jid, vk_e.message + " Please, register again", TRANSPORT_ID)
+                send(jid, vk_e.message + " Please, register again", TRANSPORT_ID)
             # database.set_offline(jid)
 
             logger.error("VKLogin: apiError %s for user %s" % (vk_e.message, jid))

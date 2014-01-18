@@ -4,17 +4,19 @@ from __future__ import unicode_literals
 
 import logging
 from parallel import realtime
-from transport import user as user_api
-from transport.handlers.handler import Handler
+from parallel.stanzas import push
+from parallel.updates import send_message
+from handlers.handler import Handler
 from hashers import get_hash
-from transport.config import TRANSPORT_ID
+
+from config import TRANSPORT_ID
 from transport.captcha import captcha_accept
-from transport.stanza_queue import push
 from transport.processing import from_stanza
+
 import friends
 import transport.messages
 
-logger = logging.getLogger("vk4xmpp")
+logger = logging.getLogger("cyvk")
 
 
 
@@ -34,8 +36,12 @@ class MessageHandler(Handler):
 
     def handle(self, _, stanza):
 
+        logger.warning('message: %s' % stanza)
         m = from_stanza(stanza)
         body = m['body']
+
+        if m['composing']:
+            logger.error('composing not implemented')
 
         if not body:
             return
@@ -71,8 +77,8 @@ class MessageHandler(Handler):
         else:
             uid = unicode(friends.get_friend_uid(jid_to.getNode()))
             logger.debug('message to user (%s->%s)' % (jid, uid))
-            if user_api.send_message(jid, body, uid):
-                answer = get_answer(stanza, jid_from, jid_to)
+            if send_message(jid, body, uid):
+                answer = get_answer(stanza, jid_from_str, jid_to_str)
         if answer:
             push(answer)
 

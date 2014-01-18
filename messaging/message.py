@@ -7,7 +7,7 @@ from hashers import get_hash
 
 import logging
 
-logger = logging.getLogger("vk4xmpp")
+logger = logging.getLogger("cyvk")
 
 mapping = {'geo': parse_geo, 'fwd_messages': parse_forwarded_messages, 'attachments': parse_attachments}
 

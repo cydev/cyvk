@@ -1,10 +1,16 @@
 # coding=utf-8
 from __future__ import unicode_literals
-
-
-from parallel import status
+import time
+from api import webtools as webtools
+from api.vkapi import get_messages, mark_messages_as_read, method
+import database
+from friends import get_friend_jid
+import messaging.message
+from messaging.parsing import sorting, escape, escape_name
+from parallel import status, realtime, sending
 from parallel.sending import send_typing_status
-import transport.user as user_api
+
+from config import USE_LAST_MESSAGE_ID
 
 __author__ = 'ernado'
 
@@ -31,7 +37,7 @@ FRIEND_TYPING_GROUP = 62
 
 import logging
 
-logger = logging.getLogger("vk4xmpp")
+logger = logging.getLogger("cyvk")
 
 import friends
 
@@ -53,7 +59,7 @@ def process_data(jid, data):
         return
 
     if code == NEW_MESSAGE:
-        user_api.send_messages(jid)
+        send_messages(jid)
         # 4,$message_id,$flags,$from_id,$timestamp,$subject,$text,$attachments
         # logger.debug('trying to process message: %s' % data)
         code, message_id, flags, from_id, timestamp, subject, text, attachments = data
@@ -73,3 +79,83 @@ def process_data(jid, data):
 
     logger.debug('doing nothing on code %s' % code)
 
+
+def send_messages(jid):
+    logger.debug('user api: send_messages for %s' % jid)
+
+    if not jid:
+        raise ValueError('user api: unable to send messages for blank jid')
+
+    last_message = realtime.get_last_message(jid)
+
+    messages = get_messages(jid, 200, last_message)
+
+    if not messages:
+        return
+
+    messages = sorted(messages[1:], sorting)
+
+    if not messages:
+        return
+
+    read = []
+
+    last_message = messages[-1]["mid"]
+
+    if USE_LAST_MESSAGE_ID:
+        database.set_last_message(jid, last_message)
+
+    for message in messages:
+        read.append(str(message["mid"]))
+        from_jid = get_friend_jid(message["uid"])
+        body = webtools.unescape(message["body"])
+        body += messaging.message.parse(jid, message)
+        sending.send(jid, escape("", body), from_jid, message["date"])
+
+    mark_messages_as_read(jid, read)
+    # self.vk.msg_mark_as_read(read)
+    # if USE_LAST_MESSAGE_ID:
+    #     database.set_last_message(last_msg_id, self.jid)
+
+
+def send_message(jid, body, destination_uid):
+    logger.debug('user api: message to %s' % destination_uid)
+
+    assert isinstance(jid, unicode)
+    assert isinstance(destination_uid, unicode)
+    assert isinstance(body, unicode)
+
+    method_name = "messages.send"
+    method_values = {'user_id': int(destination_uid), "message": body, "type": 0}
+    update_last_activity(jid)
+
+    return method(method_name, jid, method_values)
+
+
+def update_last_activity(uid):
+    logger.debug('updating last activity')
+    realtime.set_last_activity(uid, time.time())
+
+
+def set_online(user):
+    m = "account.setOnline"
+    method(m, user)
+
+
+def get_friends(jid, fields=None):
+    logger.debug('getting friends from api for %s' % jid)
+    fields = fields or ["screen_name"]
+    friends_raw = method("friends.get", jid, {"fields": ",".join(fields)}) or {} # friends.getOnline
+    friends = {}
+    for friend in friends_raw:
+        uid = friend["uid"]
+        name = escape_name("", u"%s %s" % (friend["first_name"], friend["last_name"]))
+        try:
+            friends[uid] = {"name": name, "online": friend["online"]}
+            for key in fields:
+                if key != "screen_name":
+                    friends[uid][key] = friend.get(key)
+        except KeyError as key_error:
+            logger.debug('%s while processing %s' % (key_error, uid))
+            continue
+    return friends

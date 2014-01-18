@@ -1,6 +1,12 @@
 import os
-from transport.config import DB_FILE
-from parallel.realtime import logger, remove_online_user, r, _users_key, set_roster_flag, set_last_message, set_friends, _get_token_key
+import logging
+
+from config import DB_FILE
+
+#
+
+logger = logging.getLogger("cyvk")
+
 
 __author__ = 'ernado'
 
@@ -144,7 +150,7 @@ def initialize_database(filename):
 
 def remove_user(jid):
     logger.debug('DB: removing %s' % jid)
-    remove_online_user(jid)
+    # remove_online_user(jid)
     with Database(DB_FILE) as db:
         db("DELETE FROM users WHERE jid=?", (jid,))
         db.commit()
@@ -159,12 +165,7 @@ def get_all_users():
 def insert_user(jid, username, token, last_msg_id, roster_set):
     logger.debug('DB: adding user %s' % jid)
 
-    r.sadd(_users_key, jid)
-    if roster_set:
-        set_roster_flag(jid)
-    set_last_message(jid, last_msg_id)
-    set_token(jid, token)
-    set_friends(jid, {})
+
 
 
     with Database(DB_FILE) as db:
@@ -190,6 +191,7 @@ def get_description(jid):
 
 
 def set_token(user, token):
-    r.set(_get_token_key(user), token)
     with Database(DB_FILE) as db:
         db("UPDATE users SET token=? WHERE jid=?", (token, user))
+
+

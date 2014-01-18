@@ -2,15 +2,15 @@
 
 from datetime import datetime
 import logging
+from api.vkapi import get_user_data
 
 from messaging.attachments import parse_attachments
-from transport.processing import escape, sorting
-from transport import user as user_api
+from parsing import escape, sorting
 from api.webtools import unescape
-from transport.config import MAXIMUM_FORWARD_DEPTH
+from config import MAXIMUM_FORWARD_DEPTH
 
 
-logger = logging.getLogger("vk4xmpp")
+logger = logging.getLogger("cyvk")
 
 
 def parse_forwarded_messages(jid, msg, depth=0):
@@ -30,7 +30,7 @@ def parse_forwarded_messages(jid, msg, depth=0):
         fwd_body = escape("", unescape(fwd["body"]))
         date = datetime.fromtimestamp(date).strftime("%d.%m.%Y %H:%M:%S")
         # name = user.get_user_data(id_from)["name"]
-        name = user_api.get_user_data(jid, id_from)["name"]
+        name = get_user_data(jid, id_from)["name"]
 
         body += "\n[%s] <%s> %s" % (date, name, fwd_body)
         body += parse_attachments(jid, fwd)

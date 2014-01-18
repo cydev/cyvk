@@ -1,6 +1,6 @@
 from __future__ import unicode_literals
 
-from transport.config import TRANSPORT_ID
+from config import TRANSPORT_ID
 
 __author__ = 'ernado'
 

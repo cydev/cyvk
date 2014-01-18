@@ -3,17 +3,15 @@
 from __future__ import unicode_literals
 
 import logging
-import re
+# import re
 
 from xmpp.protocol import Protocol
-from transport.config import BANNED_CHARS
+# from transport.config import BANNED_CHARS
 
-logger = logging.getLogger("vk4xmpp")
+logger = logging.getLogger("cyvk")
 
 
-escape_name = re.compile(u"[^-0-9a-zа-яёë\._\' ґїє]", re.IGNORECASE | re.UNICODE | re.DOTALL).sub
-escape = re.compile("|".join(BANNED_CHARS)).sub
-sorting = lambda b_r, b_a: b_r["date"] - b_a["date"]
+
 
 
 def from_stanza(msg):
@@ -29,10 +27,13 @@ def from_stanza(msg):
     jid_to_str = unicode(jid_to.getStripped())
     jid_from = msg.getFrom()
     jid_from_str = unicode(jid_from.getStripped())
+    composing = False
+
+    if msg_type == 'chat' and msg.getTag('composing'):
+        composing = True
 
     return {'type': msg_type, 'body': msg_body, 'jid_to': jid_to,
             'jid_to_str': jid_to_str, 'jid_from': jid_from,
-            'jid_from_str': jid_from_str
-            }
+            'jid_from_str': jid_from_str, 'composing': composing }
 
 

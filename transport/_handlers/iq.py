@@ -4,30 +4,33 @@ from __future__ import unicode_literals, absolute_import
 
 import logging
 import urllib
+from api.vkapi import get_user_data
 
-from transport.config import WHITE_LIST, IDENTIFIER, TRANSPORT_ID, LOGO_URL, TRANSPORT_FEATURES
+from config import WHITE_LIST, IDENTIFIER, TRANSPORT_ID, LOGO_URL
+from handlers.iq import _send_form
+from parallel.stanzas import push
+from transport.features import TRANSPORT_FEATURES
+
 from friends import get_friend_uid
 from parallel import realtime
-from transport import forms, config
-from transport.stanza_queue import push
+from transport import config
+from transport.stanzas import generate_error
 import transport.user as user_api
 
 from xmpp.protocol import (NodeProcessed, NS_REGISTER, NS_CAPTCHA, NS_GATEWAY,
-                                   NS_DISCO_ITEMS, NS_DISCO_INFO, NS_VCARD, NS_PING, ERR_FEATURE_NOT_IMPLEMENTED,
-                                   Error, NS_DATA, ERR_BAD_REQUEST, Node, ERR_REGISTRATION_REQUIRED,)
+                                   NS_DISCO_ITEMS, NS_DISCO_INFO, NS_VCARD, NS_PING, NS_DATA, ERR_BAD_REQUEST, Node, ERR_REGISTRATION_REQUIRED,)
 
 import xmpp.simplexml
 
 # from sender import stanza_send
-from transport.handlers.handler import Handler
+from handlers.handler import Handler
 from parallel.sending import send_to_watcher
 from transport.captcha import captcha_accept
 from errors import AuthenticationException
 import database
-import transport.forms
 
 
-logger = logging.getLogger("vk4xmpp")
+logger = logging.getLogger("cyvk")
 
 
 class IQ(object):
@@ -46,22 +49,8 @@ class IQ(object):
         return '<IQ %s->%s>' % (self.jid_from_str, self.jid_to_str)
 
 
-def generate_error(stanza, error=None, text=None):
-    if not error:
-        error = ERR_FEATURE_NOT_IMPLEMENTED
-    error = Error(stanza, error, True)
-    if text:
-        etag = error.getTag("error")
-        etag.setTagData("text", text)
-    return error
 
 
-def _send_form(iq, jid):
-    logger.debug("sending register form to %s" % jid)
-    logger.debug('recieved: %s' % iq)
-    result = transport.forms.get_form_stanza(iq)
-    logger.debug('register form: %s' % result)
-    return result
 
 
 def _process_form(iq, jid):
@@ -285,6 +274,7 @@ class IQHandler(Handler):
                 result.setQueryPayload(query)
             elif iq.ns == NS_DISCO_ITEMS:
                 result.setQueryPayload(query)
+            logger.error(result)
             push(result)
         raise NodeProcessed()
 
@@ -366,7 +356,7 @@ class IQHandler(Handler):
                 friend_id = get_friend_uid(jid_to_str)
                 if friend_id in friends:
                     friend_id = get_friend_uid(jid_to_str)
-                    json = user_api.get_user_data(jid, friend_id, ["screen_name", config.PHOTO_SIZE])
+                    json = get_user_data(jid, friend_id, ["screen_name", config.PHOTO_SIZE])
                     values = {"NICKNAME": json.get("name", str(json)), "URL": "http://vk.com/id%s" % friend_id,
                               "DESC": "Contact uses VK4XMPP Transport\n%s" % _DESC,
                               "PHOTO": json.get(config.PHOTO_SIZE) or config.URL_VCARD_NO_IMAGE}

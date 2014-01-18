@@ -1,8 +1,8 @@
 from xmpp import Message
 from xmpp.protocol import Presence, NS_NICK
-from transport.config import TRANSPORT_ID
+from config import TRANSPORT_ID
 
-def get_status_stanza(origin, destination, nickname, status, reason):
+def get_status_stanza(origin, destination, nickname=None, status=None, reason=None):
 
     if status == 'online':
         status = None
@@ -24,3 +24,8 @@ def get_typing_stanza(jid_to, jid_from):
     message.setTag('composing', namespace='http://jabber.org/protocol/chatstates')
 
     return message
+
+def get_unavailable_stanza(jid):
+    return Presence(jid, "unavailable", frm=TRANSPORT_ID)
+
+

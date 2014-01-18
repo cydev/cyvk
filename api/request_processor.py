@@ -5,7 +5,7 @@ import urllib2
 import logging
 import cookielib
 
-logger = logging.getLogger("vk4xmpp")
+logger = logging.getLogger("cyvk")
 
 # def attempt_to(max_retries, result_type, *errors):
 #     """

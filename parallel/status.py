@@ -3,10 +3,10 @@ from __future__ import unicode_literals
 import logging
 from friends import get_friend_jid
 from parallel import realtime
-from transport.stanza_queue import push
+from parallel.stanzas import push
 from transport.statuses import get_status_stanza
 
-logger = logging.getLogger("vk4xmpp")
+logger = logging.getLogger("cyvk")
 
 
 def update_friend_status(jid, friend_uid, status=None, friend_nickname=None, reason=None):
@@ -27,3 +27,4 @@ def update_friend_status(jid, friend_uid, status=None, friend_nickname=None, rea
     status_stanza = get_status_stanza(jid, get_friend_jid(friend_uid), friend_nickname, status, reason)
 
     push(status_stanza)
+

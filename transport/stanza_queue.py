@@ -1,11 +1,17 @@
-from parallel.realtime import r, _get_stanza_queue_key
+import redis
 from xmpp import Protocol as Stanza
+from config import REDIS_HOST, REDIS_PORT, REDIS_PREFIX
 
+r = redis.StrictRedis(REDIS_HOST, REDIS_PORT, )
 
 try:
     import cPickle as pickle
 except ImportError:
     import pickle
+
+
+def _get_stanza_queue_key():
+    return ':'.join([REDIS_PREFIX, 'queue'])
 
 
 def enqueue():
@@ -17,19 +23,3 @@ def enqueue():
         raise ValueError('expected stanza, deserialized %s' % type(stanza))
 
     return stanza
-
-
-def push(stanza):
-    """
-    Add stanza to sending queue
-    @type stanza: Stanza
-    @return:
-    """
-
-    if not isinstance(stanza, Stanza):
-        raise ValueError('expected stanza, got %s' % type(stanza))
-
-    # todo: serialization to json
-    pickled = pickle.dumps(stanza)
-
-    r.rpush(_get_stanza_queue_key(), pickled)

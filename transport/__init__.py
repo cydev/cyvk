@@ -1,1 +1,2 @@
-__author__ = 'ernado'
+import user
+import config
