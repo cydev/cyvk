@@ -15,4 +15,11 @@ else:
 try:
     from urllib2 import urlopen
 except ImportError:
+    # noinspection PyUnresolvedReferences
     from urllib.request import urlopen
+
+try:
+    from html.parser import HTMLParser
+except ImportError:
+    from HTMLParser import HTMLParser
+

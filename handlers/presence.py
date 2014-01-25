@@ -48,7 +48,7 @@ def _unavailable(jid, presence):
     user_api.send_out_presence(jid)
     xmpp_presence = statuses.get_unavailable_stanza(jid)
     push(xmpp_presence)
-    database.remove_online_user(jid)
+    realtime.remove_online_user(jid)
 
 
 def _error(jid, presence):

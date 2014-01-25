@@ -98,7 +98,7 @@ def delete_user(jid, roster=False):
             # realtime.set_offline(jid)
 
     database.remove_user(jid)
-    database.remove_online_user(jid)
+    realtime.remove_online_user(jid)
 
 
 def update_friends(jid):
@@ -136,7 +136,7 @@ def update_friends(jid):
     for uid, status in update_status_dict.items():
         send_presence(jid, get_friend_jid(uid), status)
 
-    database.set_friends(jid, friends_vk)
+    realtime.set_friends(jid, friends_vk)
 
 
 def initialize(jid, send_prescense=True):
@@ -154,7 +154,7 @@ def initialize(jid, send_prescense=True):
     friends = get_friends(jid)
 
     # updating user in redis
-    database.set_friends(jid, friends)
+    realtime.set_friends(jid, friends)
     realtime.unset_polling(jid)
     realtime.unset_processing(jid)
     # realtime.set_online(jid)
@@ -182,11 +182,11 @@ def load(jid):
     jid = desc['jid']
 
     # database.set_username(jid, desc['username'])
-    database.set_last_message(jid, desc['last_message_id'])
+    realtime.set_last_message(jid, desc['last_message_id'])
     if desc['roster_set_flag']:
-        database.set_roster_flag(jid)
+        realtime.set_roster_flag(jid)
 
-    database.set_friends(jid, {})
+    realtime.set_friends(jid, {})
 
     logger.debug("user api: %s data loaded" % jid)
 
@@ -291,7 +291,7 @@ def update_transports_list(jid, add=True):
         if add:
             realtime.add_online_user(jid)
         else:
-            database.remove_online_user(jid)
+            realtime.remove_online_user(jid)
 
     process_client(jid)
 
@@ -302,7 +302,7 @@ def remove_user(jid):
     if not is_client:
         logger.debug('%s already not in transport')
         return
-    database.remove_online_user(jid)
+    realtime.remove_online_user(jid)
     process_client(jid)
 
 

@@ -13,7 +13,7 @@ from transport.features import TRANSPORT_FEATURES
 
 from friends import get_friend_uid
 from parallel import realtime
-from transport import config
+import config
 from transport.stanzas import generate_error
 import transport.user as user_api
 

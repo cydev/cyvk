@@ -20,6 +20,7 @@ from parallel import realtime
 from parallel.probe import probe_users
 from transport import user as user_api, _handlers
 from transport.stanza_queue import enqueue
+from parallel.events import EventHandler
 
 
 logger = log.get_logger()
@@ -165,13 +166,14 @@ def start():
 
     try:
         component = initialize()
-
+        h = EventHandler()
         # main_loop = get_loop_thread(user_api.main_loop_iteration, 'main loop', 5)
         main_loop = Process(target=get_loop(user_api.process_users,  'main loop', 35), name='main loop')
         # transport_loop = Process(target=transport_loop, args=(component, ), name='transport loop')
         transport_loop = get_loop_thread(get_transport_iteration(component), 'transport loop')
         sender_loop = get_loop_thread(get_sender_iteration(component), 'stanza sender loop')
 
+        h.start()
         main_loop.start()
         transport_loop.start()
         sender_loop.start()

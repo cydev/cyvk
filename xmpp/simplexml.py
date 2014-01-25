@@ -23,6 +23,11 @@ It is designed to be as standalone as possible.
 
 import xml.parsers.expat
 
+import logging
+
+logger = logging.getLogger('xmpp')
+
+
 XML_ls = (
 ("&", "&amp;"),
 ("\x0C", ""),
@@ -559,7 +564,7 @@ class NodeBuilder:
         You can think about it as of "node upgrade".
         "data" (if provided) feeded to parser immidiatedly after instance init.
         """
-        self.DEBUG(DBG_NODEBUILDER, "Preparing to handle incoming XML stream.", "start")
+        logger.debug('preparing to handle incoming XML stream')
         self._parser = xml.parsers.expat.ParserCreate()
         self._parser.StartElementHandler = self.starttag
         self._parser.EndElementHandler = self.endtag
@@ -603,7 +608,7 @@ class NodeBuilder:
         """
         self.check_data_buffer()
         self._inc_depth()
-        self.DEBUG(DBG_NODEBUILDER, "DEPTH -> %i , tag -> %s, attrs -> %s" % (self.__depth, tag, repr(attrs)), "down")
+        logger.debug('DEPTH -> %i , tag -> %s, attrs -> %s' % (self.__depth, tag, repr(attrs)))
         if self.__depth == self._dispatch_depth:
             if not self._mini_dom:
                 self._mini_dom = Node(tag=tag, attrs=attrs, nsp=self._document_nsp, node_built=True)
@@ -638,7 +643,7 @@ class NodeBuilder:
         """
         XML Parser callback. Used internally.
         """
-        self.DEBUG(DBG_NODEBUILDER, "DEPTH -> %i , tag -> %s" % (self.__depth, tag), "up")
+        logger.debug('DEPTH -> %i , tag -> %s' % (self.__depth, tag))
         self.check_data_buffer()
         if self.__depth == self._dispatch_depth:
             if self._mini_dom and self._mini_dom.getName() == "error":
@@ -647,7 +652,7 @@ class NodeBuilder:
         elif self.__depth > self._dispatch_depth:
             self._ptr = self._ptr.parent
         else:
-            self.DEBUG(DBG_NODEBUILDER, "Got higher than dispatch level. Stream terminated?", "stop")
+            logger.debug('Got higher than dispatch level. Stream terminated?')
         self._dec_depth()
         self.last_is_data = 0
         if not self.__depth:
@@ -657,7 +662,7 @@ class NodeBuilder:
         """
         XML Parser callback. Used internally.
         """
-        self.DEBUG(DBG_NODEBUILDER, data, "data")
+        logger.debug(data)
         if self.last_is_data:
             if self.data_buffer:
                 self.data_buffer.append(data)

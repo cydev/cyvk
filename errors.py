@@ -19,7 +19,7 @@ class CaptchaNeeded(APIError):
 class InvalidTokenError(APIError):
     pass
 
-class AccesRevokedError(APIError):
+class AccessRevokedError(APIError):
     pass
 
 class NotAllowed(APIError):

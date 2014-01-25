@@ -8,6 +8,8 @@ import json
 from compatibility import text_type, binary_type
 from config import REDIS_PREFIX, REDIS_PORT, REDIS_HOST, REDIS_DB, REDIS_CHARSET
 
+logger = logging.getLogger("cyvk")
+
 EVENTS_KEY = ':'.join([REDIS_PREFIX, 'events'])
 NAME_KEY = 'name'
 
@@ -19,7 +21,11 @@ USER_REMOVED = 'user_removed'
 USER_REGISTERED = 'user_registered'
 
 # long-polling result is delivered
-UPDATE_RESULT = 'update_result'
+UPDATE_RESULT = 'lp_result'
+
+# long-polling start request
+LP_REQUEST = 'lp_request'
+
 
 all_events = (USER_REGISTERED, USER_REMOVED)
 
@@ -27,12 +33,19 @@ class EventParsingException(Exception):
     pass
 
 
+def raise_event(event_name, **params):
+    event_body = {'name': event_name}
+    event_body.update(params)
+    r = redis.StrictRedis(REDIS_HOST, REDIS_PORT, REDIS_DB, charset=REDIS_CHARSET)
+    r.rpush(EVENTS_KEY, json.dumps(event_body))
+
+
 class EventHandler(object):
     def __init__(self):
         self.handlers = {}
 
     def add_callback(self, event, callback):
-        logging.debug('adding callback for %s' % event)
+        logger.debug('adding callback for %s' % event)
 
         if not isinstance(event, text_type):
             raise ValueError('event name must be %s' % text_type)
@@ -57,13 +70,13 @@ class EventHandler(object):
             return
 
     def _start(self):
-        logging.debug('starting cyvk event handler')
+        logger.debug('starting cyvk event handler')
 
         r = redis.StrictRedis(REDIS_HOST, REDIS_PORT, REDIS_DB, charset=REDIS_CHARSET)
 
         while True:
             event = r.brpop(EVENTS_KEY)
-            logging.debug('got event %s' % event)
+            logger.debug('got event %s' % event)
 
             if not isinstance(event, binary_type):
                 raise TypeError('expected %s from redis, got %s' % (binary_type, type(event)))

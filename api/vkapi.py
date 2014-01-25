@@ -12,7 +12,7 @@ from api import webtools
 import database
 from friends import get_friend_jid
 from api.request_processor import RequestProcessor
-from errors import AuthenticationException, CaptchaNeeded, NotAllowed, APIError, AccesRevokedError, InvalidTokenError
+from errors import AuthenticationException, CaptchaNeeded, NotAllowed, APIError, AccessRevokedError, InvalidTokenError
 from messaging.parsing import escape_name
 from parallel import realtime
 from parallel.sending import send
@@ -53,7 +53,7 @@ def method(method_name, jid, args=None, additional_timeout=0, retry=0):
     url = 'https://api.vk.com/method/%s' % method_name
     token =  realtime.get_token(jid)
     args['access_token'] = token
-    args["v"] = '5.0'
+    args["v"] = '3.0'
 
     #
     # interval = API_MAXIMUM_RATE - (time.time() - realtime.get_last_method_time(jid))
@@ -143,34 +143,6 @@ class APIBinding:
                 if data["user"]["id"] != -1:
                     return data
 
-    def confirm(self):
-        logger.debug('confirming application')
-
-        url = "https://oauth.vk.com/authorize"
-        values = {"display": "mobile",
-                  "scope": self.scope,
-                  "client_id": self.app_id,
-                  "response_type": "token",
-                  "redirect_uri": "https://oauth.vk.com/blank.html"
-        }
-
-        self.token = None
-
-        body, response = self.rp.get(url, values)
-
-        if not response:
-            return
-
-        if "access_token" in response.url:
-            self.token = response.url.split("=")[1].split("&")[0]
-        else:
-            target = webtools.getTagArg("form method=\"post\"", "action", body, "form")
-            if target:
-                body, response = self.rp.post(target)
-                self.token = response.url.split("=")[1].split("&")[0]
-            else:
-                raise AuthenticationException("Couldn't execute confirmThisApp()!")
-
 
 def method_wrapped(jid, m, m_args=None):
     """
@@ -203,7 +175,7 @@ def method_wrapped(jid, m, m_args=None):
         # if self.engine.lastMethod[0] == "messages.send":
         send(jid, "You're not allowed to perform this action.",
                 get_friend_jid(m_args.get("user_id", TRANSPORT_ID)))
-    except AccesRevokedError:
+    except AccessRevokedError:
         logger.debug('user %s revoked access' % jid)
         database.remove_user(jid)
         realtime.remove_online_user(jid)
@@ -234,6 +206,7 @@ def is_application_user(jid):
 
 
 def mark_messages_as_read(jid, msg_list):
+    # TODO: can be asyncronous call
     method("messages.markAsRead", jid, {"message_ids": ','.join(msg_list)})
 
 

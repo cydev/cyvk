@@ -1,14 +1,13 @@
 # coding=utf-8
 from __future__ import unicode_literals
 import time
-from api import webtools as webtools
 from api.vkapi import get_messages, mark_messages_as_read, method
-import database
 from friends import get_friend_jid
 import messaging.message
 from messaging.parsing import sorting, escape, escape_name
 from parallel import status, realtime, sending
 from parallel.sending import send_typing_status
+from compatibility import HTMLParser
 
 from config import USE_LAST_MESSAGE_ID
 
@@ -59,23 +58,13 @@ def process_data(jid, data):
         return
 
     if code == NEW_MESSAGE:
-        send_messages(jid)
-        # 4,$message_id,$flags,$from_id,$timestamp,$subject,$text,$attachments
-        # logger.debug('trying to process message: %s' % data)
-        code, message_id, flags, from_id, timestamp, subject, text, attachments = data
-        # database.set_last_message(jid, message_id)
-        #
-        # body = webtools.unescape(text)
-        # body += parsers.message.parse_message(jid, text)
-        # messaging.send_message(jid, messaging.escape_message("", body), from_id, timestamp)
-        return
+        return send_messages(jid)
 
     if code == FRIEND_TYPING_CHAT:
         friend_id = data[1]
         if friend_id < 0:
             friend_id = -friend_id
-        send_typing_status(jid, friends.get_friend_jid(friend_id))
-        return
+        return send_typing_status(jid, friends.get_friend_jid(friend_id))
 
     logger.debug('doing nothing on code %s' % code)
 
@@ -103,11 +92,12 @@ def send_messages(jid):
     last_message = messages[-1]["mid"]
 
     if USE_LAST_MESSAGE_ID:
-        database.set_last_message(jid, last_message)
+        realtime.set_last_message(jid, last_message)
 
     for message in messages:
         read.append(str(message["mid"]))
         from_jid = get_friend_jid(message["uid"])
+        webtools = HTMLParser()
         body = webtools.unescape(message["body"])
         body += messaging.message.parse(jid, message)
         sending.send(jid, escape("", body), from_jid, message["date"])
