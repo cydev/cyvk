@@ -7,39 +7,6 @@ import cookielib
 
 logger = logging.getLogger("cyvk")
 
-# def attempt_to(max_retries, result_type, *errors):
-#     """
-#     Tries to execute function ignoring specified errors specified number of
-#     times and returns specified result type on try limit.
-#     """
-#     if not isinstance(result_type, type):
-#         result_type = lambda result=result_type: result
-#     if not errors:
-#         errors = Exception
-#
-#     def decorator(func):
-#
-#         def wrapper(*args, **kwargs):
-#             retries = 0
-#             exc = None
-#             while retries < max_retries:
-#                 try:
-#                     data = func(*args, **kwargs)
-#                 except errors as exc:
-#                     retries += 1
-#                     time.sleep(0.2)
-#                 else:
-#                     break
-#             else:
-#                 data = result_type()
-#                 logger.debug("Error %s occured on executing %s" % (exc, func))
-#             return data
-#
-#         wrapper.__name__ = func.__name__
-#         return wrapper
-#
-#     return decorator
-
 def encoded_dict(in_dict):
     out_dict = {}
     for k, v in in_dict.iteritems():

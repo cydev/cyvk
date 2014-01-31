@@ -20,6 +20,9 @@ USER_REMOVED = 'user_removed'
 # user registered via form
 USER_REGISTERED = 'user_registered'
 
+# user added
+USER_ONLINE = 'user_online'
+
 # long-polling result is delivered
 UPDATE_RESULT = 'lp_result'
 
@@ -27,7 +30,7 @@ UPDATE_RESULT = 'lp_result'
 LP_REQUEST = 'lp_request'
 
 
-all_events = (USER_REGISTERED, USER_REMOVED)
+all_events = (USER_REGISTERED, USER_REMOVED, USER_ONLINE)
 
 class EventParsingException(Exception):
     pass
@@ -58,7 +61,7 @@ class EventHandler(object):
 
         self.handlers[event].add(callback)
 
-    def handle_event(self, event):
+    def handle_event(self, event, event_body):
         if not isinstance(event, text_type):
             raise ValueError('event name must be %s' % text_type)
 
@@ -69,13 +72,14 @@ class EventHandler(object):
             logging.debug('no event handlers for %s' % event)
             return
 
+
     def _start(self):
         logger.debug('starting cyvk event handler')
 
         r = redis.StrictRedis(REDIS_HOST, REDIS_PORT, REDIS_DB, charset=REDIS_CHARSET)
 
         while True:
-            event = r.brpop(EVENTS_KEY)
+            event = r.brpop(EVENTS_KEY)[1]
             logger.debug('got event %s' % event)
 
             if not isinstance(event, binary_type):
@@ -89,7 +93,7 @@ class EventHandler(object):
             if NAME_KEY not in event_json:
                 raise EventParsingException('event with no name: %s' % event_json)
 
-            self.handle_event(event.decode(REDIS_CHARSET))
+            self.handle_event(event_json['name'].decode(REDIS_CHARSET), event_json)
 
     def start(self, block=False):
         if block:

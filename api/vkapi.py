@@ -29,7 +29,7 @@ from config import APP_ID, APP_SCOPE, API_MAXIMUM_RATE, TRANSPORT_ID
 VK_ERROR_BURST = 6
 
 
-def method(method_name, jid, args=None, additional_timeout=0, retry=0):
+def method(method_name, jid, args=None, additional_timeout=0, retry=0, token=None):
     """
     Makes post-request to vk api witch burst protection and exception handling
     @type jid: text_type
@@ -40,7 +40,7 @@ def method(method_name, jid, args=None, additional_timeout=0, retry=0):
     @param additional_timeout: time in seconds to wait before reattempting
     @return: @raise NotImplementedError:
     """
-    logger.debug('api method %s' % method_name)
+
 
     assert isinstance(method_name, text_type)
     assert isinstance(jid, text_type)
@@ -51,9 +51,17 @@ def method(method_name, jid, args=None, additional_timeout=0, retry=0):
 
     args = args or {}
     url = 'https://api.vk.com/method/%s' % method_name
-    token =  realtime.get_token(jid)
+
+    if not token:
+        token = realtime.get_token(jid)
+
+    if not token:
+        raise ValueError('no token for %s' % jid)
+
     args['access_token'] = token
     args["v"] = '3.0'
+
+    logger.debug('api method %s, arguments: %s' % (method_name, args))
 
     #
     # interval = API_MAXIMUM_RATE - (time.time() - realtime.get_last_method_time(jid))
@@ -144,48 +152,50 @@ class APIBinding:
                     return data
 
 
-def method_wrapped(jid, m, m_args=None):
+def method_wrapped(m, jid, args=None, token=None):
     """
 
     @type jid: text_type
     @param jid: client jid
     @param m: method name
-    @param m_args: method arguments
+    @param args: method arguments
     @return: @raise NotImplementedError:
     """
-    m_args = m_args or {}
+    args = args or {}
 
     assert isinstance(jid, text_type)
     assert isinstance(m, text_type)
-    assert isinstance(m_args, dict)
+    assert isinstance(args, dict)
 
     result = {}
 
     # TODO: Captcha too
-    # if not realtime.is_user_online(jid):
-    #     return result
+
+    logger.debug('wrapped %s, args=%s, t=%s' % (m, args, token))
 
     try:
-        result = method(m, jid, m_args)
+        result = method(m, jid, args, token=token)
     except CaptchaNeeded:
         logger.error("VKLogin: running captcha challenge for %s" % jid)
         # TODO: Captcha
         raise NotImplementedError('Captcha')
     except NotAllowed:
         # if self.engine.lastMethod[0] == "messages.send":
+        # TODO: replace
         send(jid, "You're not allowed to perform this action.",
-                get_friend_jid(m_args.get("user_id", TRANSPORT_ID)))
+                get_friend_jid(args.get("user_id", TRANSPORT_ID)))
     except AccessRevokedError:
         logger.debug('user %s revoked access' % jid)
         database.remove_user(jid)
         realtime.remove_online_user(jid)
     except InvalidTokenError:
+        # TODO: replace
         send(jid, 'Your token is invalid. Please, register again', TRANSPORT_ID)
 
     return result
 
 
-def is_application_user(jid):
+def is_application_user(jid, token):
     """
     Check if client is application user and validate token
     @type jid: text_type
@@ -197,8 +207,8 @@ def is_application_user(jid):
     assert isinstance(jid, text_type)
 
     try:
-        method_wrapped(jid, "isAppUser")
-        logger.debug('token for %s is valud' % jid)
+        method_wrapped('isAppUser', jid, token=token)
+        logger.debug('token for %s is valid' % jid)
         return True
     except AuthenticationException as auth_e:
         logger.debug('checking token failed: %s' % auth_e)

@@ -61,7 +61,7 @@ def connect(c):
     r =  c.connect((SERVER, PORT))
 
     if not r:
-        raise ConnectionError
+        raise ConnectionError('unable to connect to %s:%s' % (SERVER, PORT))
 
     logger.info('Connected')
 
@@ -132,10 +132,10 @@ def halt_handler(sig=None, frame=None):
     # disconnect_transport()
     # TODO: send to component thread message to disconnect
 
-    try:
-        os.remove(PID_FILE)
-    except OSError:
-        logger.error('unable to remove pid file %s' % PID_FILE)
+    # try:
+    #     os.remove(PID_FILE)
+    # except OSError:
+    #     logger.error('unable to remove pid file %s' % PID_FILE)
     exit(sig)
 
 def get_transport_iteration(c):
@@ -172,6 +172,8 @@ def start():
         # transport_loop = Process(target=transport_loop, args=(component, ), name='transport loop')
         transport_loop = get_loop_thread(get_transport_iteration(component), 'transport loop')
         sender_loop = get_loop_thread(get_sender_iteration(component), 'stanza sender loop')
+
+        # h.add_callback('')
 
         h.start()
         main_loop.start()

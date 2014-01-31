@@ -80,7 +80,7 @@ LOGO_URL = 'https://raw.github.com/cydev/cyvk/master/logo.png'
 URL_VCARD_NO_IMAGE = LOGO_URL
 
 # debug mode for xmppy library
-DEBUG_XMPPPY = False
+DEBUG_XMPPPY = True
 
 # sqlite database filename
 DB_FILE = "users.db"
@@ -111,7 +111,7 @@ DESC = "cyvk transport"
 url = 'https://oauth.vk.com/authorize?client_id=%s&scope=%s&redirect_uri=' \
       'http://oauth.vk.com/blank.html&display=page&response_type=token'
 
-APP_ID = 3789129
+APP_ID = 4157729
 APP_SCOPE = 69634
 
 OAUTH_URL = url % (APP_ID, APP_SCOPE)

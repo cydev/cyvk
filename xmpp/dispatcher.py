@@ -474,6 +474,7 @@ class Dispatcher(PlugIn):
         Serialize stanza and put it on the wire. Assign an unique ID to it before send.
         Returns assigned ID.
         """
+        logger.debug('sending %s' % stanza)
         if isinstance(stanza, basestring):
             return self._owner_send(stanza)
         if not isinstance(stanza, Protocol):

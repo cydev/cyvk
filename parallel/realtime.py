@@ -7,11 +7,17 @@ from config import REDIS_PREFIX, REDIS_HOST, REDIS_PORT, USE_LAST_MESSAGE_ID, AP
 
 logger = logging.getLogger("cyvk")
 
-
 r = redis.StrictRedis(REDIS_HOST, REDIS_PORT, )
 
-
-
+LAST_UPDATE = 'last_update'
+STATUS_ONLINE = 'online'
+STATUS_OFFLINE = 'offline'
+ONLINE_TIMEOUT = 60
+USER_PREFIX = 'user'
+TOKEN_PREFIX = 'token'
+ACTIVITY = 'activity'
+USERS_KEY = ':'.join([REDIS_PREFIX, 'users'])
+CLIENTS_KEY = ':'.join([REDIS_PREFIX, 'clients'])
 
 def _get_last_message_key(jid):
     return _get_user_attribute_key(jid, 'last_message')
@@ -23,18 +29,13 @@ def set_last_message(jid, message_id):
     logger.debug('DB: setting last message %s for %s' % (message_id, jid))
 
     r.set(_get_last_message_key(jid), message_id)
-    #
-    # with Database(DB_FILE) as db:
-    #     db("UPDATE users SET lastMsgID=? WHERE jid=?", (message_id, jid))
 
-
-_clients_key = ':'.join([REDIS_PREFIX, 'clients'])
 
 def is_client(jid):
-    return r.sismember(_clients_key, jid)
+    return r.sismember(CLIENTS_KEY, jid)
 
 def is_user(jid):
-    return r.sismember(_users_key, jid)
+    return r.sismember(USERS_KEY, jid)
 
 
 def _get_last_method_time_key(jid):
@@ -78,42 +79,15 @@ def _get_friends_key(uid):
 def _get_status_key(uid):
     return _get_user_attribute_key(uid, 'status')
 
-
 def get_friends(uid):
     # logger.debug('get_friends for %s' % uid)
-    # return r.get(_get_friends_key(uid)) or {}
-
-    json_friends = json.loads(r.get(_get_friends_key(uid)))
-
+    friends_raw = json.loads(r.get(_get_friends_key(uid)))
     friends = {}
 
-    for friend in json_friends:
-        friends.update({int(friend): json_friends[friend]})
+    for friend in friends_raw:
+        friends.update({int(friend): friends_raw[friend]})
     # logger.debug('getting friends: %s' % friends)
     return friends
-
-STATUS_ONLINE = 'online'
-STATUS_OFFLINE = 'offline'
-ONLINE_TIMEOUT = 60
-
-# def set_online(uid):
-#     key = _get_status_key(uid)
-#     r.set(key, STATUS_ONLINE)
-#     r.expire(key, ONLINE_TIMEOUT)
-#
-#
-# def set_offline(uid):
-#     logger.log('setting offline %s' % uid)
-#     raise RuntimeError('fuck off, thats why')
-#     # key = _get_status_key(uid)
-#     # r.set(key, STATUS_OFFLINE)
-#
-# # def set_status(uid):
-# #     key =
-#
-# def is_user_online(uid):
-#     return r.get(_get_status_key(uid)) == STATUS_ONLINE
-
 
 def set_friends(uid, friends):
     friends_json = json.dumps(friends)
@@ -128,9 +102,6 @@ def get_last_activity(user):
         return float(r.get(_get_last_activity_key(user)))
     except (TypeError, ValueError):
         return 0
-
-
-LAST_UPDATE = 'last_update'
 
 def _get_last_update_key(uid):
     return _get_user_attribute_key(uid, LAST_UPDATE)
@@ -148,22 +119,19 @@ def set_last_update_now(uid):
 
 def get_clients():
     # getting user list as raw strings
-    raw_data = r.smembers(_clients_key)
+    raw_data = r.smembers(CLIENTS_KEY)
 
     # returning users as list of unicode strings
     return map(unicode, raw_data)
 
 def reset_online_users():
-    r.delete(_clients_key)
+    r.delete(CLIENTS_KEY)
 
 def add_online_user(jid):
-    r.sadd(_clients_key, jid)
+    r.sadd(CLIENTS_KEY, jid)
 
 def remove_online_user(jid):
-    r.srem(_clients_key, jid)
-
-
-# self.jid, self.username, self.token, self.last_msg_id, self.roster_set = desc
+    r.srem(CLIENTS_KEY, jid)
 
 def _get_roster_set_flag_key(jid):
     return _get_user_attribute_key(jid, 'is_roster_set')
@@ -199,29 +167,16 @@ def get_last_message(jid):
         # logger.error('get_last_message for %s error: %s' % (jid, e))
         return None
 
-
-# def roster_subscribe(roster_set, jid):
-#     # logger.debug('DB: subscribing %s for %s' % (roster_set, jid))
-#     with Database(DB_FILE) as db:
-#         db("UPDATE users SET rosterSet=? WHERE jid=?", (roster_set, jid))
-
-
-USER_PREFIX = 'user'
-TOKEN_PREFIX = 'token'
-ACTIVITY = 'activity'
-
-_users_key = ':'.join([REDIS_PREFIX, 'users'])
-
-
 def _get_user_attribute_key(user, attribute):
     return ':'.join([REDIS_PREFIX, USER_PREFIX, user, attribute])
 
 def _get_token_key(user):
     return _get_user_attribute_key(user, TOKEN_PREFIX)
 
-
 def get_token(user):
-    return r.get(_get_token_key(user))
+    t = r.get(_get_token_key(user))
+    logger.debug('got token %s' % t)
+    return t
 
 def set_last_activity(user, activity_time):
     # logger.debug('setting last activity %s for %s' % (activity_time, user))
@@ -230,7 +185,6 @@ def set_last_activity(user, activity_time):
 def set_last_activity_now(user):
     now = time.time()
     set_last_activity(user, now)
-
 
 def _get_last_status_key(jid):
     return _get_user_attribute_key(jid, 'last_status')
@@ -241,24 +195,8 @@ def get_last_status(jid):
 def set_last_status(jid, status):
     return r.set(_get_last_status_key(jid), status)
 
-
-# statuses:
-
-
-# message queue
-
-
-
-
-
-
-
-# processing lock
-
 def _get_processing_key(jid):
     return _get_user_attribute_key(jid, 'is_processing')
-
-
 
 def unset_processing(jid):
     r.set(_get_processing_key(jid), False)
@@ -289,14 +227,9 @@ def is_polling(jid):
         return False
     return result
 
-
-
-
-
 def set_token(jid, token):
+    logger.debug('setting token %s' % token)
     r.set(_get_token_key(jid), token)
-
-
 
 def set_processing(jid):
     logger.debug('processing client %s' % jid)
@@ -305,11 +238,9 @@ def set_processing(jid):
     r.expire(k, 10)
 
 def initialize_user(jid, token, last_msg_id, roster_set):
-    r.sadd(_users_key, jid)
+    r.sadd(USERS_KEY, jid)
     if roster_set:
         set_roster_flag(jid)
     set_last_message(jid, last_msg_id)
     set_token(jid, token)
     set_friends(jid, {})
-
-

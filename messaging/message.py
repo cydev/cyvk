@@ -17,7 +17,7 @@ def parse(jid, message):
     if not jid:
         raise ValueError('user is None')
 
-    body = ""
+    body = ''
     logger.debug('parse_message %s for %s' % (h, jid))
     for k in mapping:
         if k in message:

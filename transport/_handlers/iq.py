@@ -76,28 +76,26 @@ def _process_form(iq, jid):
 
     user_attributes = database.get_description(jid)
 
+    logger.debug('got description %s' % user_attributes)
     if not user_attributes:
         logger.debug('user %s is not in database' % jid)
-        database.insert_user(jid, None, token, None, False)
-        # user = TUser(self.gateway, token, jid)
-        # user.token = token
-    # if not database.is_client(jid):
-    #     logger.debug('user %s is not in client list' % jid)
-    #
-    #     user.token = token
     else:
         raise NotImplementedError('already in database')
 
     try:
+        if not token:
+            raise AuthenticationException('no token')
         user_api.connect(jid, token)
+        realtime.set_token(jid, token)
         user_api.initialize(jid)
     except AuthenticationException:
-        logger.error("user %s connection failed (from iq)" % jid)
-        result = generate_error(iq, ERR_BAD_REQUEST, "Incorrect password or access token")
+        logger.error('user %s connection failed (from iq)' % jid)
+        return generate_error(iq, ERR_BAD_REQUEST, 'Incorrect password or access token')
 
     realtime.set_last_activity_now(jid)
     user_api.add_client(jid)
-    send_to_watcher("new user registered: %s" % jid)
+    database.insert_user(jid, None, token, None, False)
+    send_to_watcher('new user registered: %s' % jid)
     logger.debug('registration for %s completed' % jid)
 
     return result
@@ -181,6 +179,7 @@ class IQHandler(Handler):
             handler = {'get': _send_form, 'set': _process_form}[stanza.getType()]
             push(handler(stanza, jid))
         except (NotImplementedError, KeyError) as e:
+            logger.debug('requested feature not implemented: %s' % e)
             push(generate_error(stanza, 0, "Requested feature not implemented: %s" % e))
 
 

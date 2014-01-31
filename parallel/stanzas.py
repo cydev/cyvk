@@ -1,5 +1,8 @@
 from __future__ import unicode_literals
 
+import logging
+logger = logging.getLogger("cyvk")
+
 try:
     import cPickle as pickle
 except ImportError:
@@ -15,11 +18,12 @@ def push(stanza):
     @type stanza: Stanza
     @return:
     """
+    logger.debug('pushing %s' % stanza)
 
     if not isinstance(stanza, Stanza):
         raise ValueError('expected stanza, got %s' % type(stanza))
 
-    # todo: serialization to json
-    pickled = pickle.dumps(stanza)
+    # todo: serialization to json?
+    pickled_stanza = pickle.dumps(stanza)
 
-    r.rpush(_get_stanza_queue_key(), pickled)
+    r.rpush(_get_stanza_queue_key(), pickled_stanza)

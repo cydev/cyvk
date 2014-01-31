@@ -165,9 +165,6 @@ def get_all_users():
 def insert_user(jid, username, token, last_msg_id, roster_set):
     logger.debug('DB: adding user %s' % jid)
 
-
-
-
     with Database(DB_FILE) as db:
         db("INSERT INTO users VALUES (?,?,?,?,?)", (jid, username,
                                                     token, last_msg_id, roster_set))

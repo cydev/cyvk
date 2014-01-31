@@ -98,14 +98,11 @@ def send_messages(jid):
         read.append(str(message["mid"]))
         from_jid = get_friend_jid(message["uid"])
         webtools = HTMLParser()
-        body = webtools.unescape(message["body"])
+        body = webtools.unescape(message["body"]).replace('<br>', '\n')
         body += messaging.message.parse(jid, message)
         sending.send(jid, escape("", body), from_jid, message["date"])
 
     mark_messages_as_read(jid, read)
-    # self.vk.msg_mark_as_read(read)
-    # if USE_LAST_MESSAGE_ID:
-    #     database.set_last_message(last_msg_id, self.jid)
 
 
 def send_message(jid, body, destination_uid):

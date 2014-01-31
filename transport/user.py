@@ -201,47 +201,27 @@ def connect(jid, token):
     # logger.debug("user api: vk api initialized")
     try:
         logger.debug('user api: trying to auth with token')
+        is_application_user(jid, token)
         set_token(jid, token)
-        is_application_user(jid)
         logger.debug("user api: authenticated %s" % jid)
     except CaptchaNeeded:
         logger.debug("user api: captcha needed for %s" % jid)
-        roster_subscribe(jid)
+        # roster_subscribe(jid)
         raise NotImplementedError('Captcha')
         # self.vk.captcha_challenge()
         # return True
     except InvalidTokenError as token_error:
+        # TODO: Replace by exception handling
         if token_error.message == "User authorization failed: user revoke access for this token.":
             logger.critical("user api: %s" % token_error.message)
             delete_user(jid)
         elif token_error.message == "User authorization failed: invalid access_token.":
             send_message(jid, token_error.message + " Please, register again", TRANSPORT_ID)
         raise AuthenticationException('invalid token')
-        # except Exception as e:
-    #     # TODO: We can crash there
-    #     logger.debug('Auth failed: %s' % e)
-    #     raise
-    #     # dump_crash("TUser.Connect")
-    #     # return False
 
-    logger.debug("user api: updating db for %s" % jid)
-    if not realtime.is_user(jid):
-        raise NotImplementedError('insertion to database')
-        # database.insert_user(jid, self.username, token, self.last_msg_id, self.roster_set)
-    # elif self.password:
-    #     database.set_token(self.jid, token)
-    # try:
-    #     m = "users.get"
-    #     # t = self.vk.method("users.get")
-    #     t = method(m, jid)
-    #     user_id = t[0]["uid"]
-    # except (KeyError, TypeError):
-    #     raise AuthenticationException('could not recieve user id')
-
-    # self.gateway.jid_to_id[self.user_id] = self.jid
-    # self.friends = self.vk.get_friends()
-    # realtime.set_online(jid)
-    realtime.set_last_activity_now(jid)
+    if realtime.is_user(jid):
+        logger.debug("user api: updating db for %s" % jid)
+        realtime.set_last_activity_now(jid)
 
 
 def process_client(jid):
@@ -303,7 +283,7 @@ def remove_user(jid):
         logger.debug('%s already not in transport')
         return
     realtime.remove_online_user(jid)
-    process_client(jid)
+    process_client(jid) # TODO: Check
 
 
 def process_users():

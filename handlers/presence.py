@@ -5,6 +5,7 @@ from handlers.handler import Handler
 from parallel import realtime, sending
 from parallel.stanzas import push
 from parallel.updates import set_online
+from parallel.events import raise_event, USER_ONLINE
 from transport import user as user_api, statuses
 from config import TRANSPORT_ID
 from transport.statuses import get_status_stanza
@@ -114,13 +115,13 @@ def _attempt_to_add_client(jid, _):
     @param jid: client jid
     @return:
     """
-    logger.debug("presence: attempting to add %s to transport" % jid)
+    logger.debug('presence: attempting to add %s to transport' % jid)
 
     user = database.get_description(jid)
     if not user:
         logger.debug('presence: user %s not found in database' % jid)
         return
-    logger.debug("presence: user %s found in database" % jid)
+    logger.debug('presence: user %s found in database' % jid)
 
     token = user['token']
 
@@ -129,6 +130,7 @@ def _attempt_to_add_client(jid, _):
         user_api.initialize(jid, send_prescense=True)
         user_api.add_client(jid)
         set_online(jid)
+        raise_event(USER_ONLINE)
     except AuthenticationException as e:
         logger.error('unable to authenticate %s: %s' % (jid, e))
         message = "Authentication failed! " \
@@ -147,7 +149,6 @@ def _subscribe(jid, presence):
     @return:
     """
     if presence.destination_id == TRANSPORT_ID:
-        # push(xmpp.Presence(presence.origin, "subscribed", frm=TRANSPORT_ID))
         push(get_status_stanza(presence.origin, TRANSPORT_ID, status='subscribed'))
         push(get_status_stanza(presence.origin, TRANSPORT_ID))
     else:
@@ -156,8 +157,6 @@ def _subscribe(jid, presence):
 
         if not client_friends:
             return
-            # if not client.friends:
-        #     return
 
         friend_id = get_friend_jid(presence.destination_id)
 

@@ -19,8 +19,6 @@ import transport.messages
 logger = logging.getLogger("cyvk")
 
 
-
-
 def get_answer(message, jid_from, jid_to):
     logger.debug('msg_recieved from %s to %s' % (jid_from, jid_to))
 
