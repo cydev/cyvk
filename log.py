@@ -9,7 +9,7 @@ def get_logger():
     h = logging.FileHandler(LOG_FILE)
     try:
         import colorlog
-        f = colorlog.ColoredFormatter('%(yellow)s%(name)-8s %(log_color)s%(message)s', log_colors={
+        f = colorlog.ColoredFormatter('%(yellow)s%(name)-8s %(white)s%(asctime)s %(log_color)s%(message)s', log_colors={
                 'DEBUG':    'cyan',
                 'INFO':     'green',
                 'WARNING':  'yellow',
@@ -37,7 +37,7 @@ def get_logger():
     sh2 = logging.StreamHandler()
     sh2.setFormatter(fx)
     logger2 = logging.getLogger("xmpp")
-    logger2.setLevel('DEBUG')
+    logger2.setLevel('ERROR')
     logger2.addHandler(sh2)
 
     return logger

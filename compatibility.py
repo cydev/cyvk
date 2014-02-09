@@ -12,6 +12,7 @@ else:
     text_type = str
     binary_type = bytes
 
+
 try:
     from urllib2 import urlopen
 except ImportError:

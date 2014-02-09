@@ -80,7 +80,7 @@ LOGO_URL = 'https://raw.github.com/cydev/cyvk/master/logo.png'
 URL_VCARD_NO_IMAGE = LOGO_URL
 
 # debug mode for xmppy library
-DEBUG_XMPPPY = True
+DEBUG_XMPPPY = False
 
 # sqlite database filename
 DB_FILE = "users.db"
@@ -129,5 +129,5 @@ REDIS_DB = 0
 REDIS_CHARSET = 'utf-8'
 
 API_MAXIMUM_RATE = 1./3
-POLLING_WAIT = 60
+POLLING_WAIT = 10
 

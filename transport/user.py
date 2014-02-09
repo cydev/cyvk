@@ -2,8 +2,7 @@ from __future__ import unicode_literals
 
 import time
 import logging
-import threading
-from parallel.long_polling import _long_polling_get
+
 from parallel.stanzas import push
 from parallel.updates import send_messages, send_message, get_friends
 
@@ -12,6 +11,7 @@ from database import set_token
 from friends import get_friend_jid
 
 from parallel import realtime
+from parallel.long_polling import start_polling
 
 import xmpp as xmpp
 from errors import CaptchaNeeded, InvalidTokenError, AuthenticationException
@@ -21,8 +21,6 @@ import database
 
 
 logger = logging.getLogger("cyvk")
-
-
 
 
 def send_presence(target, jid_from, presence_type=None, nick=None, reason=None):
@@ -253,12 +251,14 @@ def process_client(jid):
     #     return
 
 
-    t = threading.Thread(target=_long_polling_get, args=(jid, ), name='long polling for %s' % jid)
+    # t = threading.Thread(target=_long_polling_get, args=(jid, ), name='long polling for %s' % jid)
 
     if not realtime.is_polling(jid):
         update_friends(jid)
         send_messages(jid)
-        t.start()
+        start_polling(jid)
+        # t.start()
+        # eventlet.spawn_n(_long_polling_get, jid)
     else:
         logger.debug('updates for %s are handled by polling' % jid)
 

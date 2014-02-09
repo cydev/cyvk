@@ -1,51 +1,28 @@
-from __future__ import unicode_literals
-
-import redis
-import logging
-import threading
 import json
-
+import redis
+import threading
+import logging
 from compatibility import text_type, binary_type
-from config import REDIS_PREFIX, REDIS_PORT, REDIS_HOST, REDIS_DB, REDIS_CHARSET
+from config import REDIS_HOST, REDIS_PORT, REDIS_DB, REDIS_CHARSET
+from events.constants import all_events, EVENTS_KEY, NAME_KEY
+from parallel.long_polling import event_handler, UPDATE_RESULT
 
+__author__ = 'ernado'
 logger = logging.getLogger("cyvk")
 
-EVENTS_KEY = ':'.join([REDIS_PREFIX, 'events'])
-NAME_KEY = 'name'
-
-
-# user removed from transport
-USER_REMOVED = 'user_removed'
-
-# user registered via form
-USER_REGISTERED = 'user_registered'
-
-# user added
-USER_ONLINE = 'user_online'
-
-# long-polling result is delivered
-UPDATE_RESULT = 'lp_result'
-
-# long-polling start request
-LP_REQUEST = 'lp_request'
-
-
-all_events = (USER_REGISTERED, USER_REMOVED, USER_ONLINE)
 
 class EventParsingException(Exception):
     pass
 
-
-def raise_event(event_name, **params):
-    event_body = {'name': event_name}
-    event_body.update(params)
-    r = redis.StrictRedis(REDIS_HOST, REDIS_PORT, REDIS_DB, charset=REDIS_CHARSET)
-    r.rpush(EVENTS_KEY, json.dumps(event_body))
-
-
 class EventHandler(object):
     def __init__(self):
         self.handlers = {}
+        self.events = all_events
+        self.add_event(UPDATE_RESULT)
+        self.add_callback(UPDATE_RESULT, event_handler)
+
+    def add_event(self, event_name):
+        self.events.add(event_name)
 
     def add_callback(self, event, callback):
         logger.debug('adding callback for %s' % event)
@@ -69,8 +46,14 @@ class EventHandler(object):
             raise ValueError('event %s not found' % event)
 
         if event not in self.handlers:
-            logging.debug('no event handlers for %s' % event)
+            logger.debug('no event handlers for %s' % event)
             return
+
+        handlers = self.handlers[event]
+
+        for handler in handlers:
+            # TODO: async
+            handler(event_body)
 
 
     def _start(self):

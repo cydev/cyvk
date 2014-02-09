@@ -12,8 +12,6 @@ logger = logging.getLogger("cyvk")
 
 
 
-
-
 def from_stanza(msg):
     """
     Extract message attributes from stanza into dictionary

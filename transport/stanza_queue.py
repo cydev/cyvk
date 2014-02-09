@@ -21,7 +21,7 @@ def enqueue():
 
     stanza = pickle.loads(pickled_stanza)
 
-    logger.debug('enq %s' % stanza)
+    # logger.debug('enq %s' % stanza)
 
     if not isinstance(stanza, Stanza):
         raise ValueError('expected stanza, deserialized %s' % type(stanza))

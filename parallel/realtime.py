@@ -19,6 +19,9 @@ ACTIVITY = 'activity'
 USERS_KEY = ':'.join([REDIS_PREFIX, 'users'])
 CLIENTS_KEY = ':'.join([REDIS_PREFIX, 'clients'])
 
+def _get_user_attribute_key(user, attribute):
+    return ':'.join([REDIS_PREFIX, USER_PREFIX, user, attribute])
+
 def _get_last_message_key(jid):
     return _get_user_attribute_key(jid, 'last_message')
 
@@ -167,15 +170,13 @@ def get_last_message(jid):
         # logger.error('get_last_message for %s error: %s' % (jid, e))
         return None
 
-def _get_user_attribute_key(user, attribute):
-    return ':'.join([REDIS_PREFIX, USER_PREFIX, user, attribute])
 
 def _get_token_key(user):
     return _get_user_attribute_key(user, TOKEN_PREFIX)
 
 def get_token(user):
     t = r.get(_get_token_key(user))
-    logger.debug('got token %s' % t)
+    # logger.debug('got token %s' % t)
     return t
 
 def set_last_activity(user, activity_time):

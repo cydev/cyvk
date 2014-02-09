@@ -5,7 +5,8 @@ from handlers.handler import Handler
 from parallel import realtime, sending
 from parallel.stanzas import push
 from parallel.updates import set_online
-from parallel.events import raise_event, USER_ONLINE
+from events.toggle import raise_event
+from events.constants import USER_ONLINE
 from transport import user as user_api, statuses
 from config import TRANSPORT_ID
 from transport.statuses import get_status_stanza

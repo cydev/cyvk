@@ -1,79 +1,73 @@
 from __future__ import unicode_literals
 
 import json
+import redis
+import threading
+import logging
 
+from compatibility import urlopen
+
+from config import POLLING_WAIT, REDIS_DB, REDIS_CHARSET, REDIS_PREFIX, REDIS_PORT, REDIS_HOST
 
 from api.vkapi import method
 from parallel import realtime, updates
-from config import POLLING_WAIT
-from compatibility import urlopen
+from events.toggle import raise_event
 
-import logging
+UPDATE_RESULT = 'lp_result'
+
+# from eventlet.green import urllib2
+
 
 logger = logging.getLogger("cyvk")
 
 __author__ = 'ernado'
 
+LONG_POLLING_KEY = ':'.join([REDIS_PREFIX, 'long_polling_queue'])
 
-import sys
+def start_polling(jid):
+    r = redis.StrictRedis(REDIS_HOST, REDIS_PORT,REDIS_DB, charset=REDIS_CHARSET)
+    args = method('messages.getLongPollServer', jid)
+    args['wait'] = POLLING_WAIT
+    url = 'http://{server}?act=a_check&key={key}&ts={ts}&wait={wait}&mode=2'.format(**args)
+    r.lpush(LONG_POLLING_KEY, json.dumps({'jid': jid, 'url':url}))
 
-class TailRecurseException:
-  def __init__(self, args, kwargs):
-    self.args = args
-    self.kwargs = kwargs
-
-def tail_call_optimized(g):
-  """
-  This function decorates a function with tail call
-  optimization. It does this by throwing an exception
-  if it is it's own grandparent, and catching such
-  exceptions to fake the tail call optimization.
-
-  This function fails if the decorated
-  function recurses in a non-tail context.
-  """
-  def func(*args, **kwargs):
-    f = sys._getframe()
-    if f.f_back and f.f_back.f_back \
-        and f.f_back.f_back.f_code == f.f_code:
-      raise TailRecurseException(args, kwargs)
-    else:
-      while 1:
-        try:
-          return g(*args, **kwargs)
-        except TailRecurseException as e:
-          args = e.args
-          kwargs = e.kwargs
-  func.__doc__ = g.__doc__
-  return func
-
-
-@tail_call_optimized
-def _long_polling_get(jid):
-    if realtime.is_polling(jid):
-        logger.debug('already polling %s' % jid)
-        return
-
+def handle_url(jid, url):
     realtime.set_polling(jid)
-    logger.debug('getting data via long polling')
-    long_polling = method('messages.getLongPollServer', jid)
-    long_polling['wait'] = POLLING_WAIT
-    url = 'http://{server}?act=a_check&key={key}&ts={ts}&wait={wait}&mode=2'.format(**long_polling)
     logger.debug('got url, starting polling')
-    realtime.wait_for_api_call(jid)
-    data = json.loads(urlopen(url).read())
+    data = urlopen(url).read()
     logger.debug('got data from polling server')
     realtime.unset_polling(jid)
+    raise_event(UPDATE_RESULT, response=data, jid=jid)
 
-    if not data['updates']:
-        logger.debug('no updates for %s' % jid)
-        return _long_polling_get(jid)
+def event_handler(event_body):
+    data = json.loads(event_body['response'])
+    jid = event_body['jid']
+    is_client = realtime.is_client(jid)
 
-    for update in data['updates']:
-        updates.process_data(jid, update)
+    try:
+        if not data['updates']:
+            logger.debug('no updates for %s' % jid)
 
-    if realtime.is_client(jid):
-        _long_polling_get(jid)
+        for update in data['updates']:
+            updates.process_data(jid, update)
+    except KeyError:
+        logger.error('unable to process %s' % event_body)
+
+    if is_client:
+        start_polling(jid)
     else:
-        logger.debug('finishing polling for %s' % jid)
-    # process_client(jid)
+        logger.debug('ending polling for %s' % jid)
+
+
+def loop():
+    logger.debug('starting long polling loop')
+    r = redis.StrictRedis(REDIS_HOST, REDIS_PORT,REDIS_DB, charset=REDIS_CHARSET)
+    while True:
+        request_raw = r.brpop(LONG_POLLING_KEY)[1]
+        # { jid: 'user_jid', url: 'long_polling_url' }
+        request = json.loads(request_raw)
+        jid, url = request['jid'], request['url']
+        t = threading.Thread(target=handle_url, args=(jid, url))
+        t.start()
+
+

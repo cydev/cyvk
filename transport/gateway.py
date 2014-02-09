@@ -1,12 +1,15 @@
 #!/usr/bin/env python2
 # coding: utf-8
 from __future__ import unicode_literals
+
+# import eventlet
+# eventlet.monkey_patch()
+
 import signal
-import os
 import threading
 from multiprocessing import Process
 import time
-
+from events.handler import EventHandler
 from handlers.presence import PresenceHandler
 
 import log
@@ -20,7 +23,7 @@ from parallel import realtime
 from parallel.probe import probe_users
 from transport import user as user_api, _handlers
 from transport.stanza_queue import enqueue
-from parallel.events import EventHandler
+from parallel.long_polling import loop as long_polling_loop_func
 
 
 logger = log.get_logger()
@@ -172,13 +175,16 @@ def start():
         # transport_loop = Process(target=transport_loop, args=(component, ), name='transport loop')
         transport_loop = get_loop_thread(get_transport_iteration(component), 'transport loop')
         sender_loop = get_loop_thread(get_sender_iteration(component), 'stanza sender loop')
+        long_polling_loop = threading.Thread(target=long_polling_loop_func, name='long polling loop')
+        long_polling_loop.daemon = True
 
         # h.add_callback('')
 
         h.start()
-        main_loop.start()
-        transport_loop.start()
         sender_loop.start()
+        transport_loop.start()
+        main_loop.start()
+        long_polling_loop.start()
 
         # probe all users from database and add them to client list
         # if they are online
