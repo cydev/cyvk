@@ -14,6 +14,9 @@ def probe_users():
 
     users = get_all_users()
 
+    if not users:
+        return logger.info('no users for probing')
+
     for user in users:
         jid = user[0]
         logger.debug('probing %s' % jid)

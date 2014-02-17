@@ -3,6 +3,7 @@ __author__ = 'ernado'
 import logging
 from config import LOG_FILE, LOG_LEVEL
 
+
 def get_logger():
     logger = logging.getLogger("cyvk")
     logger.setLevel(LOG_LEVEL)
@@ -37,7 +38,7 @@ def get_logger():
     sh2 = logging.StreamHandler()
     sh2.setFormatter(fx)
     logger2 = logging.getLogger("xmpp")
-    logger2.setLevel('ERROR')
+    logger2.setLevel('CRITICAL')
     logger2.addHandler(sh2)
 
     return logger

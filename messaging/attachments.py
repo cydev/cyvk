@@ -47,6 +47,7 @@ def _doc(_):
 
 mapping = dict(wall=_wall, photo=_photo, video=_video, audio=_audio, doc=_doc)
 
+
 def parse_attachments(_, msg):
     """
     Parse attachments to message

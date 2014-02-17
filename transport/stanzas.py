@@ -1,7 +1,5 @@
 from xmpp import ERR_FEATURE_NOT_IMPLEMENTED, Error
 
-__author__ = 'ernado'
-
 
 def generate_error(stanza, error=None, text=None):
     if not error:

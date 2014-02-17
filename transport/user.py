@@ -37,7 +37,10 @@ def roster_subscribe(jid, subscriptions=None):
     """
     Subscribe user for jids in dist
     """
-    logger.debug('roster_subscribe for %s: %s' % (jid, subscriptions.keys()))
+    if subscriptions:
+        logger.debug('roster_subscribe for %s: %s' % (jid, subscriptions.keys()))
+    else:
+        logger.debug('roster_subscribe for transport')
 
     if not subscriptions:
         send_presence(jid, TRANSPORT_ID, "subscribe", IDENTIFIER["name"])
@@ -78,22 +81,17 @@ def send_out_presence(jid, reason=None):
         send_presence(jid, get_friend_jid(uid), status, reason=reason)
 
 
-def delete_user(jid, roster=False):
-    logger.debug("user api: delete_user %s" % jid)
-
+def delete_user(jid):
     assert isinstance(jid, unicode)
 
-    # realtime.remove_online_user(jid)
-    database.remove_user(jid)
+    logger.debug("user api: delete_user %s" % jid)
+
     friends = realtime.get_friends(jid)
 
-    if roster and friends:
-        logger.debug("user api: removing %s roster" % jid)
-        for friend_id in friends:
-            friend_jid = get_friend_jid(friend_id)
-            send_presence(jid, friend_jid, "unsubscribe")
-            send_presence(jid, friend_jid, "unsubscribed")
-            # realtime.set_offline(jid)
+    for friend_id in friends:
+        friend_jid = get_friend_jid(friend_id)
+        send_presence(jid, friend_jid, "unsubscribe")
+        send_presence(jid, friend_jid, "unsubscribed")
 
     database.remove_user(jid)
     realtime.remove_online_user(jid)
@@ -137,12 +135,12 @@ def update_friends(jid):
     realtime.set_friends(jid, friends_vk)
 
 
-def initialize(jid, send_prescense=True):
+def initialize(jid, send_precense=True):
     """
     Initializes user by subscribing to friends and sending initial presence
     @type jid: unicode
     @param jid: client jid
-    @param send_prescense: send presence flag
+    @param send_precense: send presence flag
     """
     logger.debug("user api: called init for user %s" % jid)
 
@@ -155,31 +153,28 @@ def initialize(jid, send_prescense=True):
     realtime.set_friends(jid, friends)
     realtime.unset_polling(jid)
     realtime.unset_processing(jid)
-    # realtime.set_online(jid)
 
     if friends:
         logger.debug("user api: subscribing friends for %s" % jid)
         roster_subscribe(jid, friends)
 
-    if send_prescense:
+    roster_subscribe(jid)   # subscribing to transport
+
+    if send_precense:
         logger.debug('sending initial presence')
         send_init_presence(jid)
 
 
 def load(jid):
-    # self.vk = VKLogin(gateway, token, jid)
-
     logger.debug("user api: loading %s" % jid)
     desc = database.get_description(jid)
 
     if not desc:
         raise ValueError('user api: user not found %s' % jid)
 
-    # if not self.token or not self.password:
     logger.debug("user api: %s exists in db" % jid)
     jid = desc['jid']
 
-    # database.set_username(jid, desc['username'])
     realtime.set_last_message(jid, desc['last_message_id'])
     if desc['roster_set_flag']:
         realtime.set_roster_flag(jid)
@@ -191,7 +186,6 @@ def load(jid):
 
 def connect(jid, token):
     logger.debug("user api: connecting %s" % jid)
-    # vk = VKLogin(gateway, token, jid)
 
     if not token:
         raise AuthenticationException('no token for %s' % jid)
@@ -235,30 +229,12 @@ def process_client(jid):
         logger.debug('already processing client %s' % jid)
         return
 
-    # blocking processing
     realtime.set_processing(jid)
-
-    # checking user status
-    # if not realtime.is_user_online(jid):
-    #     logger.debug('user %s offline' % jid)
-    #     database.remove_online_user(jid)
-    #     return
-
-    # checking user time out
-    # if is_timed_out(jid):
-    #     logger.debug('timeout for client %s' % jid)
-    #     database.remove_online_user(jid)
-    #     return
-
-
-    # t = threading.Thread(target=_long_polling_get, args=(jid, ), name='long polling for %s' % jid)
 
     if not realtime.is_polling(jid):
         update_friends(jid)
         send_messages(jid)
         start_polling(jid)
-        # t.start()
-        # eventlet.spawn_n(_long_polling_get, jid)
     else:
         logger.debug('updates for %s are handled by polling' % jid)
 
@@ -274,16 +250,6 @@ def update_transports_list(jid, add=True):
             realtime.remove_online_user(jid)
 
     process_client(jid)
-
-
-def remove_user(jid):
-    logger.debug('remove_user %s' % jid)
-    is_client = realtime.is_client(jid)
-    if not is_client:
-        logger.debug('%s already not in transport')
-        return
-    realtime.remove_online_user(jid)
-    process_client(jid) # TODO: Check
 
 
 def process_users():
@@ -302,7 +268,8 @@ def process_users():
 def add_client(jid):
     assert isinstance(jid, unicode)
 
-    logger.debug('add_user %s' % jid)
+    logger.debug('add_client %s' % jid)
+
     if realtime.is_client(jid):
         logger.debug('%s already a client' % jid)
         return

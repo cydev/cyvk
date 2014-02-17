@@ -40,6 +40,7 @@ logger = logging.getLogger("cyvk")
 
 import friends
 
+
 def process_data(jid, data):
     code = data[0]
 

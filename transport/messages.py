@@ -1,11 +1,8 @@
 import time
 from xmpp import Message
 
-__author__ = 'ernado'
-
 
 def get_message_stanza(jid_to, body, jid_from, timestamp=None):
-
     assert isinstance(jid_to, unicode)
     assert isinstance(jid_from, unicode)
     assert isinstance(body, unicode)
@@ -18,8 +15,8 @@ def get_message_stanza(jid_to, body, jid_from, timestamp=None):
 
     return message
 
-def get_answer_stanza(jid_from, jid_to, message):
 
+def get_answer_stanza(jid_from, jid_to, message):
     assert isinstance(jid_to, unicode)
     assert isinstance(jid_from, unicode)
 

@@ -19,9 +19,7 @@ import logging
 logger = logging.getLogger('vk4xmpp')
 
 
-
 def presence_handler_wrapper(handler):
-
     def wrapper(jid, presence):
         assert isinstance(jid, unicode)
         assert isinstance(presence, PresenceWrapper)
@@ -68,7 +66,6 @@ def _error(jid, presence):
         raise NotImplementedError('client_disconnect for %s' % jid)
 
     raise NotImplementedError('error presence')
-        # client.vk.disconnect()
 
 
 def _available(jid, presence):
@@ -83,16 +80,7 @@ def _available(jid, presence):
         return
 
     logger.debug("user %s, will send sendInitPresence" % presence.origin_id)
-    # client.resources.append(p.resource)
-    logger.error('we definetly should do something here')
     logger.warning('not adding resource %s to %s' % (presence.resource, jid))
-    # realtime.set_online(jid)
-    # if client.last_status == "unavailable" and len(client.resources) == 1:
-    #     if not client.vk.Online:
-    #         client.vk.is_online = True
-    # if not database.is_user_online(jid):
-    #     database.set_online(jid)
-    # jid.send_init_presence()
 
 
 def _unsubscribe(jid, presence):
@@ -128,7 +116,7 @@ def _attempt_to_add_client(jid, _):
 
     try:
         user_api.connect(jid, token)
-        user_api.initialize(jid, send_prescense=True)
+        user_api.initialize(jid, send_precense=True)
         user_api.add_client(jid)
         set_online(jid)
         raise_event(USER_ONLINE)
@@ -138,6 +126,7 @@ def _attempt_to_add_client(jid, _):
                   "If this error repeated, please register again. " \
                   "Error: %s" % e
         sending.send(jid, message, TRANSPORT_ID)
+
 
 def _subscribe(jid, presence):
     """
@@ -149,47 +138,55 @@ def _subscribe(jid, presence):
     @param jid: client jid
     @return:
     """
-    if presence.destination_id == TRANSPORT_ID:
-        push(get_status_stanza(presence.origin, TRANSPORT_ID, status='subscribed'))
-        push(get_status_stanza(presence.origin, TRANSPORT_ID))
+    origin = presence.origin
+    destination = presence.destination_id
+
+    if destination == TRANSPORT_ID:
+        logger.debug('sending presence about transport <subscribe>')
+        push(get_status_stanza(TRANSPORT_ID, origin, status='subscribed'))
+        push(get_status_stanza(TRANSPORT_ID, origin))
     else:
-        push(get_status_stanza(presence.origin, presence.destination_id, status='subscribed'))
+        push(get_status_stanza(destination, origin,  status='subscribed'))
+
         client_friends = realtime.get_friends(jid)
+        logger.debug('sending presence about friend <subscribe>')
 
         if not client_friends:
             return
 
-        friend_id = get_friend_jid(presence.destination_id)
+        friend_id = get_friend_jid(destination)
 
         if friend_id not in client_friends:
             return
 
+        friend_status = 'unavailable'
         if client_friends[friend_id]['online']:
-            return
+            friend_status = 'available'
+
+        push(get_status_stanza(destination, origin, status=friend_status))
 
         # wtf?
-        push(get_status_stanza(presence.origin, presence.origin))
+        push(get_status_stanza(origin, origin))
 
 
 _mapping = {'available': _available, 'probe': _available, None: _available,
-            'unavailable': _unavailable, 'error': _error, 'subscribed': _subscribe,
-            'unsubscribe': _unsubscribe
-}
+            'unavailable': _unavailable, 'error': _error, 'subscribe': _subscribe,
+            'unsubscribe': _unsubscribe}
 
 
-def _update_client_status(jid, presence):
+def _handle_presence(jid, presence):
     """
     Status update handler for client
     @type presence: PresenceWrapper
-    @param presence: status prescense
+    @param presence: status presence
     @param jid: client jid
     """
     status = presence.status
-
+    logger.debug('presence status: %s' % status)
     try:
         presence_handler_wrapper(_mapping[status])(jid, presence)
     except KeyError:
-        raise NotImplementedError('unable to handle status %s' % status)
+        logger.debug('unable to handle status %s' % status)
 
     if presence.destination_id == TRANSPORT_ID:
         logger.debug('setting last status %s for %s' % (status, jid))
@@ -212,7 +209,7 @@ class PresenceHandler(Handler):
             raise ValueError('jid %s (%s) is not str' % (jid, type(jid)))
 
         if realtime.is_client(jid):
-            _update_client_status(jid, presence)
+            _handle_presence(jid, presence)
         elif presence.status in ("available", None):
             _attempt_to_add_client(jid, presence)
 

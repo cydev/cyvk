@@ -18,7 +18,7 @@ def push(stanza):
     @type stanza: Stanza
     @return:
     """
-    # logger.debug('pushing %s' % stanza)
+    logger.debug('pushing %s' % stanza)
 
     if not isinstance(stanza, Stanza):
         raise ValueError('expected stanza, got %s' % type(stanza))
