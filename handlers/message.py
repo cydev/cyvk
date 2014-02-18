@@ -59,7 +59,9 @@ class MessageHandler(Handler):
             if not send_message(jid, body, uid):
                 return
         answer = get_answer(stanza, jid_from_str, jid_to_str)
-        push(answer)
+
+        if answer:
+            push(answer)
 
 
 def get_handler():

@@ -177,14 +177,14 @@ def start():
         long_polling_loop.daemon = True
 
         long_polling_start_loop = threading.Thread(target=loop_for_starting, name='long polling starting loop')
-        long_polling_loop.daemon = True
+        long_polling_start_loop.daemon = True
 
         h.start()
         sender_loop.start()
         transport_loop.start()
         main_loop.start()
         long_polling_start_loop.start()
-        long_polling_loop.start()
+        # long_polling_loop.start()
 
         # probe all users from database and add them to client list
         # if they are online
