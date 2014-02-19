@@ -1,11 +1,10 @@
-__author__ = 'ernado'
-
 import urllib
 import urllib2
 import logging
 import cookielib
 
 logger = logging.getLogger("cyvk")
+
 
 def encoded_dict(in_dict):
     out_dict = {}
@@ -18,12 +17,14 @@ def encoded_dict(in_dict):
         out_dict[k] = v
     return out_dict
 
+
 def encode_data(data):
     if not data:
         return None
     data = encoded_dict(data)
     data = urllib.urlencode(data)
     return data
+
 
 class RequestProcessor(object):
     """

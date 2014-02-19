@@ -4,8 +4,6 @@ from database import get_all_users
 from parallel.stanzas import push
 from transport.statuses import get_probe_stanza
 
-__author__ = 'ernado'
-
 logger = logging.getLogger("cyvk")
 
 

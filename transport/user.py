@@ -198,10 +198,7 @@ def connect(jid, token):
         logger.debug("user api: authenticated %s" % jid)
     except CaptchaNeeded:
         logger.debug("user api: captcha needed for %s" % jid)
-        # roster_subscribe(jid)
         raise NotImplementedError('Captcha')
-        # self.vk.captcha_challenge()
-        # return True
     except InvalidTokenError as token_error:
         # TODO: Replace by exception handling
         if token_error.message == "User authorization failed: user revoke access for this token.":

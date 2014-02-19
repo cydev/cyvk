@@ -25,7 +25,6 @@ from parallel.long_polling import loop_for_starting
 logger = log.get_logger()
 
 import xmpp
-from daemon import get_pid
 
 
 def get_disconnect_handler(c):
@@ -74,7 +73,6 @@ def register_handler(c, name, handler_class):
 
 
 def initialize():
-    get_pid(PID_FILE)
     initialize_database(DATABASE_FILE)
 
     transport = get_transport()

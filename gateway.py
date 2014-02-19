@@ -1,5 +1,3 @@
-__author__ = 'ernado'
-
 from transport.gateway import start
 
 

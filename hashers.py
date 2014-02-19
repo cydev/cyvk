@@ -3,6 +3,7 @@ from __future__ import unicode_literals
 from hashlib import sha1
 import string
 
+
 def base_encode(number, base=0):
     if isinstance(number, str):
         if number == '':
