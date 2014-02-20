@@ -1,6 +1,5 @@
 import logging
 
-from config import WATCHER_LIST, TRANSPORT_ID
 from parallel.stanzas import push
 from transport.messages import get_message_stanza
 from transport.statuses import get_typing_stanza
@@ -30,18 +29,3 @@ def send_typing_status(jid_to, jid_from):
     message = get_typing_stanza(jid_to, jid_from)
 
     push(message)
-
-
-def send_to_watcher(text):
-    """
-    Send message to watcher
-    @type text: unicode
-    @param text: unicode message body
-    """
-
-    assert isinstance(text, unicode)
-
-    logger.debug('sending message %s to watchers' % text)
-
-    for jid in WATCHER_LIST:
-        send(jid, text, TRANSPORT_ID)

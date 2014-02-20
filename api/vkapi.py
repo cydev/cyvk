@@ -1,6 +1,6 @@
 from __future__ import unicode_literals
 import logging
-import json
+import ujson as json
 
 try:
     from urllib2 import URLError

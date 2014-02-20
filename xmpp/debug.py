@@ -83,7 +83,7 @@ class Debug:
                 except Exception:
                     print("ERROR: can open %s for writing." % log_file)
                     sys.exit(0)
-            else: # assume its a stream type object
+            else:  # assume its a stream type object
                 self._fh = log_file
         else:
             self._fh = sys.stdout
@@ -92,13 +92,13 @@ class Debug:
         self.prefix = prefix
         self.sufix = sufix
         self.time_stamp = time_stamp
-        self.flag_show = None # must be initialised after possible welcome
+        self.flag_show = None  # must be initialised after possible welcome
         self.validate_flags = validate_flags
         self.active_set(active_flags)
 
         if welcome:
             self.show("")
-            caller = sys._getframe(1) # used to get name of caller
+            caller = sys._getframe(1)  # used to get name of caller
             try:
                 mod_name = ":%s" % caller.f_locals["__name__"]
             except Exception:
@@ -136,15 +136,15 @@ class Debug:
             suf = self.sufix
         if self.time_stamp == 2:
             output = "%s%s " % (
-            pre,
-            time.strftime("%b %d %H:%M:%S",
-                    time.localtime(time.time()))
+                pre,
+                time.strftime("%b %d %H:%M:%S",
+                              time.localtime(time.time()))
             )
         elif self.time_stamp == 1:
             output = "%s %s" % (
-            time.strftime("%b %d %H:%M:%S",
-                          time.localtime(time.time())),
-            pre
+                time.strftime("%b %d %H:%M:%S",
+                              time.localtime(time.time())),
+                pre
             )
         else:
             output = pre
@@ -309,12 +309,12 @@ class Debug:
         prefix = self.prefix + prefixcolor + (flag + " " * 12)[:12] + " " + (prefix + " " * 6)[:6]
         self.show(msg, flag, prefix)
 
-    # def is_active(self, flag):
-    #     if not self.active:
-    #         return 0
-    #     if not flag or flag in self.active and DBG_ALWAYS not in self.active or flag not in self.active and DBG_ALWAYS in self.active:
-    #         return 1
-    #     return 0
+        # def is_active(self, flag):
+        #     if not self.active:
+        #         return 0
+        #     if not flag or flag in self.active and DBG_ALWAYS not in self.active or flag not in self.active and DBG_ALWAYS in self.active:
+        #         return 1
+        #     return 0
 
 
 DBG_ALWAYS = "always"

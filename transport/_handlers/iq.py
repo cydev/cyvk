@@ -3,7 +3,7 @@ from __future__ import unicode_literals, absolute_import
 
 import logging
 
-from config import WHITE_LIST, IDENTIFIER, TRANSPORT_ID
+from config import IDENTIFIER, TRANSPORT_ID
 from handlers.iq import _send_form
 from parallel.stanzas import push
 from transport.features import TRANSPORT_FEATURES
@@ -14,7 +14,6 @@ import transport.user as user_api
 from xmpp.protocol import (NodeProcessed, NS_REGISTER,
                            NS_DISCO_ITEMS, NS_DISCO_INFO, ERR_BAD_REQUEST, Node)
 from handlers.handler import Handler
-from parallel.sending import send_to_watcher
 from errors import AuthenticationException
 import database
 
@@ -80,7 +79,6 @@ def _process_form(iq, jid):
     realtime.set_last_activity_now(jid)
     user_api.add_client(jid)
     database.insert_user(jid, None, token, None, False)
-    send_to_watcher('new user registered: %s' % jid)
     logger.debug('registration for %s completed' % jid)
 
     return result

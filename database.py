@@ -8,8 +8,6 @@ from config import DB_FILE
 logger = logging.getLogger("cyvk")
 
 
-__author__ = 'ernado'
-
 """
 Module "itypes"
 itypes.py
@@ -135,9 +133,7 @@ class Database(object):
 del LazyDescriptor
 
 
-
 # Stanza processing
-
 def initialize_database(filename):
     logger.info('DB: initializing')
     if not os.path.exists(filename):

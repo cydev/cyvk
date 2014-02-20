@@ -1,6 +1,6 @@
 from __future__ import unicode_literals
 
-import json
+import ujson as json
 import logging
 import threading
 import redis
@@ -37,7 +37,7 @@ def _start_polling(jid, attempts=0):
         args = method('messages.getLongPollServer', jid)
     except ssl.SSLError as e:
         logger.error('SSL error %s' % e)
-        time.sleep(1)
+        time.sleep(3)
         return _start_polling(jid, attempts+1)
 
     args['wait'] = POLLING_WAIT
@@ -55,7 +55,11 @@ def handle_url(jid, url):
 
 
 def event_handler(event_body):
-    data = json.loads(event_body['response'])
+    data = None
+    try:
+        data = json.loads(event_body['response'])
+    except ValueError as e:
+        logger.error('unable to parse json: %s (%s)' % (data, e))
     jid = event_body['jid']
     is_client = realtime.is_client(jid)
 

@@ -25,8 +25,6 @@ PASSWORD = "secret"
 # default status (1 - online / 0 - offline)
 DEFAULT_STATUS = 1
 
-# save last message id (recommended)
-USE_LAST_MESSAGE_ID = True
 
 # avatar photo size (photo_50, photo_100, photo_200_orig)
 PHOTO_SIZE = "photo_100"

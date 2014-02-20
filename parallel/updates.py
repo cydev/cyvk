@@ -9,9 +9,6 @@ from parallel import status, realtime, sending
 from parallel.sending import send_typing_status
 from compatibility import HTMLParser
 
-from config import USE_LAST_MESSAGE_ID
-
-__author__ = 'ernado'
 
 #
 # 0,$message_id,0 -- удаление сообщения с указанным local_id
@@ -62,9 +59,7 @@ def process_data(jid, data):
         return send_messages(jid)
 
     if code == FRIEND_TYPING_CHAT:
-        friend_id = data[1]
-        if friend_id < 0:
-            friend_id = -friend_id
+        friend_id = abs(data[1])
         return send_typing_status(jid, friends.get_friend_jid(friend_id))
 
     logger.debug('doing nothing on code %s' % code)
@@ -92,8 +87,7 @@ def send_messages(jid):
 
     last_message = messages[-1]["mid"]
 
-    if USE_LAST_MESSAGE_ID:
-        realtime.set_last_message(jid, last_message)
+    realtime.set_last_message(jid, last_message)
 
     for message in messages:
         read.append(str(message["mid"]))

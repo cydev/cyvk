@@ -27,15 +27,14 @@ import logging
 
 logger = logging.getLogger('xmpp')
 
-
 XML_ls = (
-("&", "&amp;"),
-("\x0C", ""),
-("\x1B", ""),
-("<", "&lt;"),
-(">", "&gt;"),
-('"', "&quot;"),
-("'", "&apos;")
+    ("&", "&amp;"),
+    ("\x0C", ""),
+    ("\x1B", ""),
+    ("<", "&lt;"),
+    (">", "&gt;"),
+    ('"', "&quot;"),
+    ("'", "&apos;")
 )
 
 

@@ -21,7 +21,7 @@ examples of xmpppy structures usage.
 These classes can be used for simple applications "AS IS" though.
 """
 
-from xmpp import auth, dispatcher, roster, transports, debug
+from xmpp import auth, dispatcher, transports, debug
 
 Debug = debug
 Debug.DEBUGGING_IS_ON = 1
@@ -180,7 +180,7 @@ class CommonClient:
         self._Server, self._Proxy = server, proxy
         self.connected = "tcp"
         if (ssl is None and self.Connection.getPort() in (5223, 443)) or ssl:
-            try: # FIXME. This should be done in transports.py
+            try:  # FIXME. This should be done in transports.py
                 transports.TLS().PlugIn(self, now=1)
                 self.connected = "ssl"
             except transports.socket.sslerror:
@@ -192,7 +192,7 @@ class CommonClient:
         if self.Dispatcher.Stream._document_attrs.has_key("version") and self.Dispatcher.Stream._document_attrs[
             "version"] == "1.0":
             while not self.Dispatcher.Stream.features and self.Process(1):
-                pass # If we get version 1.0 stream the features tag MUST BE presented
+                pass  # If we get version 1.0 stream the features tag MUST BE presented
         return self.connected
 
 
@@ -221,9 +221,9 @@ class Client(CommonClient):
             "version"] == "1.0":
             return self.connected
         while not self.Dispatcher.Stream.features and self.Process(1):
-            pass # If we get version 1.0 stream the features tag MUST BE presented
+            pass  # If we get version 1.0 stream the features tag MUST BE presented
         if not self.Dispatcher.Stream.features.getTag("starttls"):
-            return self.connected # TLS not supported by server
+            return self.connected  # TLS not supported by server
         while not self.TLS.starttls and self.Process(1):
             pass
         if not hasattr(self, "TLS") or self.TLS.starttls != "success":
@@ -243,7 +243,7 @@ class Client(CommonClient):
         if self.Dispatcher.Stream._document_attrs.has_key("version") and self.Dispatcher.Stream._document_attrs[
             "version"] == "1.0":
             while not self.Dispatcher.Stream.features and self.Process(1):
-                pass # If we get version 1.0 stream the features tag MUST BE presented
+                pass  # If we get version 1.0 stream the features tag MUST BE presented
         if sasl:
             auth.SASL(user, password).PlugIn(self)
         if not sasl or self.SASL.startsasl == "not-supported":
@@ -266,14 +266,14 @@ class Client(CommonClient):
         elif self.__dict__.has_key("SASL"):
             self.SASL.PlugOut()
 
-    def getRoster(self):
-        """
-        Return the Roster instance, previously plugging it in and
-        requesting roster from server if needed.
-        """
-        if not self.__dict__.has_key("Roster"):
-            roster.Roster().PlugIn(self)
-        return self.Roster.getRoster()
+    # def getRoster(self):
+    #     """
+    #     Return the Roster instance, previously plugging it in and
+    #     requesting roster from server if needed.
+    #     """
+    #     if not self.__dict__.has_key("Roster"):
+    #         roster.Roster().PlugIn(self)
+    #     return self.Roster.getRoster()
 
     def sendInitPresence(self, requestRoster=1):
         """
@@ -282,13 +282,13 @@ class Client(CommonClient):
         """
         self.sendPresence(requestRoster=requestRoster)
 
-    def sendPresence(self, jid=None, typ=None, requestRoster=0):
+    def sendPresence(self, jid=None, typ=None):
         """
         Send some specific presence state.
         Can also request roster from server if according agrument is set.
         """
-        if requestRoster:
-            roster.Roster().PlugIn(self)
+        # if requestRoster:
+        #     roster.Roster().PlugIn(self)
         self.send(dispatcher.Presence(to=jid, typ=typ))
 
 
@@ -332,8 +332,9 @@ class Component(CommonClient):
             self.Namespace = auth.NS_COMPONENT_1
             self.Server = server[0]
         CommonClient.connect(self, server=server, proxy=proxy)
-        if self.connected and (self.typ == "jabberd2" or not self.typ and self.Dispatcher.Stream.features is not None) and (
-        not self.xcp):
+        if self.connected and (
+                self.typ == "jabberd2" or not self.typ and self.Dispatcher.Stream.features is not None) and (
+                not self.xcp):
             self.defaultNamespace = auth.NS_CLIENT
             self.Dispatcher.RegisterNamespace(self.defaultNamespace)
             self.Dispatcher.RegisterProtocol("iq", dispatcher.Iq)

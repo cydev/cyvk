@@ -1,4 +1,4 @@
-import json
+import ujson as json
 import redis
 import threading
 import logging

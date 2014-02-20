@@ -23,13 +23,13 @@ Dispatcher.SendAndWaitForResponce method will wait for reply stanza before givin
 
 import sys
 from xml.parsers.expat import ExpatError
+import logging
 
 from xmpp.plugin import PlugIn
 from xmpp.protocol import *
 from xmpp import simplexml
 
 
-import logging
 logger = logging.getLogger("xmpp")
 
 TIMEOUT = 25
@@ -393,14 +393,14 @@ class Dispatcher(PlugIn):
         ID = stanza.getID()
 
         logger.debug("dispatching %s stanza with type->%s props->%s id->%s" % (name, typ, stanza.props, ID))
-        ls = ["default"] # we will use all handlers:
+        ls = ["default"]  # we will use all handlers:
         if typ in self.handlers[xmlns][name]:
-            ls.append(typ) # from very common...
+            ls.append(typ)  # from very common...
         for prop in stanza.props:
             if prop in self.handlers[xmlns][name]:
                 ls.append(prop)
             if typ and (typ + prop) in self.handlers[xmlns][name]:
-                ls.append(typ + prop) # ...to very particular
+                ls.append(typ + prop)  # ...to very particular
         chain = self.handlers[xmlns]["default"]["default"]
         for key in ls:
             if key:
@@ -511,5 +511,5 @@ class Dispatcher(PlugIn):
             pass
 
 
-    # iter = type(send)(Process.func_code, Process.func_globals, name="iter", argdefs=Process.func_defaults,
-    #                   closure=Process.func_closure)
+            # iter = type(send)(Process.func_code, Process.func_globals, name="iter", argdefs=Process.func_defaults,
+            #                   closure=Process.func_closure)

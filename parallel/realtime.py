@@ -1,10 +1,10 @@
 import time
 import logging
-import json
+import ujson as json
 
 import redis
 
-from config import REDIS_PREFIX, REDIS_HOST, REDIS_PORT, USE_LAST_MESSAGE_ID, API_MAXIMUM_RATE, POLLING_WAIT
+from config import REDIS_PREFIX, REDIS_HOST, REDIS_PORT, API_MAXIMUM_RATE, POLLING_WAIT
 
 
 logger = logging.getLogger("cyvk")
@@ -31,9 +31,6 @@ def _get_last_message_key(jid):
 
 
 def set_last_message(jid, message_id):
-    if not USE_LAST_MESSAGE_ID:
-        return None
-
     logger.debug('DB: setting last message %s for %s' % (message_id, jid))
 
     r.set(_get_last_message_key(jid), message_id)
@@ -187,9 +184,6 @@ def set_username(jid, username):
 
 
 def get_last_message(jid):
-    if not USE_LAST_MESSAGE_ID:
-        return None
-
     try:
         return int(r.get(_get_last_message_key(jid)))
     except (TypeError, ValueError):

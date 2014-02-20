@@ -94,7 +94,7 @@ def _unsubscribe(jid, presence):
 
     if realtime.is_client(jid) and presence.destination_id == TRANSPORT_ID:
         database.remove_user(jid)
-        sending.send_to_watcher("user removed registration: %s" % jid)
+        logger.debug("user removed registration: %s" % jid)
 
 
 def _attempt_to_add_client(jid, _):

@@ -4,7 +4,7 @@ import time
 import logging
 
 from parallel.stanzas import push
-from parallel.updates import send_messages, send_message, get_friends
+from parallel.updates import send_messages, get_friends
 
 from config import TRANSPORT_ID, IDENTIFIER
 from database import set_token
@@ -198,15 +198,9 @@ def connect(jid, token):
         logger.debug("user api: authenticated %s" % jid)
     except CaptchaNeeded:
         logger.debug("user api: captcha needed for %s" % jid)
-        raise NotImplementedError('Captcha')
+        raise AuthenticationException('Captcha')
     except InvalidTokenError as token_error:
-        # TODO: Replace by exception handling
-        if token_error.message == "User authorization failed: user revoke access for this token.":
-            logger.critical("user api: %s" % token_error.message)
-            delete_user(jid)
-        elif token_error.message == "User authorization failed: invalid access_token.":
-            send_message(jid, token_error.message + " Please, register again", TRANSPORT_ID)
-        raise AuthenticationException('invalid token')
+        raise AuthenticationException('invalid token: %s' % token_error)
 
     if realtime.is_user(jid):
         logger.debug("user api: updating db for %s" % jid)

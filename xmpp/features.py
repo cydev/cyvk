@@ -17,9 +17,9 @@
 """
 This module contains variable stuff that is not worth splitting into separate modules.
 Here is:
-	DISCO client and agents-to-DISCO and browse-to-DISCO emulators.
-	IBR and password manager.
-	jabber:iq:privacy methods
+    DISCO client and agents-to-DISCO and browse-to-DISCO emulators.
+    IBR and password manager.
+    jabber:iq:privacy methods
 All these methods takes "disp" first argument that should be already connected
 (and in most cases already authorised) dispatcher instance.
 """
@@ -41,9 +41,9 @@ def _discover(disp, ns, jid, node=None, fb2b=0, fb2a=1):
         iq.setQuerynode(node)
     rep = disp.SendAndWaitForResponse(iq)
     if fb2b and not isResultNode(rep):
-        rep = disp.SendAndWaitForResponse(Iq(to=jid, typ="get", query_ns=NS_BROWSE)) # Fallback to browse
+        rep = disp.SendAndWaitForResponse(Iq(to=jid, typ="get", query_ns=NS_BROWSE))  # Fallback to browse
     if fb2a and not isResultNode(rep):
-        rep = disp.SendAndWaitForResponse(Iq(to=jid, typ="get", query_ns=NS_AGENTS)) # Fallback to agents
+        rep = disp.SendAndWaitForResponse(Iq(to=jid, typ="get", query_ns=NS_AGENTS))  # Fallback to agents
     if isResultNode(rep):
         return [n for n in rep.getQueryPayload() if isinstance(n, Node)]
     return []

@@ -10,7 +10,7 @@ from handlers.handler import Handler
 from hashers import get_hash
 
 from config import TRANSPORT_ID
-from transport.processing import from_stanza
+from transport.processing import Message
 
 import friends
 import transport.messages
@@ -27,38 +27,31 @@ class MessageHandler(Handler):
     def handle(self, _, stanza):
 
         logger.warning('message: %s' % stanza)
-        m = from_stanza(stanza)
-        body = m['body']
+        m = Message(stanza)
 
-        if m['composing']:
+        if m.composing:
             logger.error('composing not implemented')
 
-        if not body:
+        if not m.body:
             return
+        jid = m.jid_from
 
-        jid_to = m['jid_to']
-        jid_to_str = m['jid_to_str']
-        jid_from = m['jid_from']
-        jid_from_str = m['jid_from_str']
+        logger.debug('message_handler handling: %s (%s->%s)' % (get_hash(m.body), m.jid_from, m.jid_to))
 
-        jid = unicode(jid_from_str)
-
-        logger.debug('message_handler handling: %s (%s->%s)' % (get_hash(body), jid_from_str, jid_to_str))
-
-        if not realtime.is_client(jid) or m['type'] != "chat":
+        if not realtime.is_client(jid) or m.msg_type != "chat":
             logger.debug('client %s not in list' % jid)
 
-        if jid_to == TRANSPORT_ID:
-            return logger.debug('message to transport_id: %s' % body)
+        if m.jid_to == TRANSPORT_ID:
+            return logger.error('message to transport_id')
 
-        if jid_from == TRANSPORT_ID:
+        if m.jid_from == TRANSPORT_ID:
             return logger.error('not implemented - messages to watcher')
-        else:
-            uid = unicode(friends.get_friend_uid(jid_to.getNode()))
-            logger.debug('message to user (%s->%s)' % (jid, uid))
-            if not send_message(jid, body, uid):
-                return
-        answer = get_answer(stanza, jid_from_str, jid_to_str)
+
+        uid = unicode(friends.get_friend_uid(m.jid_to))
+        logger.debug('message to user (%s->%s)' % (jid, uid))
+        if not send_message(jid, m.jid_to, uid):
+            return
+        answer = get_answer(stanza, m.jid_from, m.jid_to)
 
         if answer:
             push(answer)
