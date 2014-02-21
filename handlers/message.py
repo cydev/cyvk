@@ -49,6 +49,8 @@ class MessageHandler(Handler):
 
         uid = unicode(friends.get_friend_uid(m.jid_to))
         logger.debug('message to user (%s->%s)' % (jid, uid))
+
+        # replace by something less verbose
         if not send_message(jid, m.body, uid):
             return
         answer = get_answer(stanza, m.jid_from, m.jid_to)
