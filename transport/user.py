@@ -30,7 +30,6 @@ def send_presence(target, jid_from, presence_type=None, nick=None, reason=None):
         presence.setTag("nick", namespace=xmpp.NS_NICK)
         presence.setTagData("nick", nick)
     push(presence)
-    # gateway.send(presence)
 
 
 def roster_subscribe(jid, subscriptions=None):

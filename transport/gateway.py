@@ -125,16 +125,8 @@ def halt_handler(sig=None, _=None):
         for friend in friends:
             user_api.send_presence(jid, get_friend_jid(friend), presence_status, reason=status)
         user_api.send_presence(jid, TRANSPORT_ID, presence_status, reason=status)
-        # send_presence(client.jidFrom, TRANSPORT_ID, presence_status, reason=status)
 
     map_clients(send_unavailable_presence)
-    # disconnect_transport()
-    # TODO: send to component thread message to disconnect
-
-    # try:
-    #     os.remove(PID_FILE)
-    # except OSError:
-    #     logger.error('unable to remove pid file %s' % PID_FILE)
     exit(sig)
 
 

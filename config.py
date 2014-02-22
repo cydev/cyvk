@@ -87,7 +87,7 @@ DB_FILE = "users.db"
 PID_FILE = "pidFile.txt"
 
 # log file
-LOG_FILE = "vk4xmpp.log"
+LOG_FILE = "cyvk.log"
 
 IDENTIFIER = {"type": "vk",
                 "category": "gateway",
