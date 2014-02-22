@@ -21,6 +21,7 @@ from thandlers import iq_handler
 from transport.stanza_queue import enqueue
 from parallel.long_polling import start_thread_lp_requests, start_thread_lp
 import xmpp
+from xmpp.exceptions import NodeProcessed
 
 logger = log.get_logger()
 
@@ -105,7 +106,7 @@ def halt_handler(sig=None, _=None):
 def get_transport_iteration(c):
     try:
         c.process()
-    except xmpp.StreamError as stream_error:
+    except StreamError as stream_error:
         logger.critical('StreamError while iterating: %s' % stream_error)
         raise
 
