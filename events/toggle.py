@@ -1,4 +1,3 @@
-__author__ = 'ernado'
 import redis
 from config import REDIS_PORT, REDIS_HOST, REDIS_DB, REDIS_CHARSET
 from events.constants import EVENTS_KEY

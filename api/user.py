@@ -1,3 +1,4 @@
+from __future__ import unicode_literals
 from compat import get_logger
 from messaging.parsing import escape_name
 from vkapi import method

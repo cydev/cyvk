@@ -1,7 +1,7 @@
 from __future__ import unicode_literals
 
-import logging
-logger = logging.getLogger("cyvk")
+from compat import get_logger
+_logger = get_logger()
 
 try:
     import cPickle as pickle
@@ -18,7 +18,7 @@ def push(stanza):
     @type stanza: Stanza
     @return:
     """
-    logger.debug('pushing %s' % stanza)
+    _logger.debug('pushing %s' % stanza)
 
     if not isinstance(stanza, Stanza):
         raise ValueError('expected stanza, got %s' % type(stanza))

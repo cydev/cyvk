@@ -1,14 +1,9 @@
 import time
-import logging
 import ujson as json
-
 import redis
-
 from config import REDIS_PREFIX, REDIS_HOST, REDIS_PORT, API_MAXIMUM_RATE, POLLING_WAIT
-
-
-logger = logging.getLogger("cyvk")
-
+from compat import get_logger
+_logger = get_logger()
 r = redis.StrictRedis(REDIS_HOST, REDIS_PORT, )
 
 LAST_UPDATE = 'last_update'
@@ -31,7 +26,7 @@ def _get_last_message_key(jid):
 
 
 def set_last_message(jid, message_id):
-    logger.debug('DB: setting last message %s for %s' % (message_id, jid))
+    _logger.debug('DB: setting last message %s for %s' % (message_id, jid))
 
     r.set(_get_last_message_key(jid), message_id)
 
@@ -229,7 +224,7 @@ def _get_processing_key(jid):
 
 def unset_processing(jid):
     r.set(_get_processing_key(jid), False)
-    logger.debug('client %s processed' % jid)
+    _logger.debug('client %s processed' % jid)
 
 
 def is_processing(jid):
@@ -244,7 +239,7 @@ def _get_polling_key(jid):
 
 
 def set_polling(jid):
-    logger.debug('polling client %s' % jid)
+    _logger.debug('polling client %s' % jid)
     k = _get_polling_key(jid)
     r.set(k, True)
     r.expire(k, POLLING_WAIT)
@@ -252,7 +247,7 @@ def set_polling(jid):
 
 def unset_polling(jid):
     r.set(_get_polling_key(jid), False)
-    logger.debug('client %s processed' % jid)
+    _logger.debug('client %s processed' % jid)
 
 
 def is_polling(jid):
@@ -263,12 +258,12 @@ def is_polling(jid):
 
 
 def set_token(jid, token):
-    logger.debug('setting token %s' % token)
+    _logger.debug('setting token %s' % token)
     r.set(_get_token_key(jid), token)
 
 
 def set_processing(jid):
-    logger.debug('processing client %s' % jid)
+    _logger.debug('processing client %s' % jid)
     k = _get_processing_key(jid)
     r.set(k, True)
     r.expire(k, 10)

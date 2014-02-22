@@ -1,19 +1,17 @@
 from __future__ import unicode_literals
+import ssl
+import time
+import threading
 
 import ujson as json
-import logging
-import threading
 import redis
-
-from compat import urlopen
+from compat import urlopen, get_logger
 from config import POLLING_WAIT, REDIS_DB, REDIS_CHARSET, REDIS_PREFIX, REDIS_PORT, REDIS_HOST
 from api.vkapi import method
 from parallel import realtime, updates
 from events.toggle import raise_event
-import ssl
-import time
 
-logger = logging.getLogger("cyvk")
+_logger = get_logger()
 UPDATE_RESULT = 'lp_result'
 LONG_POLLING_KEY = ':'.join([REDIS_PREFIX, 'long_polling_queue'])
 START_POLLING_KEY = ':'.join([REDIS_PREFIX, 'long_polling_start_queue'])
@@ -26,17 +24,17 @@ def start_polling(jid):
 
 def _start_polling(jid, attempts=0):
     if realtime.is_polling(jid):
-        return logger.debug('%s is already polling' % jid)
+        return _logger.debug('%s is already polling' % jid)
 
     if attempts > 5:
-        return logger.error('too many long polling attempts for %s' % jid)
+        return _logger.error('too many long polling attempts for %s' % jid)
 
     r = redis.StrictRedis(REDIS_HOST, REDIS_PORT, REDIS_DB, charset=REDIS_CHARSET)
 
     try:
         args = method('messages.getLongPollServer', jid)
     except ssl.SSLError as e:
-        logger.error('SSL error %s' % e)
+        _logger.error('SSL error %s' % e)
         time.sleep(3)
         return _start_polling(jid, attempts+1)
 
@@ -47,9 +45,9 @@ def _start_polling(jid, attempts=0):
 
 def _handle_url(jid, url):
     realtime.set_polling(jid)
-    logger.debug('got url, starting polling')
+    _logger.debug('got url, starting polling')
     data = urlopen(url).read()
-    logger.debug('got data from polling server')
+    _logger.debug('got data from polling server')
     realtime.unset_polling(jid)
     raise_event(UPDATE_RESULT, response=data, jid=jid)
 
@@ -59,27 +57,27 @@ def event_handler(event_body):
     try:
         data = json.loads(event_body['response'])
     except ValueError as e:
-        logger.error('unable to parse json: %s (%s)' % (data, e))
+        _logger.error('unable to parse json: %s (%s)' % (data, e))
     jid = event_body['jid']
     is_client = realtime.is_client(jid)
 
     try:
         if not data['updates']:
-            logger.debug('no updates for %s' % jid)
+            _logger.debug('no updates for %s' % jid)
 
         for update in data['updates']:
             updates.process_data(jid, update)
     except KeyError:
-        logger.error('unable to process %s' % event_body)
+        _logger.error('unable to process %s' % event_body)
 
     if is_client:
         start_polling(jid)
     else:
-        logger.debug('ending polling for %s' % jid)
+        _logger.debug('ending polling for %s' % jid)
 
 
 def loop_for_starting():
-    logger.debug('starting long polling starter loop')
+    _logger.debug('starting long polling starter loop')
     r = redis.StrictRedis(REDIS_HOST, REDIS_PORT, REDIS_DB, charset=REDIS_CHARSET)
 
     while True:
@@ -91,7 +89,7 @@ def loop_for_starting():
 
 
 def loop():
-    logger.debug('starting long polling loop')
+    _logger.debug('starting long polling loop')
     r = redis.StrictRedis(REDIS_HOST, REDIS_PORT, REDIS_DB, charset=REDIS_CHARSET)
     while True:
         request_raw = r.brpop(LONG_POLLING_KEY)[1]
