@@ -5,7 +5,6 @@ import logging
 from parallel import realtime
 from parallel.stanzas import push
 from parallel.updates import send_message
-from hashers import get_hash
 
 from config import TRANSPORT_ID
 from transport.processing import Message
@@ -32,7 +31,7 @@ def _handle(_, stanza):
 
     jid = m.jid_from
 
-    logger.debug('message_handler handling: %s (%s->%s)' % (get_hash(m.body), m.jid_from, m.jid_to))
+    logger.debug('message_handler handling: (%s->%s)' % (m.jid_from, m.jid_to))
 
     if not realtime.is_client(jid) or m.msg_type != "chat":
         logger.debug('client %s not in list' % jid)
