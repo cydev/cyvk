@@ -44,9 +44,7 @@ except ImportError:
 
 DATA_RECEIVED = 'DATA RECEIVED'
 DATA_SENT = 'DATA SENT'
-DBG_CONNECT_PROXY = 'CONNECTproxy'
-
-BU_FLEN = 1024
+BUFF_LEN = 1024
 
 
 class Error:
@@ -85,22 +83,25 @@ class TCPSocket(PlugIn):
         self._sock = None
         self._send = None
         self._receive = None
+        self._seen_data = None
 
-    def srv_lookup(self, server):
+    @staticmethod
+    def srv_lookup(server):
         """
         SRV resolver. Takes server=(host, port) as argument. Returns new (host, port) pair.
         """
-        if dns:
-            query = '_xmpp-client._tcp.%s' % server[0]
-            try:
-                dns.DiscoverNameServers()
-                dns__ = dns.Request()
-                response = dns__.req(query, qtype='SRV')
-                if response.answers:
-                    (port, host) = response.answers[0]['data'][2:]
-                    server = str(host), int(port)
-            except dns.DNSError:
-                logger.warning('An error occurred while looking up %s.' % query)
+        if not dns:
+            return server
+        query = '_xmpp-client._tcp.%s' % server[0]
+        try:
+            dns.DiscoverNameServers()
+            dns__ = dns.Request()
+            response = dns__.req(query, qtype='SRV')
+            if response.answers:
+                (port, host) = response.answers[0]['data'][2:]
+                server = str(host), int(port)
+        except dns.DNSError:
+            logger.error('An error occurred while looking up %s.' % query)
         return server
 
     def plugin(self, owner):
@@ -121,13 +122,13 @@ class TCPSocket(PlugIn):
         self.owner.register_disconnect_handler(self.disconnected)
         return "ok"
 
-    def getHost(self):
+    def get_host(self):
         """
         Returns the 'host' value that is connection is [will be] made to.
         """
         return self._server[0]
 
-    def getPort(self):
+    def get_port(self):
         """
         Returns the 'port' value that is connection is [will be] made to.
         """
@@ -176,7 +177,7 @@ class TCPSocket(PlugIn):
         In case of disconnection calls owner's disconnected() method and then raises IOError exception.
         """
         try:
-            data = self._receive(BU_FLEN)
+            data = self._receive(BUFF_LEN)
         except socket.sslerror as e:
             self._seen_data = 0
             if e[0] in (socket.SSL_ERROR_WANT_READ, socket.SSL_ERROR_WANT_WRITE):
@@ -189,7 +190,7 @@ class TCPSocket(PlugIn):
             data = ''
         while self.pending_data(0):
             try:
-                add = self._receive(BU_FLEN)
+                add = self._receive(BUFF_LEN)
             except Exception:
                 break
             if not add:
@@ -247,6 +248,7 @@ class TCPSocket(PlugIn):
     def disconnected(self):
         """
         Called when a Network Error or disconnection occurs.
-        Designed to be overidden.
+        Designed to be overridden.
         """
-        logger.error('Socket operation failed')
+        # logger.error('Socket operation failed')
+        raise NotImplementedError('disconnected not implemented')
