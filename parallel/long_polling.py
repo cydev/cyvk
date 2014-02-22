@@ -45,7 +45,7 @@ def _start_polling(jid, attempts=0):
     r.lpush(LONG_POLLING_KEY, json.dumps({'jid': jid, 'url': url}))
 
 
-def handle_url(jid, url):
+def _handle_url(jid, url):
     realtime.set_polling(jid)
     logger.debug('got url, starting polling')
     data = urlopen(url).read()
@@ -98,6 +98,6 @@ def loop():
         # { jid: 'user_jid', url: 'long_polling_url' }
         request = json.loads(request_raw)
         jid, url = request['jid'], request['url']
-        t = threading.Thread(target=handle_url, args=(jid, url))
+        t = threading.Thread(target=_handle_url, args=(jid, url))
         t.daemon = True
         t.start()
