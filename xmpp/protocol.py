@@ -311,7 +311,7 @@ ERRORS = {
                                                  "The receiving entity acknowledges an <abort/> element sent by the initiating entity; sent in reply to the <abort/> element."]
 }
 
-_errorcodes = {
+_error_codes = {
     "302": "redirect",
     "400": "unexpected-request",
     "401": "not-authorized",
@@ -705,8 +705,8 @@ class Protocol(Node):
         Set the error code. Obsolette. Use error-conditions instead.
         """
         if code:
-            if str(code) in _errorcodes.keys():
-                error = ErrorNode(_errorcodes[str(code)], text=error)
+            if str(code) in _error_codes.keys():
+                error = ErrorNode(_error_codes[str(code)], text=error)
             else:
                 error = ErrorNode(ERR_UNDEFINED_CONDITION, code=code, typ="cancel", text=error)
         elif isinstance(error, basestring):
@@ -1412,17 +1412,17 @@ class DataForm(Node):
 
         Node.__init__(self, "x", node=node)
         if node:
-            newkids = []
+            new_subs = []
             for n in self.getChildren():
                 if n.getName() == "field":
-                    newkids.append(DataField(node=n))
+                    new_subs.append(DataField(node=n))
                 elif n.getName() == "item":
-                    newkids.append(DataItem(node=n))
+                    new_subs.append(DataItem(node=n))
                 elif n.getName() == "reported":
-                    newkids.append(DataReported(node=n))
+                    new_subs.append(DataReported(node=n))
                 else:
-                    newkids.append(n)
-            self.kids = newkids
+                    new_subs.append(n)
+            self.kids = new_subs
         if typ:
             self.setType(typ)
         self.setNamespace(NS_DATA)
