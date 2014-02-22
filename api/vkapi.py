@@ -3,14 +3,8 @@ import logging
 import requests
 import ujson as json
 
-try:
-    from urllib2 import URLError
-except ImportError:
-    from urllib.error import URLError
-
 import database
 from friends import get_friend_jid
-from api.request_processor import RequestProcessor
 from errors import AuthenticationException, CaptchaNeeded, NotAllowed, AccessRevokedError, InvalidTokenError
 from messaging.parsing import escape_name
 from parallel import realtime
@@ -57,12 +51,13 @@ def method(method_name, jid, args=None, additional_timeout=0, retry=0, token=Non
         time.sleep(additional_timeout)
 
     realtime.wait_for_api_call(jid)
-    # rp = RequestProcessor()
 
     try:
         response = requests.post(url, args)
-        # response = rp.post(url, args)
-    except URLError as e:
+        if response.status_code != 200:
+            logger.debug('no response')
+            raise requests.HTTPError('no response')
+    except requests.RequestException as e:
         logger.debug('method error: %s' % e)
 
         if not additional_timeout:
@@ -72,16 +67,9 @@ def method(method_name, jid, args=None, additional_timeout=0, retry=0, token=Non
 
         return method(method_name, jid, args, additional_timeout, retry)
 
-    if not response:
-        logger.debug('no response')
-        raise URLError('no response')
-
-    body, response = response
-
-    if not body:
-        raise RuntimeError('got blank body')
-
-    body = json.loads(body)
+    text = response.text
+    assert not (text is None)
+    body = json.loads(text)
 
     if 'response' in body:
         return body['response']

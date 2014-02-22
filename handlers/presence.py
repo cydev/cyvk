@@ -1,7 +1,6 @@
 import database
 from errors import AuthenticationException
 from friends import get_friend_jid
-from handlers.handler import Handler
 from parallel import realtime, sending
 from parallel.stanzas import push
 from parallel.updates import set_online
@@ -12,18 +11,16 @@ from config import TRANSPORT_ID
 from transport.statuses import get_status_stanza
 from transport.presence import PresenceWrapper
 
-__author__ = 'ernado'
-
 import logging
 
 logger = logging.getLogger('vk4xmpp')
 
 
-def presence_handler_wrapper(handler):
+def presence_handler_wrapper(h):
     def wrapper(jid, presence):
         assert isinstance(jid, unicode)
         assert isinstance(presence, PresenceWrapper)
-        handler(jid, presence)
+        h(jid, presence)
 
     return wrapper
 
@@ -193,26 +190,17 @@ def _handle_presence(jid, presence):
         realtime.set_last_status(jid, status)
 
 
-class PresenceHandler(Handler):
-    """
-    Handler for presence messages from jabber server
-    """
+def handler(_, stanza):
+    presence = PresenceWrapper(stanza)
 
-    def handle(self, _, stanza):
-        presence = PresenceWrapper(stanza)
+    jid = presence.origin_id
 
-        jid = presence.origin_id
+    logger.debug('user %s presence handling: %s' % (jid, presence))
 
-        logger.debug('user %s presence handling: %s' % (jid, presence))
+    if not isinstance(jid, unicode):
+        raise ValueError('jid %s (%s) is not str' % (jid, type(jid)))
 
-        if not isinstance(jid, unicode):
-            raise ValueError('jid %s (%s) is not str' % (jid, type(jid)))
-
-        if realtime.is_client(jid):
-            _handle_presence(jid, presence)
-        elif presence.status in ("available", None):
-            _attempt_to_add_client(jid, presence)
-
-
-def get_handler():
-    return PresenceHandler().handle
+    if realtime.is_client(jid):
+        _handle_presence(jid, presence)
+    elif presence.status in ("available", None):
+        _attempt_to_add_client(jid, presence)

@@ -6,18 +6,18 @@ import signal
 import threading
 import time
 from events.handler import EventHandler
-from handlers.presence import PresenceHandler
-
 import log
 from errors import AuthenticationException, all_errors, ConnectionError
 from friends import get_friend_jid
 from database import initialize_database
-from config import (PID_FILE, DATABASE_FILE,
+from config import (DATABASE_FILE,
                     HOST, SERVER, PORT, TRANSPORT_ID,
                     DEBUG_XMPPPY, PASSWORD)
 from parallel import realtime
 from parallel.probe import probe_users
-from transport import user as user_api, _handlers
+from transport import user as user_api
+from handlers import message_handler, presence_handler
+from thandlers import iq_handler
 from transport.stanza_queue import enqueue
 from parallel.long_polling import loop as long_polling_loop_func
 from parallel.long_polling import loop_for_starting
@@ -68,8 +68,8 @@ def get_transport():
     return xmpp.Component(HOST, debug=DEBUG_XMPPPY)
 
 
-def register_handler(c, name, handler_class):
-    c.RegisterHandler(name, handler_class().handle)
+def register_handler(c, name, handler):
+    c.RegisterHandler(name, handler)
 
 
 def initialize():
@@ -82,9 +82,9 @@ def initialize():
 
     logger.info('registering handlers')
 
-    register_handler(transport, "iq", _handlers.IQHandler)
-    register_handler(transport, "presence", PresenceHandler)
-    register_handler(transport, "message", _handlers.MessageHandler)
+    register_handler(transport, "iq", iq_handler)
+    register_handler(transport, "presence", presence_handler)
+    register_handler(transport, "message", message_handler)
     transport.RegisterDisconnectHandler(get_disconnect_handler(transport))
     realtime.reset_online_users()
 

@@ -20,7 +20,7 @@ def _get_answer(message, jid_from, jid_to):
     return transport.messages.get_answer_stanza(jid_from, jid_to, message)
 
 
-def _handle(_, stanza):
+def handler(_, stanza):
     m = Message(stanza)
 
     if m.composing:
@@ -53,8 +53,4 @@ def _handle(_, stanza):
 
     if answer:
         push(answer)
-
-
-def get_handler():
-    return _handle
 

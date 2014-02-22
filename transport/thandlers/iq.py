@@ -13,7 +13,6 @@ from transport.stanzas import generate_error
 import transport.user as user_api
 from xmpp.protocol import (NodeProcessed, NS_REGISTER,
                            NS_DISCO_ITEMS, NS_DISCO_INFO, ERR_BAD_REQUEST, Node)
-from handlers.handler import Handler
 from errors import AuthenticationException
 import database
 
@@ -84,60 +83,55 @@ def _process_form(iq, jid):
     return result
 
 
-class IQHandler(Handler):
+def handler(_, stanza):
+    ns = stanza.getQueryNS()
 
-    def handle(self, _, stanza):
-        ns = stanza.getQueryNS()
+    mapping = {
+        NS_REGISTER: iq_register_handler,
+        NS_DISCO_INFO: iq_disco_handler,
+        NS_DISCO_ITEMS: iq_disco_handler
+    }
 
-        mapping = {
-            NS_REGISTER: self.iq_register_handler,
-            NS_DISCO_INFO: self.iq_disco_handler,
-            NS_DISCO_ITEMS: self.iq_disco_handler
-        }
+    try:
+        mapping[ns](stanza)
+    except KeyError:
+        logger.critical('passing key %s' % ns)
 
-        try:
-            mapping[ns](stanza)
-        except KeyError:
-            logger.critical('passing key %s' % ns)
-
-        raise NodeProcessed()
-
-    @staticmethod
-    def iq_register_handler(stanza):
-        jid = unicode(stanza.getFrom().getStripped())
-        logger.debug('register handler for %s' % jid)
-
-        destination_jid = stanza.getTo().getStripped()
-
-        if destination_jid != config.TRANSPORT_ID:
-            logger.debug('register not to transport')
-            return
-
-        try:
-            handler = {'get': _send_form, 'set': _process_form}[stanza.getType()]
-            push(handler(stanza, jid))
-        except (NotImplementedError, KeyError) as e:
-            logger.debug('requested feature not implemented: %s' % e)
-            push(generate_error(stanza, 0, "Requested feature not implemented: %s" % e))
-
-    @staticmethod
-    def iq_disco_handler(iq_raw):
-        logger.debug('handling disco')
-
-        iq = IQ(iq_raw)
-
-        if iq.i_type == "get" and not iq.node and iq.jid_to_str == TRANSPORT_ID:
-            query = [Node("identity", IDENTIFIER)]
-            result = iq_raw.buildReply("result")
-            if iq.ns == NS_DISCO_INFO:
-                for key in TRANSPORT_FEATURES:
-                    node = Node("feature", {"var": key})
-                    query.append(node)
-                result.setQueryPayload(query)
-            elif iq.ns == NS_DISCO_ITEMS:
-                result.setQueryPayload(query)
-            push(result)
+    raise NodeProcessed()
 
 
-def get_handler():
-    return IQHandler().handle
+def iq_register_handler(stanza):
+    jid = unicode(stanza.getFrom().getStripped())
+    logger.debug('register handler for %s' % jid)
+
+    destination_jid = stanza.getTo().getStripped()
+
+    if destination_jid != config.TRANSPORT_ID:
+        logger.debug('register not to transport')
+        return
+
+    try:
+        handler = {'get': _send_form, 'set': _process_form}[stanza.getType()]
+        push(handler(stanza, jid))
+    except (NotImplementedError, KeyError) as e:
+        logger.debug('requested feature not implemented: %s' % e)
+        push(generate_error(stanza, 0, "Requested feature not implemented: %s" % e))
+
+
+def iq_disco_handler(iq_raw):
+    logger.debug('handling disco')
+
+    iq = IQ(iq_raw)
+
+    if iq.i_type == "get" and not iq.node and iq.jid_to_str == TRANSPORT_ID:
+        query = [Node("identity", IDENTIFIER)]
+        result = iq_raw.buildReply("result")
+        if iq.ns == NS_DISCO_INFO:
+            for key in TRANSPORT_FEATURES:
+                node = Node("feature", {"var": key})
+                query.append(node)
+            result.setQueryPayload(query)
+        elif iq.ns == NS_DISCO_ITEMS:
+            result.setQueryPayload(query)
+        push(result)
+

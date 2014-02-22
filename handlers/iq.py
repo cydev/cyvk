@@ -4,8 +4,6 @@ import logging
 
 logger = logging.getLogger("cyvk")
 
-__author__ = 'ernado'
-
 
 def _send_form(iq, jid):
     logger.debug("sending register form to %s" % jid)
