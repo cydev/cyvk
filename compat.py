@@ -3,6 +3,23 @@
 from __future__ import unicode_literals
 
 import sys
+import logging
+
+_logger = logging.getLogger("cyvk")
+
+
+def get_logger():
+    return _logger
+
+try:
+    from html.parser import HTMLParser
+except ImportError:
+    from HTMLParser import HTMLParser
+
+
+def html_unespace(data):
+    return HTMLParser().unescape(data).replace('<br>', '\n')
+
 
 if sys.version < '3':
     # noinspection PyUnresolvedReferences

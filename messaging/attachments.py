@@ -1,15 +1,16 @@
 # coding: utf-8
-
+from __future__ import unicode_literals
+__all__ = ['parse_attachments']
 
 import urllib
-import logging
+import compat
 
-logger = logging.getLogger('cyvk')
+_logger = compat.get_logger()
 
 
 def _wall(_):
     # Wall post
-    return "\nWall: https://vk.com/feed?w=wall%(to_id)s_%(id)s"
+    return '\nWall: https://vk.com/feed?w=wall%(to_id)s_%(id)s'
 
 
 def _photo(attachment):
@@ -45,7 +46,7 @@ def _audio(attachment):
 def _doc(_):
     return '\nDocument: %(title)s — %(url)s'
 
-mapping = dict(wall=_wall, photo=_photo, video=_video, audio=_audio, doc=_doc)
+_mapping = dict(wall=_wall, photo=_photo, video=_video, audio=_audio, doc=_doc)
 
 
 def parse_attachments(_, msg):
@@ -58,7 +59,7 @@ def parse_attachments(_, msg):
     if 'attachments' not in msg:
         return result
 
-    logger.debug('attachment found')
+    _logger.debug('attachment found')
 
     attachments = msg["attachments"]
 
@@ -71,10 +72,10 @@ def parse_attachments(_, msg):
         key = a.get('type')
         try:
             # generating representation based on attachment type
-            s += mapping[key](a)
+            s += _mapping[key](a)
         except KeyError:
             # type not found
-            logger.error('Unknown attachment: %s' % a)
+            _logger.error('Unknown attachment: %s' % a)
             s += "\nUnknown attachment: " + str(a[key])
         result += s % a.get(key, {})
     return result

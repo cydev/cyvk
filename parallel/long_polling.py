@@ -5,7 +5,7 @@ import logging
 import threading
 import redis
 
-from compatibility import urlopen
+from compat import urlopen
 from config import POLLING_WAIT, REDIS_DB, REDIS_CHARSET, REDIS_PREFIX, REDIS_PORT, REDIS_HOST
 from api.vkapi import method
 from parallel import realtime, updates

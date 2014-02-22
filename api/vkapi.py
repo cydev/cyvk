@@ -9,12 +9,12 @@ from errors import AuthenticationException, CaptchaNeeded, NotAllowed, AccessRev
 from messaging.parsing import escape_name
 from parallel import realtime
 from parallel.sending import send
-from compatibility import text_type
+from compat import text_type, get_logger
 import time
 
 from config import MAX_API_RETRY, API_MAXIMUM_RATE, TRANSPORT_ID
 VK_ERROR_BURST = 6
-logger = logging.getLogger("cyvk")
+_logger = get_logger()
 
 
 def method(method_name, jid, args=None, additional_timeout=0, retry=0, token=None):
@@ -45,7 +45,7 @@ def method(method_name, jid, args=None, additional_timeout=0, retry=0, token=Non
     args['access_token'] = token
     args["v"] = '3.0'
 
-    logger.debug('api method %s, arguments: %s' % (method_name, args))
+    _logger.debug('api method %s, arguments: %s' % (method_name, args))
 
     if additional_timeout:
         time.sleep(additional_timeout)
@@ -55,10 +55,10 @@ def method(method_name, jid, args=None, additional_timeout=0, retry=0, token=Non
     try:
         response = requests.post(url, args)
         if response.status_code != 200:
-            logger.debug('no response')
+            _logger.debug('no response')
             raise requests.HTTPError('no response')
     except requests.RequestException as e:
-        logger.debug('method error: %s' % e)
+        _logger.debug('method error: %s' % e)
 
         if not additional_timeout:
             additional_timeout = 1
@@ -78,7 +78,7 @@ def method(method_name, jid, args=None, additional_timeout=0, retry=0, token=Non
         code = body['error']['error_code']
 
         if code == VK_ERROR_BURST:
-            logger.debug('too many requests per second, trying again')
+            _logger.debug('too many requests per second, trying again')
             if additional_timeout:
                 additional_timeout *= 2
             else:
@@ -104,19 +104,19 @@ def method_wrapped(m, jid, args=None, token=None):
     assert isinstance(m, text_type)
     assert isinstance(args, dict)
 
-    logger.debug('wrapped %s, args=%s, t=%s' % (m, args, token))
+    _logger.debug('wrapped %s, args=%s, t=%s' % (m, args, token))
 
     try:
         result = method(m, jid, args, token=token)
     except CaptchaNeeded:
-        logger.error("VKLogin: running captcha challenge for %s" % jid)
+        _logger.error("VKLogin: running captcha challenge for %s" % jid)
         # TODO: Captcha
         raise NotImplementedError('Captcha')
     except NotAllowed:
         send(jid, "You're not allowed to perform this action.",
              get_friend_jid(args.get("user_id", TRANSPORT_ID)))
     except AccessRevokedError:
-        logger.debug('user %s revoked access' % jid)
+        _logger.debug('user %s revoked access' % jid)
         database.remove_user(jid)
         realtime.remove_online_user(jid)
     except InvalidTokenError:
@@ -132,16 +132,16 @@ def is_application_user(jid, token):
     @param jid: client jid
     @return:
     """
-    logger.debug('login api: checking token')
+    _logger.debug('login api: checking token')
 
     assert isinstance(jid, text_type)
 
     try:
         method_wrapped('isAppUser', jid, token=token)
-        logger.debug('token for %s is valid' % jid)
+        _logger.debug('token for %s is valid' % jid)
         return True
     except AuthenticationException as auth_e:
-        logger.debug('checking token failed: %s' % auth_e)
+        _logger.debug('checking token failed: %s' % auth_e)
         return False
 
 
@@ -150,7 +150,7 @@ def mark_messages_as_read(jid, msg_list):
 
 
 def get_messages(jid, count=5, last_msg_id=None):
-    logger.debug('getting messages for %s' % jid)
+    _logger.debug('getting messages for %s' % jid)
     arguments = {"out": 0, "filters": 1, "count": count}
     if last_msg_id:
         arguments.update({'last_message_id': last_msg_id})
@@ -160,7 +160,7 @@ def get_messages(jid, count=5, last_msg_id=None):
 
 
 def get_user_data(uid, target_uid, fields=None):
-    logger.debug('user api: sending user data for %s about %s' % (uid, target_uid))
+    _logger.debug('user api: sending user data for %s about %s' % (uid, target_uid))
     fields = fields or ["screen_name"]
     args = {"fields": ",".join(fields), "user_ids": target_uid}
     m = "users.get"

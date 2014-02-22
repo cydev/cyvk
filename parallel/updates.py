@@ -7,15 +7,14 @@ import messaging.message
 from messaging.parsing import sorting, escape, escape_name
 from parallel import status, realtime, sending
 from parallel.sending import send_typing_status
-from compatibility import HTMLParser
-import logging
+from compat import get_logger, html_unespace
 
 NEW_MESSAGE = 4
 FRIEND_ONLINE = 8
 FRIEND_OFFLINE = 9
 FRIEND_TYPING_CHAT = 61
 FRIEND_TYPING_GROUP = 62
-logger = logging.getLogger("cyvk")
+_logger = get_logger()
 
 
 def process_data(jid, data):
@@ -35,11 +34,11 @@ def process_data(jid, data):
     if code == FRIEND_TYPING_CHAT:
         return send_typing_status(jid, friends.get_friend_jid(friend_id))
 
-    logger.debug('doing nothing on code %s' % code)
+    _logger.debug('doing nothing on code %s' % code)
 
 
 def send_messages(jid):
-    logger.debug('user api: send_messages for %s' % jid)
+    _logger.debug('user api: send_messages for %s' % jid)
 
     if not jid:
         raise ValueError('user api: unable to send messages for blank jid')
@@ -62,16 +61,15 @@ def send_messages(jid):
     for message in messages:
         read.append(str(message["mid"]))
         from_jid = get_friend_jid(message["uid"])
-        parser = HTMLParser()
-        body = parser.unescape(message["body"]).replace('<br>', '\n')
-        body += messaging.message.parse(jid, message)
+        body = html_unespace(message['body'])
+        body += messaging.parse(jid, message)
         sending.send(jid, escape("", body), from_jid, message["date"])
 
     mark_messages_as_read(jid, read)
 
 
 def send_message(jid, body, destination_uid):
-    logger.debug('user api: message to %s' % destination_uid)
+    _logger.debug('user api: message to %s' % destination_uid)
 
     assert isinstance(jid, unicode)
     assert isinstance(destination_uid, int)
@@ -90,7 +88,7 @@ def set_online(user):
 
 
 def get_friends(jid, fields=None):
-    logger.debug('getting friends from api for %s' % jid)
+    _logger.debug('getting friends from api for %s' % jid)
     fields = fields or ["screen_name"]
     friends_raw = method("friends.get", jid, {"fields": ",".join(fields)}) or {} # friends.getOnline
     friends = {}
@@ -103,6 +101,6 @@ def get_friends(jid, fields=None):
                 if key != "screen_name":
                     friends[uid][key] = friend.get(key)
         except KeyError as key_error:
-            logger.debug('%s while processing %s' % (key_error, uid))
+            _logger.debug('%s while processing %s' % (key_error, uid))
             continue
     return friends

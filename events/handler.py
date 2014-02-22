@@ -2,7 +2,7 @@ import ujson as json
 import redis
 import threading
 import logging
-from compatibility import text_type, binary_type
+from compat import text_type, binary_type
 from config import REDIS_HOST, REDIS_PORT, REDIS_DB, REDIS_CHARSET
 from events.constants import all_events, EVENTS_KEY, NAME_KEY
 from parallel.long_polling import event_handler, UPDATE_RESULT

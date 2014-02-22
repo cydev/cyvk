@@ -10,13 +10,12 @@ from transport import user as user_api, statuses
 from config import TRANSPORT_ID
 from transport.statuses import get_status_stanza
 from transport.presence import PresenceWrapper
+import compat
 
-import logging
-
-logger = logging.getLogger('vk4xmpp')
+_logger = compat.get_logger()
 
 
-def presence_handler_wrapper(h):
+def _presence_handler_wrapper(h):
     def wrapper(jid, presence):
         assert isinstance(jid, unicode)
         assert isinstance(presence, PresenceWrapper)
@@ -35,13 +34,12 @@ def _unavailable(jid, presence):
     @param jid: client jid
     @return: @raise NotImplementedError:
     """
-    logger.debug('unavailable presence %s' % presence)
+    _logger.debug('unavailable presence %s' % presence)
 
-    # if p.to_s == TRANSPORT_ID and p.resource in client.resources:
     if presence.destination_id != TRANSPORT_ID:
         return
 
-    logger.warning('unavailable presence may be not implemented')
+    _logger.warning('unavailable presence may be not implemented')
     user_api.send_out_presence(jid)
     xmpp_presence = statuses.get_unavailable_stanza(jid)
     push(xmpp_presence)
@@ -57,7 +55,7 @@ def _error(jid, presence):
     @param jid: client jid
     @raise NotImplementedError:
     """
-    logger.debug('error presence %s' % presence)
+    _logger.debug('error presence %s' % presence)
 
     if presence.error_code == "404":
         raise NotImplementedError('client_disconnect for %s' % jid)
@@ -76,8 +74,8 @@ def _available(jid, presence):
     if presence.destination_id != TRANSPORT_ID:
         return
 
-    logger.debug("user %s, will send sendInitPresence" % presence.origin_id)
-    logger.warning('not adding resource %s to %s' % (presence.resource, jid))
+    _logger.debug("user %s, will send sendInitPresence" % presence.origin_id)
+    _logger.warning('not adding resource %s to %s' % (presence.resource, jid))
 
 
 def _unsubscribe(jid, presence):
@@ -91,7 +89,7 @@ def _unsubscribe(jid, presence):
 
     if realtime.is_client(jid) and presence.destination_id == TRANSPORT_ID:
         database.remove_user(jid)
-        logger.debug("user removed registration: %s" % jid)
+        _logger.debug("user removed registration: %s" % jid)
 
 
 def _attempt_to_add_client(jid, _):
@@ -101,13 +99,13 @@ def _attempt_to_add_client(jid, _):
     @param jid: client jid
     @return:
     """
-    logger.debug('presence: attempting to add %s to transport' % jid)
+    _logger.debug('presence: attempting to add %s to transport' % jid)
 
     user = database.get_description(jid)
     if not user:
-        logger.debug('presence: user %s not found in database' % jid)
+        _logger.debug('presence: user %s not found in database' % jid)
         return
-    logger.debug('presence: user %s found in database' % jid)
+    _logger.debug('presence: user %s found in database' % jid)
 
     token = user['token']
 
@@ -118,7 +116,7 @@ def _attempt_to_add_client(jid, _):
         set_online(jid)
         raise_event(USER_ONLINE)
     except AuthenticationException as e:
-        logger.error('unable to authenticate %s: %s' % (jid, e))
+        _logger.error('unable to authenticate %s: %s' % (jid, e))
         message = "Authentication failed! " \
                   "If this error repeated, please register again. " \
                   "Error: %s" % e
@@ -139,14 +137,14 @@ def _subscribe(jid, presence):
     destination = presence.destination_id
 
     if destination == TRANSPORT_ID:
-        logger.debug('sending presence about transport <subscribe>')
+        _logger.debug('sending presence about transport <subscribe>')
         push(get_status_stanza(TRANSPORT_ID, origin, status='subscribed'))
         push(get_status_stanza(TRANSPORT_ID, origin))
     else:
         push(get_status_stanza(destination, origin,  status='subscribed'))
 
         client_friends = realtime.get_friends(jid)
-        logger.debug('sending presence about friend <subscribe>')
+        _logger.debug('sending presence about friend <subscribe>')
 
         if not client_friends:
             return
@@ -179,14 +177,14 @@ def _handle_presence(jid, presence):
     @param jid: client jid
     """
     status = presence.status
-    logger.debug('presence status: %s' % status)
+    _logger.debug('presence status: %s' % status)
     try:
-        presence_handler_wrapper(_mapping[status])(jid, presence)
+        _presence_handler_wrapper(_mapping[status])(jid, presence)
     except KeyError:
-        logger.debug('unable to handle status %s' % status)
+        _logger.debug('unable to handle status %s' % status)
 
     if presence.destination_id == TRANSPORT_ID:
-        logger.debug('setting last status %s for %s' % (status, jid))
+        _logger.debug('setting last status %s for %s' % (status, jid))
         realtime.set_last_status(jid, status)
 
 
@@ -195,7 +193,7 @@ def handler(_, stanza):
 
     jid = presence.origin_id
 
-    logger.debug('user %s presence handling: %s' % (jid, presence))
+    _logger.debug('user %s presence handling: %s' % (jid, presence))
 
     if not isinstance(jid, unicode):
         raise ValueError('jid %s (%s) is not str' % (jid, type(jid)))
