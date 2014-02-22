@@ -79,14 +79,9 @@ def send_message(jid, body, destination_uid):
 
     method_name = "messages.send"
     method_values = {'user_id': destination_uid, "message": body, "type": 0}
-    update_last_activity(jid)
+    realtime.set_last_activity_now(jid)
 
     return method(method_name, jid, method_values)
-
-
-def update_last_activity(uid):
-    logger.debug('updating last activity')
-    realtime.set_last_activity_now(uid)
 
 
 def set_online(user):
