@@ -2,8 +2,8 @@ import pickle
 import redis
 from xmpp import Protocol as Stanza
 from config import REDIS_HOST, REDIS_PORT, REDIS_PREFIX
-import logging
-logger = logging.getLogger("cyvk")
+import compat
+logger = compat.get_logger()
 r = redis.StrictRedis(REDIS_HOST, REDIS_PORT, )
 
 

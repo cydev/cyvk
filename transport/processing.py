@@ -2,8 +2,8 @@
 
 from __future__ import unicode_literals
 from xmpp.protocol import Protocol
-import logging
-logger = logging.getLogger("cyvk")
+import compat
+logger = compat.get_logger()
 
 
 class Message(object):

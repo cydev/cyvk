@@ -1,3 +1,4 @@
+from __future__ import unicode_literals
 from xmpp import ERR_FEATURE_NOT_IMPLEMENTED, Error
 
 

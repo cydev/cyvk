@@ -1,7 +1,7 @@
 # coding: utf-8
 from __future__ import unicode_literals
-import logging
-logger = logging.getLogger("cyvk")
+import compat
+logger = compat.get_logger()
 
 
 class PresenceWrapper(object):

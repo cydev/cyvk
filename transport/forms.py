@@ -1,3 +1,4 @@
+from __future__ import unicode_literals
 from xmpp import DataForm, Node
 from config import OAUTH_URL
 
