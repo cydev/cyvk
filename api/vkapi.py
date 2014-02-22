@@ -1,5 +1,6 @@
 from __future__ import unicode_literals
 import logging
+import requests
 import ujson as json
 
 try:
@@ -33,18 +34,16 @@ def method(method_name, jid, args=None, additional_timeout=0, retry=0, token=Non
     @param additional_timeout: time in seconds to wait before reattempting
     @return: @raise NotImplementedError:
     """
-
     assert isinstance(method_name, text_type)
     assert isinstance(jid, text_type)
 
     if retry > MAX_API_RETRY:
         logging.error('reached max api retry for %s, %s' % (method_name, jid))
+        return None
 
     args = args or {}
     url = 'https://api.vk.com/method/%s' % method_name
-
-    if not token:
-        token = realtime.get_token(jid)
+    token = token or realtime.get_token(jid)
 
     if not token:
         raise ValueError('no token for %s' % jid)
@@ -58,11 +57,11 @@ def method(method_name, jid, args=None, additional_timeout=0, retry=0, token=Non
         time.sleep(additional_timeout)
 
     realtime.wait_for_api_call(jid)
-
-    rp = RequestProcessor()
+    # rp = RequestProcessor()
 
     try:
-        response = rp.post(url, args)
+        response = requests.post(url, args)
+        # response = rp.post(url, args)
     except URLError as e:
         logger.debug('method error: %s' % e)
 
