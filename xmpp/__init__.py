@@ -25,19 +25,6 @@ session-related info. Though if you are not accessing instances variables direct
 and use only methods for access all values you should not have any problems.
 """
 
-# import logging
-#
-# logger = logging.getLogger("xmpp")
-# logger.setLevel('DEBUG')
-# # h = logging.FileHandler(LOG_FILE)
-# f = logging.Formatter("%(asctime)s:%(levelname)s:%(name)s %(message)s")
-# h.setFormatter(f)
-# sh = logging.StreamHandler()
-# sh.setFormatter(f)
-# # logger.addHandler(h)
-# logger.addHandler(sh)
-# # return logger
-
 from xmpp.client import *
 from xmpp.protocol import *
-from xmpp import auth, dispatcher, simplexml, transports, protocol, features, debug, plugin
+from xmpp import auth, dispatcher, simplexml, transports, protocol, debug, plugin

@@ -206,7 +206,8 @@ class Debug:
             flags = self._as_one_list(active_flags)
             for t in flags:
                 if t not in self.debug_flags:
-                    sys.stderr.write("Invalid debugflag given: %s\n" % t)
+                    pass
+                    # sys.stderr.write("Invalid debugflag given: %s\n" % t)
                 ok_flags.append(t)
 
             self.active = ok_flags

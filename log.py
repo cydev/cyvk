@@ -38,7 +38,7 @@ def get_logger():
     sh2 = logging.StreamHandler()
     sh2.setFormatter(fx)
     logger2 = logging.getLogger("xmpp")
-    logger2.setLevel('CRITICAL')
+    logger2.setLevel('DEBUG')
     logger2.addHandler(sh2)
 
     return logger

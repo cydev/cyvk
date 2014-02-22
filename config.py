@@ -78,7 +78,7 @@ LOGO_URL = 'https://raw.github.com/cydev/cyvk/master/logo.png'
 URL_VCARD_NO_IMAGE = LOGO_URL
 
 # debug mode for xmppy library
-DEBUG_XMPPPY = False
+DEBUG_XMPPPY = True
 
 # sqlite database filename
 DB_FILE = "users.db"
