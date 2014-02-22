@@ -30,10 +30,12 @@ Also exception 'error' is defined to allow capture of this module specific excep
 import sys
 import socket
 from select import select
+import logging
 
 from xmpp.simplexml import ustr
 from xmpp.plugin import PlugIn
 
+logger = logging.getLogger("xmpp")
 
 try:
     import dns
@@ -81,22 +83,25 @@ class TCPSocket(PlugIn):
         self.DBG_LINE = "socket"
         self._exported_methods = [self.send, self.disconnect]
         self._server, self.use_srv = server, use_srv
+        self._sock = None
+        self._send = None
+        self._recv = None
 
     def srv_lookup(self, server):
         """
         SRV resolver. Takes server=(host, port) as argument. Returns new (host, port) pair.
         """
         if dns:
-            query = "_xmpp-client._tcp.%s" % server[0]
+            query = '_xmpp-client._tcp.%s' % server[0]
             try:
                 dns.DiscoverNameServers()
                 dns__ = dns.Request()
-                response = dns__.req(query, qtype="SRV")
+                response = dns__.req(query, qtype='SRV')
                 if response.answers:
-                    (port, host) = response.answers[0]["data"][2:]
+                    (port, host) = response.answers[0]['data'][2:]
                     server = str(host), int(port)
             except dns.DNSError:
-                self.DEBUG("An error occurred while looking up %s." % query, "warn")
+                logger.warning('An error occurred while looking up %s.' % query)
         return server
 
     def plugin(self, owner):
@@ -134,8 +139,6 @@ class TCPSocket(PlugIn):
         Try to connect to the given host/port. Does not lookup for SRV record.
         Returns non-empty string on success.
         """
-        if not server:
-            server = self._server
         host, port = server
         server = (host, int(port))
         if ":" in host:
@@ -151,14 +154,12 @@ class TCPSocket(PlugIn):
         except socket.error as error:
             try:
                 code, error = error
-            except Exception:
+            except (ValueError, TypeError):
                 code = -1
-            self.DEBUG("Failed to connect to remote host %s: %s (%s)" % (repr(server), error, code), "error")
-        except Exception:
-            pass
+            logger.error('Failed to connect to remote host %s: %s (%s)' % (repr(server), error, code))
         else:
-            self.DEBUG("Successfully connected to remote host %s." % repr(server), "start")
-            return "ok"
+            logger.debug("Successfully connected to remote host %s." % repr(server))
+            return 'ok'
 
     def plugout(self):
         """
@@ -180,13 +181,13 @@ class TCPSocket(PlugIn):
         except socket.sslerror as e:
             self._seen_data = 0
             if e[0] in (socket.SSL_ERROR_WANT_READ, socket.SSL_ERROR_WANT_WRITE):
-                return ""
-            self.DEBUG("Socket error while receiving data.", "error")
+                return ''
+            logger.error('Socket error while receiving data')
             sys.exc_clear()
             self._owner.disconnected()
-            raise IOError("Disconnected!")
+            raise IOError('disconnected')
         except Exception:
-            data = ""
+            data = ''
         while self.pending_data(0):
             try:
                 add = self._recv(BU_FLEN)
@@ -197,11 +198,11 @@ class TCPSocket(PlugIn):
             data += add
         if data:
             self._seen_data = 1
-            self.DEBUG(data, "got")
+            logger.debug('got: %s' % data)
             if hasattr(self._owner, "Dispatcher"):
                 self._owner.Dispatcher.Event("", DATA_RECEIVED, data)
         else:
-            self.DEBUG("Socket error while receiving data.", "error")
+            logger.error('Socket error while receiving data')
             sys.exc_clear()
             self._owner.disconnected()
             raise IOError("Disconnected!")
@@ -216,7 +217,7 @@ class TCPSocket(PlugIn):
             data = data.encode("utf-8")
         elif not isinstance(data, str):
             data = ustr(data).encode("utf-8")
-        while not select((), [self._sock], (), 0.002)[1]:
+        while not select((), [self._sock], (), timeout)[1]:
             pass
         else:
             try:
@@ -241,7 +242,7 @@ class TCPSocket(PlugIn):
         """
         Closes the socket.
         """
-        self.DEBUG("Closing socket.", "stop")
+        logger.debug('Closing socket')
         self._sock.close()
 
     def disconnected(self):
@@ -249,4 +250,4 @@ class TCPSocket(PlugIn):
         Called when a Network Error or disconnection occurs.
         Designed to be overidden.
         """
-        self.DEBUG("Socket operation failed.", "error")
+        logger.error('Socket operation failed')

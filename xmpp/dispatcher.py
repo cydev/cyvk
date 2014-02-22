@@ -57,10 +57,6 @@ class Dispatcher(PlugIn):
             self.RegisterHandler,
             #			self.RegisterDefaultHandler,
             self.RegisterEventHandler,
-            self.UnregisterCycleHandler,
-            self.RegisterCycleHandler,
-            self.RegisterHandlerOnce,
-            self.UnregisterHandler,
             self.RegisterProtocol,
             self.WaitForResponse,
             self.SendAndWaitForResponse,
@@ -188,7 +184,6 @@ class Dispatcher(PlugIn):
         already registered (jabber:client or jabber:component:accept depending on context.
         """
         logger.debug('registering namespace %s' % xmlns)
-        self.DEBUG("Registering namespace \"%s\"" % xmlns, order)
         self.handlers[xmlns] = {}
         self.RegisterProtocol("unknown", Protocol, xmlns=xmlns)
         self.RegisterProtocol("default", Protocol, xmlns=xmlns)
@@ -201,7 +196,7 @@ class Dispatcher(PlugIn):
         """
         if not xmlns:
             xmlns = self._owner.defaultNamespace
-        logger.debug("Registering protocol \"%s\" as %s(%s)" % (tag_name, Proto, xmlns))
+        logger.debug("registering protocol \"%s\" as %s(%s)" % (tag_name, Proto, xmlns))
         self.handlers[xmlns][tag_name] = {"type": Proto, "default": []}
 
     def RegisterNamespaceHandler(self, xmlns, handler, typ="", ns="", makefirst=0, system=0):
@@ -245,14 +240,6 @@ class Dispatcher(PlugIn):
         else:
             self.handlers[xmlns][name][typ + ns].append({"func": handler, "system": system})
 
-    def RegisterHandlerOnce(self, name, handler, typ="", ns="", xmlns=None, makefirst=0, system=0):
-        """
-        Unregister handler after first call (not implemented yet).
-        """
-        if not xmlns:
-            xmlns = self._owner.defaultNamespace
-        self.RegisterHandler(name, handler, typ, ns, xmlns, makefirst, system)
-
     def UnregisterHandler(self, name, handler, typ="", ns="", xmlns=None):
         """
         Unregister handler. "typ" and "ns" must be specified exactly the same as with registering.
@@ -287,14 +274,6 @@ class Dispatcher(PlugIn):
         """
         self._eventHandler = handler
 
-    # def returnStanzaHandler(self, conn, stanza):
-    #     """
-    #     Return stanza back to the sender with <feature-not-implemennted/> error set.
-    #     """
-    #     logger.debug('dispatcher registering stanza handler')
-    #     if stanza.getType() in ("get", "set"):
-    #         conn.send(Error(stanza, ERR_FEATURE_NOT_IMPLEMENTED))
-
     def streamErrorHandler(self, conn, error):
         logger.warning('dispatcher handling stream error %s' % error)
         name, text = "error", error.getData()
@@ -310,21 +289,6 @@ class Dispatcher(PlugIn):
             exc = StreamError
         raise exc((name, text))
 
-    def RegisterCycleHandler(self, handler):
-        """
-        Register handler that will be called on every Dispatcher.Process() call.
-        """
-        logger.debug('registering cycle handler')
-        if handler not in self._cycleHandlers:
-            self._cycleHandlers.append(handler)
-
-    def UnregisterCycleHandler(self, handler):
-        """
-        Unregister handler that will is called on every Dispatcher.Process() call.
-        """
-        logger.debug('unregistering cycle handler')
-        if handler in self._cycleHandlers:
-            self._cycleHandlers.remove(handler)
 
     def Event(self, realm, event, data):
         """
@@ -509,7 +473,3 @@ class Dispatcher(PlugIn):
         self._owner_send("</stream:stream>")
         while self.Process(1):
             pass
-
-
-            # iter = type(send)(Process.func_code, Process.func_globals, name="iter", argdefs=Process.func_defaults,
-            #                   closure=Process.func_closure)

@@ -107,8 +107,6 @@ class CommonClient:
         for dhnd in self.disconnect_handlers:
             dhnd()
         self.disconnect_handlers.reverse()
-        if self.__dict__.has_key("TLS"):
-            self.TLS.PlugOut()
 
     def DisconnectHandler(self):
         """
@@ -170,7 +168,7 @@ class CommonClient:
         if not server:
             server = (self.Server, self.Port)
         if proxy:
-            sock = transports.HTTPPROXYsocket(proxy, server, use_srv)
+            raise NotImplementedError('proxy')
         else:
             sock = transports.TCPSocket(server, use_srv)
         connected = sock.PlugIn(self)
@@ -244,8 +242,6 @@ class Client(CommonClient):
             "version"] == "1.0":
             while not self.Dispatcher.Stream.features and self.Process(1):
                 pass  # If we get version 1.0 stream the features tag MUST BE presented
-        if sasl:
-            auth.SASL(user, password).PlugIn(self)
         if not sasl or self.SASL.startsasl == "not-supported":
             if not resource:
                 resource = "xmpppy"
@@ -253,27 +249,6 @@ class Client(CommonClient):
                 self.connected += "+old_auth"
                 return "old_auth"
             return None
-        self.SASL.auth()
-        while self.SASL.startsasl == "in-process" and self.Process(1):
-            pass
-        if self.SASL.startsasl == "success":
-            auth.Bind().PlugIn(self)
-            while self.Bind.bound is None and self.Process(1):
-                pass
-            if self.Bind.Bind(resource):
-                self.connected += "+sasl"
-                return "sasl"
-        elif self.__dict__.has_key("SASL"):
-            self.SASL.PlugOut()
-
-    # def getRoster(self):
-    #     """
-    #     Return the Roster instance, previously plugging it in and
-    #     requesting roster from server if needed.
-    #     """
-    #     if not self.__dict__.has_key("Roster"):
-    #         roster.Roster().PlugIn(self)
-    #     return self.Roster.getRoster()
 
     def sendInitPresence(self, requestRoster=1):
         """
