@@ -98,14 +98,11 @@ def method_wrapped(m, jid, args=None, token=None):
     @return: @raise NotImplementedError:
     """
     args = args or {}
+    result = {}
 
     assert isinstance(jid, text_type)
     assert isinstance(m, text_type)
     assert isinstance(args, dict)
-
-    result = {}
-
-    # TODO: Captcha too
 
     logger.debug('wrapped %s, args=%s, t=%s' % (m, args, token))
 
@@ -116,8 +113,6 @@ def method_wrapped(m, jid, args=None, token=None):
         # TODO: Captcha
         raise NotImplementedError('Captcha')
     except NotAllowed:
-        # if self.engine.lastMethod[0] == "messages.send":
-        # TODO: replace
         send(jid, "You're not allowed to perform this action.",
              get_friend_jid(args.get("user_id", TRANSPORT_ID)))
     except AccessRevokedError:
@@ -125,7 +120,6 @@ def method_wrapped(m, jid, args=None, token=None):
         database.remove_user(jid)
         realtime.remove_online_user(jid)
     except InvalidTokenError:
-        # TODO: replace
         send(jid, 'Your token is invalid. Please, register again', TRANSPORT_ID)
 
     return result
