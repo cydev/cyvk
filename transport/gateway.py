@@ -20,10 +20,9 @@ from handlers import message_handler, presence_handler
 from thandlers import iq_handler
 from transport.stanza_queue import enqueue
 from parallel.long_polling import start_thread_lp_requests, start_thread_lp
+import xmpp
 
 logger = log.get_logger()
-
-import xmpp
 
 
 def get_disconnect_handler(c):
@@ -73,20 +72,14 @@ def register_handler(c, name, handler):
 
 def initialize():
     initialize_database(DATABASE_FILE)
-
     transport = get_transport()
-
     connect(transport)
     authenticate(transport)
-
     logger.info('registering handlers')
-
     register_handler(transport, "iq", iq_handler)
     register_handler(transport, "presence", presence_handler)
     register_handler(transport, "message", message_handler)
-    transport.RegisterDisconnectHandler(get_disconnect_handler(transport))
     realtime.reset_online_users()
-
     logger.info('initialization finished')
 
     return transport
@@ -127,6 +120,8 @@ def get_main_iteration(_):
 
 
 def start_thread(component, target, name):
+    logger.debug('starting %s' % name)
+
     def thread_function(c):
         while True:
             target(c)
