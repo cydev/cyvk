@@ -104,11 +104,11 @@ def send_message(jid, body, destination_uid):
     logger.debug('user api: message to %s' % destination_uid)
 
     assert isinstance(jid, unicode)
-    assert isinstance(destination_uid, unicode)
+    assert isinstance(destination_uid, int)
     assert isinstance(body, unicode)
 
     method_name = "messages.send"
-    method_values = {'user_id': int(destination_uid), "message": body, "type": 0}
+    method_values = {'user_id': destination_uid, "message": body, "type": 0}
     update_last_activity(jid)
 
     return method(method_name, jid, method_values)
