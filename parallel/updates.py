@@ -116,7 +116,7 @@ def send_message(jid, body, destination_uid):
 
 def update_last_activity(uid):
     logger.debug('updating last activity')
-    realtime.set_last_activity(uid, time.time())
+    realtime.set_last_activity_now(uid)
 
 
 def set_online(user):
