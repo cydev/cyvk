@@ -61,6 +61,7 @@ class Dispatcher(PlugIn):
             self.send,
             self.disconnect,
         ]
+        self._owner_send = None
         self.connection = None
 
     def dump_handlers(self):
@@ -217,7 +218,7 @@ class Dispatcher(PlugIn):
             typ = 'default'
         if not xml_ns in self.handlers:
             self.register_namespace(xml_ns)
-        if not self.handlers[xml_ns].has_key(name):
+        if not name in self.handlers[xml_ns]:
             self.register_protocol(name, Protocol, xml_ns)
         if not typ + ns in self.handlers[xml_ns][name]:
             self.handlers[xml_ns][name][typ + ns] = []
@@ -337,6 +338,7 @@ class Dispatcher(PlugIn):
             user = 1
         for handler in chain:
             if user or handler["system"]:
+                # noinspection PyBroadException
                 try:
                     handler["func"](session, stanza)
                 except NodeProcessed:
