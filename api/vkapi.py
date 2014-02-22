@@ -3,6 +3,7 @@ import logging
 import time
 import requests
 import database
+import ujson as json
 from friends import get_friend_jid
 from errors import AuthenticationException, CaptchaNeeded, NotAllowed, AccessRevokedError, InvalidTokenError
 from parallel import realtime
@@ -64,7 +65,7 @@ def method(method_name, jid, args=None, additional_timeout=0, retry=0, token=Non
 
         return method(method_name, jid, args, additional_timeout, retry)
 
-    body = response.json()
+    body = json.loads(response.text)
 
     if 'response' in body:
         return body['response']

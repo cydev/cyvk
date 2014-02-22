@@ -193,7 +193,8 @@ def connect(jid, token):
     # logger.debug("user api: vk api initialized")
     try:
         logger.debug('user api: trying to auth with token')
-        is_application_user(jid, token)
+        if not is_application_user(jid, token):
+            raise InvalidTokenError('not application user')
         set_token(jid, token)
         logger.debug("user api: authenticated %s" % jid)
     except CaptchaNeeded:
