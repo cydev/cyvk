@@ -19,7 +19,7 @@ def _photo(attachment):
     Just a link to photo
     """
 
-    # trying to found largest possible image
+    # trying to find largest possible image
     keys = ('src_xxxbig', 'src_xxbig', 'src_xbig', 'src_big', 'src', 'url', 'src_small')
     for k in keys:
         if k in attachment['photo']:
