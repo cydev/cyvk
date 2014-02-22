@@ -1,9 +1,9 @@
 # coding: utf-8
 from __future__ import unicode_literals
 from datetime import datetime
+from api.user import get_user_data
 
 import compat
-from api.vkapi import get_user_data
 from messaging.attachments import parse_attachments
 from parsing import escape, sorting
 from config import MAXIMUM_FORWARD_DEPTH

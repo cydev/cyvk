@@ -1,18 +1,15 @@
 from __future__ import unicode_literals
 import logging
+import time
 import requests
-import ujson as json
-
 import database
 from friends import get_friend_jid
 from errors import AuthenticationException, CaptchaNeeded, NotAllowed, AccessRevokedError, InvalidTokenError
-from messaging.parsing import escape_name
 from parallel import realtime
 from parallel.sending import send
 from compat import text_type, get_logger
-import time
-
 from config import MAX_API_RETRY, API_MAXIMUM_RATE, TRANSPORT_ID
+
 VK_ERROR_BURST = 6
 _logger = get_logger()
 
@@ -67,9 +64,7 @@ def method(method_name, jid, args=None, additional_timeout=0, retry=0, token=Non
 
         return method(method_name, jid, args, additional_timeout, retry)
 
-    text = response.text
-    assert not (text is None)
-    body = json.loads(text)
+    body = response.json()
 
     if 'response' in body:
         return body['response']
@@ -157,21 +152,3 @@ def get_messages(jid, count=5, last_msg_id=None):
     else:
         arguments.update({'count': count})
     return method("messages.get", jid, arguments)
-
-
-def get_user_data(uid, target_uid, fields=None):
-    _logger.debug('user api: sending user data for %s about %s' % (uid, target_uid))
-    fields = fields or ["screen_name"]
-    args = {"fields": ",".join(fields), "user_ids": target_uid}
-    m = "users.get"
-    data = method(m, uid, args)
-
-    if data:
-        data = data[0]
-        data["name"] = escape_name("", u"%s %s" % (data["first_name"], data["last_name"]))
-        del data["first_name"], data["last_name"]
-    else:
-        data = {}
-        for key in fields:
-            data[key] = "Unknown error when trying to get user data. We're so sorry."
-    return data
