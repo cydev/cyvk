@@ -99,3 +99,19 @@ def loop():
         t = threading.Thread(target=_handle_url, args=(jid, url))
         t.daemon = True
         t.start()
+
+
+def start_thread_lp():
+    lp_thread = threading.Thread(target=loop, name='long polling thread')
+    lp_thread.daemon = True
+    lp_thread.start()
+
+    return lp_thread
+
+
+def start_thread_lp_requests():
+    lp_rq_thread = threading.Thread(target=loop_for_starting, name='long polling requests thread')
+    lp_rq_thread.daemon = True
+    lp_rq_thread.start()
+
+    return lp_rq_thread

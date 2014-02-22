@@ -19,8 +19,7 @@ from transport import user as user_api
 from handlers import message_handler, presence_handler
 from thandlers import iq_handler
 from transport.stanza_queue import enqueue
-from parallel.long_polling import loop as long_polling_loop_func
-from parallel.long_polling import loop_for_starting
+from parallel.long_polling import start_thread_lp_requests, start_thread_lp
 
 logger = log.get_logger()
 
@@ -93,28 +92,6 @@ def initialize():
     return transport
 
 
-def map_clients(f):
-    clients = realtime.get_clients()
-    map(f, clients)
-
-
-def get_loop(iteration_handler, name, iteration_time=0):
-    def loop():
-        logger.debug('starting %s' % name)
-        while True:
-            iteration_handler()
-            time.sleep(iteration_time)
-
-    return loop
-
-
-def get_loop_thread(iteration_handler, name, iteration_time=0):
-    thread = threading.Thread(target=get_loop(iteration_handler, name, iteration_time), name=name)
-    thread.daemon = True
-
-    return thread
-
-
 def halt_handler(sig=None, _=None):
     status = 'shutting down'
     logger.debug("%s" % status)
@@ -126,28 +103,39 @@ def halt_handler(sig=None, _=None):
             user_api.send_presence(jid, get_friend_jid(friend), presence_status, reason=status)
         user_api.send_presence(jid, TRANSPORT_ID, presence_status, reason=status)
 
-    map_clients(send_unavailable_presence)
+    clients = realtime.get_clients()
+    map(send_unavailable_presence, clients)
     exit(sig)
 
 
 def get_transport_iteration(c):
-    def transport_iteration():
-        try:
-            c.Process()
-        except xmpp.StreamError as stream_error:
-            logger.critical('StreamError while iterating: %s' % stream_error)
-            raise
-
-    return transport_iteration
+    try:
+        c.Process()
+    except xmpp.StreamError as stream_error:
+        logger.critical('StreamError while iterating: %s' % stream_error)
+        raise
 
 
 def get_sender_iteration(c):
-    def stanza_sender_iteration():
-        stanza = enqueue()
-        # noinspection PyUnresolvedReferences
-        c.send(stanza)
+    stanza = enqueue()
+    c.send(stanza)
 
-    return stanza_sender_iteration
+
+def get_main_iteration(_):
+    user_api.process_users()
+    time.sleep(6)
+
+
+def start_thread(component, target, name):
+    def thread_function(c):
+        while True:
+            target(c)
+
+    t = threading.Thread(target=thread_function, args=(component, ), name=name)
+    t.daemon = True
+    t.start()
+
+    return t
 
 
 def start():
@@ -156,29 +144,14 @@ def start():
 
     try:
         component = initialize()
+        c = component
         h = EventHandler()
-        # main_loop = get_loop_thread(user_api.main_loop_iteration, 'main loop', 5)
-        main_loop = threading.Thread(target=get_loop(user_api.process_users, 'main loop', 35), name='main loop')
-        main_loop.daemon = True
-        # transport_loop = Process(target=transport_loop, args=(component, ), name='transport loop')
-        transport_loop = get_loop_thread(get_transport_iteration(component), 'transport loop')
-        sender_loop = get_loop_thread(get_sender_iteration(component), 'stanza sender loop')
-        long_polling_loop = threading.Thread(target=long_polling_loop_func, name='long polling loop')
-        long_polling_loop.daemon = True
-
-        long_polling_start_loop = threading.Thread(target=loop_for_starting, name='long polling starting loop')
-        long_polling_start_loop.daemon = True
-
+        start_thread(c, get_transport_iteration, 'transport loop')
+        start_thread(c, get_sender_iteration, 'sender loop')
+        start_thread(c, get_main_iteration, 'main loop')
+        start_thread_lp_requests()
+        start_thread_lp()
         h.start()
-        sender_loop.start()
-        transport_loop.start()
-        main_loop.start()
-        long_polling_start_loop.start()
-        # long_polling_loop.start()
-
-        # probe all users from database and add them to client list
-        # if they are online
-        time.sleep(0.5)
         probe_users()
     except all_errors as e:
         logger.critical('unable to initialize: %s' % e)
