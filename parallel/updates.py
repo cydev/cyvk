@@ -41,25 +41,18 @@ import friends
 def process_data(jid, data):
     code = data[0]
 
-    if code == FRIEND_ONLINE:
-        friend_id = data[1]
-        if friend_id < 0:
-            friend_id = -friend_id
-        status.update_friend_status(jid, friend_id, status='online')
-        return
-
-    if code == FRIEND_OFFLINE:
-        friend_id = data[1]
-        if friend_id < 0:
-            friend_id = -friend_id
-        status.update_friend_status(jid, friend_id, status='unavailable')
-        return
-
     if code == NEW_MESSAGE:
         return send_messages(jid)
 
+    friend_id = abs(data[1])
+
+    if code == FRIEND_ONLINE:
+        return status.update_friend_status(jid, friend_id, status='online')
+
+    if code == FRIEND_OFFLINE:
+        return status.update_friend_status(jid, friend_id, status='unavailable')
+
     if code == FRIEND_TYPING_CHAT:
-        friend_id = abs(data[1])
         return send_typing_status(jid, friends.get_friend_jid(friend_id))
 
     logger.debug('doing nothing on code %s' % code)
