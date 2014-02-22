@@ -26,31 +26,6 @@ import time
 
 from .simplexml import Node
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-# from xmpp.simplexml import Node
 from xmpp.exceptions import BadFormat, BadNamespacePrefix, Conflict, ConnectionTimeout, HostGone, HostUnknown, \
     ImproperAddressing, InternalServerError, InvalidFrom, InvalidID, InvalidNamespace, InvalidXML, NotAuthorized, \
     PolicyViolation, RemoteConnectionFailed, ResourceConstraint, RestrictedXML, SeeOtherHost, SystemShutdown, \

@@ -1,19 +1,3 @@
-##   auth.py
-##
-##   Copyright (C) 2003-2005 Alexey "Snake" Nezhdanov
-##
-##   This program is free software; you can redistribute it and/or modify
-##   it under the terms of the GNU General Public License as published by
-##   the Free Software Foundation; either version 2, or (at your option)
-##   any later version.
-##
-##   This program is distributed in the hope that it will be useful,
-##   but WITHOUT ANY WARRANTY; without even the implied warranty of
-##   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-##   GNU General Public License for more details.
-
-# $Id: auth.py, v1.42 2013/10/21 alkorgun Exp $
-
 """
 Provides library with all Non-SASL and SASL authentication mechanisms.
 Can be used both for client and transport authentication.
@@ -48,35 +32,26 @@ class NonSASL(PlugIn):
         """
         if not self.resource:
             return self.auth_component(owner)
-
         raise NotImplementedError('only component auth')
 
     def auth_component(self, owner):
         """
         Authenticate component. Send handshake stanza and wait for result. Returns "ok" on success.
         """
-        logger.debug('authenticating component')
-
+        # logger.debug('authenticating component')
         handshake_hash = sha1(owner.Dispatcher.stream.document_attrs['id'] + self.password)
         owner.send(Node(NS_COMPONENT_ACCEPT + ' handshake', payload=[handshake_hash.hexdigest()]))
         owner.register_handler('handshake', self.handshake_handler, xml_ns=NS_COMPONENT_ACCEPT)
-
         while not self.handshake:
-            logger.debug('waiting on handshake')
             owner.process(0.5)
-
         owner._registered_name = self.user
-
         if self.handshake + 1:
-            return "ok"
+            return 'ok'
 
     def handshake_handler(self, _, stanza):
         """
         Handler for registering in dispatcher for accepting transport authentication.
         """
-
-        logger.debug('handshake handler')
-
         if stanza.getName() == "handshake":
             self.handshake = 1
         else:
