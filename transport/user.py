@@ -135,12 +135,12 @@ def update_friends(jid):
     realtime.set_friends(jid, friends_vk)
 
 
-def initialize(jid, send_precense=True):
+def initialize(jid, send=True):
     """
     Initializes user by subscribing to friends and sending initial presence
     @type jid: unicode
     @param jid: client jid
-    @param send_precense: send presence flag
+    @param send: send presence flag
     """
     logger.debug("user api: called init for user %s" % jid)
 
@@ -160,7 +160,7 @@ def initialize(jid, send_precense=True):
 
     roster_subscribe(jid)   # subscribing to transport
 
-    if send_precense:
+    if send:
         logger.debug('sending initial presence')
         send_init_presence(jid)
 

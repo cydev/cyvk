@@ -111,7 +111,7 @@ def _attempt_to_add_client(jid, _):
 
     try:
         user_api.connect(jid, token)
-        user_api.initialize(jid, send_precense=True)
+        user_api.initialize(jid, send=True)
         user_api.add_client(jid)
         set_online(jid)
         raise_event(USER_ONLINE)
