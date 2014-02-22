@@ -1,16 +1,16 @@
 import ujson as json
 import redis
 import threading
-import logging
-from compat import text_type, binary_type
+from compat import text_type, binary_type, get_logger
 from config import REDIS_HOST, REDIS_PORT, REDIS_DB, REDIS_CHARSET
 from events.constants import all_events, EVENTS_KEY, NAME_KEY
 from parallel.long_polling import event_handler, UPDATE_RESULT
-logger = logging.getLogger("cyvk")
+_logger = get_logger()
 
 
 class EventParsingException(Exception):
     pass
+
 
 class EventHandler(object):
     def __init__(self):
@@ -23,7 +23,7 @@ class EventHandler(object):
         self.events.add(event_name)
 
     def add_callback(self, event, callback):
-        logger.debug('adding callback for %s' % event)
+        _logger.debug('adding callback for %s' % event)
 
         if not isinstance(event, text_type):
             raise ValueError('event name must be %s' % text_type)
@@ -44,7 +44,7 @@ class EventHandler(object):
             raise ValueError('event %s not found' % event)
 
         if event not in self.handlers:
-            logger.debug('no event handlers for %s' % event)
+            _logger.debug('no event handlers for %s' % event)
             return
 
         handlers = self.handlers[event]
@@ -53,15 +53,14 @@ class EventHandler(object):
             # TODO: async
             handler(event_body)
 
-
     def _start(self):
-        logger.debug('starting cyvk event handler')
+        _logger.debug('starting cyvk event handler')
 
         r = redis.StrictRedis(REDIS_HOST, REDIS_PORT, REDIS_DB, charset=REDIS_CHARSET)
 
         while True:
             event = r.brpop(EVENTS_KEY)[1]
-            logger.debug('got event %s' % event)
+            _logger.debug('got event %s' % event)
 
             if not isinstance(event, binary_type):
                 raise TypeError('expected %s from redis, got %s' % (binary_type, type(event)))
