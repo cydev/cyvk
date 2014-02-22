@@ -3,7 +3,6 @@ from config import TRANSPORT_ID
 
 
 def get_friend_jid(friend_uid):
-
     if friend_uid == TRANSPORT_ID:
         return TRANSPORT_ID
 
@@ -11,14 +10,11 @@ def get_friend_jid(friend_uid):
         return friend_uid
 
     friend_uid = int(friend_uid)
-
     hash_jid = '%s@%s' % (friend_uid, TRANSPORT_ID)
-
     return hash_jid
 
 
 def get_friend_uid(friend_jid):
-
     if friend_jid == TRANSPORT_ID:
         raise ValueError('incorrect jid %s' % friend_jid)
 
