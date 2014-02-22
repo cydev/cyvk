@@ -1,19 +1,3 @@
-##   transports.py
-##
-##   Copyright (C) 2003-2004 Alexey "Snake" Nezhdanov
-##
-##   This program is free software; you can redistribute it and/or modify
-##   it under the terms of the GNU General Public License as published by
-##   the Free Software Foundation; either version 2, or (at your option)
-##   any later version.
-##
-##   This program is distributed in the hope that it will be useful,
-##   but WITHOUT ANY WARRANTY; without even the implied warranty of
-##   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-##   GNU General Public License for more details.
-
-# $Id: transports.py, v1.36 2013/11/03 alkorgun Exp $
-
 """
 This module contains the low-level implementations of xmpppy connect methods or
 (in other words) transports for xmpp-stanzas.
@@ -242,7 +226,7 @@ class TCPSocket(PlugIn):
         """
         Closes the socket.
         """
-        logger.debug('Closing socket')
+        logger.debug('closing socket')
         self._sock.close()
 
     def disconnected(self):
