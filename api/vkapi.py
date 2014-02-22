@@ -16,15 +16,10 @@ from parallel import realtime
 from parallel.sending import send
 from compatibility import text_type
 import time
-from config import MAX_API_RETRY
 
-
-logger = logging.getLogger("cyvk")
-
-from config import API_MAXIMUM_RATE, TRANSPORT_ID
-
-
+from config import MAX_API_RETRY, API_MAXIMUM_RATE, TRANSPORT_ID
 VK_ERROR_BURST = 6
+logger = logging.getLogger("cyvk")
 
 
 def method(method_name, jid, args=None, additional_timeout=0, retry=0, token=None):
