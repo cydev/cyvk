@@ -170,7 +170,6 @@ def is_application_user(jid, token):
 
 
 def mark_messages_as_read(jid, msg_list):
-    # TODO: can be asyncronous call
     method("messages.markAsRead", jid, {"message_ids": ','.join(msg_list)})
 
 
