@@ -6,7 +6,7 @@ from api.vkapi import get_user_data
 
 from messaging.attachments import parse_attachments
 from parsing import escape, sorting
-from api.webtools import unescape
+import HTMLParser
 from config import MAXIMUM_FORWARD_DEPTH
 
 
@@ -27,7 +27,7 @@ def parse_forwarded_messages(jid, msg, depth=0):
 
         id_from = fwd["uid"]
         date = fwd["date"]
-        fwd_body = escape("", unescape(fwd["body"]))
+        fwd_body = escape("", HTMLParser.HTMLParser().unescape(fwd["body"]))
         date = datetime.fromtimestamp(date).strftime("%d.%m.%Y %H:%M:%S")
         # name = user.get_user_data(id_from)["name"]
         name = get_user_data(jid, id_from)["name"]
