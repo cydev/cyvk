@@ -18,10 +18,9 @@
 Provides library with all Non-SASL and SASL authentication mechanisms.
 Can be used both for client and transport authentication.
 """
-
-import sha
+from __future__ import unicode_literals
+from hashlib import sha1
 import logging
-
 from plugin import PlugIn
 from protocol import *
 logger = logging.getLogger("xmpp")
@@ -48,31 +47,30 @@ class NonSASL(PlugIn):
         Returns used method name on success. Used internally.
         """
         if not self.resource:
-            return self.authComponent(owner)
+            return self.auth_component(owner)
 
         raise NotImplementedError('only component auth')
 
-    def authComponent(self, owner):
+    def auth_component(self, owner):
         """
         Authenticate component. Send handshake stanza and wait for result. Returns "ok" on success.
         """
-
         logger.debug('authenticating component')
 
-        owner.send(Node(NS_COMPONENT_ACCEPT + " handshake",
-                        payload=[sha.new(owner.Dispatcher.Stream._document_attrs["id"] + self.password).hexdigest()]))
-        owner.RegisterHandler("handshake", self.handshakeHandler, xmlns=NS_COMPONENT_ACCEPT)
+        handshake_hash = sha1(owner.Dispatcher.stream.document_attrs['id'] + self.password)
+        owner.send(Node(NS_COMPONENT_ACCEPT + ' handshake', payload=[handshake_hash.hexdigest()]))
+        owner.register_handler('handshake', self.handshake_handler, xml_ns=NS_COMPONENT_ACCEPT)
 
         while not self.handshake:
             logger.debug('waiting on handshake')
-            owner.Process(0.5)
+            owner.process(0.5)
 
         owner._registered_name = self.user
 
         if self.handshake + 1:
             return "ok"
 
-    def handshakeHandler(self, _, stanza):
+    def handshake_handler(self, _, stanza):
         """
         Handler for registering in dispatcher for accepting transport authentication.
         """
@@ -83,130 +81,3 @@ class NonSASL(PlugIn):
             self.handshake = 1
         else:
             self.handshake = -1
-
-
-class Bind(PlugIn):
-    """
-    Bind some JID to the current connection to allow router know of our location.
-    """
-
-    def __init__(self):
-        PlugIn.__init__(self)
-        self.bound = None
-        self.session = None
-
-    def plugin(self, owner):
-        """
-        Start resource binding, if allowed at this time. Used internally.
-        """
-        if self._owner.Dispatcher.Stream.features:
-            try:
-                self.FeaturesHandler(self._owner.Dispatcher, self._owner.Dispatcher.Stream.features)
-            except NodeProcessed:
-                pass
-        else:
-            self._owner.RegisterHandler("features", self.FeaturesHandler, xmlns=NS_STREAMS)
-
-    def plugout(self):
-        """
-        Remove Bind handler from owner's dispatcher. Used internally.
-        """
-        self._owner.UnregisterHandler("features", self.FeaturesHandler, xmlns=NS_STREAMS)
-
-    def FeaturesHandler(self, _, feats):
-        """
-        Determine if server supports resource binding and set some internal attributes accordingly.
-        """
-        if not feats.getTag("bind", namespace=NS_BIND):
-            self.bound = "failure"
-            self.DEBUG("Server does not requested binding.", "error")
-            return None
-        if feats.getTag("session", namespace=NS_SESSION):
-            self.session = 1
-        else:
-            self.session = -1
-        self.bound = []
-
-    def Bind(self, resource=None):
-        """
-        Perform binding. Use provided resource name or random (if not provided).
-        """
-        while self.bound is None and self._owner.Process(1):
-            pass
-        if resource:
-            resource = [Node("resource", payload=[resource])]
-        else:
-            resource = []
-        resp = self._owner.SendAndWaitForResponse(
-            Protocol("iq", typ="set", payload=[Node("bind", attrs={"xmlns": NS_BIND}, payload=resource)]))
-        if isResultNode(resp):
-            self.bound.append(resp.getTag("bind").getTagData("jid"))
-            self.DEBUG("Successfully bound %s." % self.bound[-1], "ok")
-            jid = JID(resp.getTag("bind").getTagData("jid"))
-            self._owner.User = jid.getNode()
-            self._owner.Resource = jid.getResource()
-            resp = self._owner.SendAndWaitForResponse(
-                Protocol("iq", typ="set", payload=[Node("session", attrs={"xmlns": NS_SESSION})]))
-            if isResultNode(resp):
-                self.DEBUG("Successfully opened session.", "ok")
-                self.session = 1
-                return "ok"
-            else:
-                self.DEBUG("Session open failed.", "error")
-                self.session = 0
-        elif resp:
-            self.DEBUG("Binding failed: %s." % resp.getTag("error"), "error")
-        else:
-            self.DEBUG("Binding failed: timeout expired.", "error")
-            return ""
-
-
-class ComponentBind(PlugIn):
-    """
-    ComponentBind some JID to the current connection to allow router know of our location.
-    """
-
-    def __init__(self, sasl):
-        PlugIn.__init__(self)
-        self.DBG_LINE = "bind"
-        self.bound = None
-        self.needsUnregister = None
-        self.sasl = sasl
-
-    def plugin(self, owner):
-        """
-        Start resource binding, if allowed at this time. Used internally.
-        """
-        if not self.sasl:
-            self.bound = []
-            return None
-        if self._owner.Dispatcher.Stream.features:
-            try:
-                self.FeaturesHandler(self._owner.Dispatcher, self._owner.Dispatcher.Stream.features)
-            except NodeProcessed:
-                pass
-        else:
-            self._owner.RegisterHandler("features", self.FeaturesHandler, xmlns=NS_STREAMS)
-            self.needsUnregister = 1
-
-    def plugout(self):
-        """
-        Remove ComponentBind handler from owner's dispatcher. Used internally.
-        """
-        if self.needsUnregister:
-            self._owner.UnregisterHandler("features", self.FeaturesHandler, xmlns=NS_STREAMS)
-
-    def FeaturesHandler(self, _, feats):
-        """
-        Determine if server supports resource binding and set some internal attributes accordingly.
-        """
-        if not feats.getTag("bind", namespace=NS_BIND):
-            self.bound = "failure"
-            self.DEBUG("Server does not requested binding.", "error")
-            return None
-        if feats.getTag("session", namespace=NS_SESSION):
-            self.session = 1
-        else:
-            self.session = -1
-        self.bound = []
-

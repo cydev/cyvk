@@ -18,6 +18,9 @@
 Provides library with all Non-SASL and SASL authentication mechanisms.
 Can be used both for client and transport authentication.
 """
+from __future__ import unicode_literals
+import logging
+logger = logging.getLogger("xmpp")
 
 
 class PlugIn:
@@ -27,8 +30,7 @@ class PlugIn:
 
     def __init__(self):
         self._exported_methods = []
-        self._owner = None
-        self.DBG_LINE = self.__class__.__name__.lower()
+        self.owner = None
         self._old_owners_methods = []
 
     def plugin(self, owner):
@@ -37,19 +39,16 @@ class PlugIn:
     def plugout(self):
         raise NotImplementedError('plugin did not implemented plugin')
 
-    def PlugIn(self, owner):
+    def attach(self, owner):
         """
         Attach to main instance and register plugin and all our staff in it.
         """
-        self._owner = owner
+        self.owner = owner
 
-        if self.DBG_LINE not in owner.debug_flags:
-            owner.debug_flags.append(self.DBG_LINE)
-
-        self.DEBUG("Plugging %s into %s" % (self, self._owner), "start")
+        logger.debug('plugging %s into %s' % (self, self.owner))
 
         if owner.__dict__.has_key(self.__class__.__name__):
-            return self.DEBUG("Plugging ignored: another instance already plugged.", "error")
+            return logger.error('plugging ignored: another instance already plugged')
 
         self._old_owners_methods = []
 
@@ -60,33 +59,25 @@ class PlugIn:
 
         owner.__dict__[self.__class__.__name__] = self
 
-        if self.__class__.__dict__.has_key("plugin"):
+        if 'plugin' in self.__class__.__dict__:
             return self.plugin(owner)
 
-    def PlugOut(self):
+    def remove(self):
         """
         Unregister all our staff from main instance and detach from it.
         """
-        self.DEBUG("Plugging %s out of %s." % (self, self._owner), "stop")
+        logger.debug('plugging %s out of %s' % (self, self.owner))
         ret = None
 
         if self.__class__.__dict__.has_key("plugout"):
             ret = self.plugout()
 
-        self._owner.debug_flags.remove(self.DBG_LINE)
-
         for method in self._exported_methods:
-            del self._owner.__dict__[method.__name__]
+            del self.owner.__dict__[method.__name__]
 
         for method in self._old_owners_methods:
-            self._owner.__dict__[method.__name__] = method
+            self.owner.__dict__[method.__name__] = method
 
-        del self._owner.__dict__[self.__class__.__name__]
+        del self.owner.__dict__[self.__class__.__name__]
 
         return ret
-
-    def DEBUG(self, text, severity="info"):
-        """
-        Feed a provided debug line to main instance's debug facility along with our ID string.
-        """
-        self._owner.DEBUG(self.DBG_LINE, text, severity)

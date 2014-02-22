@@ -28,7 +28,7 @@ logger = log.get_logger()
 def get_disconnect_handler(c):
     def handler():
         logger.debug('handling disconnect')
-        if c.isConnected():
+        if c.is_connected():
             c.disconnect()
 
     return handler
@@ -67,7 +67,7 @@ def get_transport():
 
 
 def register_handler(c, name, handler):
-    c.RegisterHandler(name, handler)
+    c.register_handler(name, handler)
 
 
 def initialize():
@@ -98,12 +98,13 @@ def halt_handler(sig=None, _=None):
 
     clients = realtime.get_clients()
     map(send_unavailable_presence, clients)
+    time.sleep(1)
     exit(sig)
 
 
 def get_transport_iteration(c):
     try:
-        c.Process()
+        c.process()
     except xmpp.StreamError as stream_error:
         logger.critical('StreamError while iterating: %s' % stream_error)
         raise
@@ -151,6 +152,7 @@ def start():
     except all_errors as e:
         logger.critical('unable to initialize: %s' % e)
         halt_handler()
+        time.sleep(2)
         exit()
 
     while True:

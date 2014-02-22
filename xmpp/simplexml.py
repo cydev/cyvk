@@ -575,8 +575,8 @@ class NodeBuilder:
         self.__last_depth = 0
         self.__max_depth = 0
         self._dispatch_depth = 1
-        self._document_attrs = None
-        self._document_nsp = None
+        self.document_attrs = None
+        self.document_nsp = None
         self._mini_dom = initial_node
         self.last_is_data = 1
         self._ptr = None
@@ -610,29 +610,29 @@ class NodeBuilder:
         logger.debug('DEPTH -> %i , tag -> %s, attrs -> %s' % (self.__depth, tag, repr(attrs)))
         if self.__depth == self._dispatch_depth:
             if not self._mini_dom:
-                self._mini_dom = Node(tag=tag, attrs=attrs, nsp=self._document_nsp, node_built=True)
+                self._mini_dom = Node(tag=tag, attrs=attrs, nsp=self.document_nsp, node_built=True)
             else:
-                Node.__init__(self._mini_dom, tag=tag, attrs=attrs, nsp=self._document_nsp, node_built=True)
+                Node.__init__(self._mini_dom, tag=tag, attrs=attrs, nsp=self.document_nsp, node_built=True)
             self._ptr = self._mini_dom
         elif self.__depth > self._dispatch_depth:
             self._ptr.kids.append(Node(tag=tag, parent=self._ptr, attrs=attrs, node_built=True))
             self._ptr = self._ptr.kids[-1]
         if self.__depth == 1:
-            self._document_attrs = {}
-            self._document_nsp = {}
+            self.document_attrs = {}
+            self.document_nsp = {}
             nsp, name = ([""] + tag.split(":"))[-2:]
             for attr, val in attrs.items():
                 if attr == "xmlns":
-                    self._document_nsp[""] = val
+                    self.document_nsp[""] = val
                 elif attr.startswith("xmlns:"):
-                    self._document_nsp[attr[6:]] = val
+                    self.document_nsp[attr[6:]] = val
                 else:
-                    self._document_attrs[attr] = val
-            ns = self._document_nsp.get(nsp, "http://www.gajim.org/xmlns/undeclared-root")
+                    self.document_attrs[attr] = val
+            ns = self.document_nsp.get(nsp, "http://www.gajim.org/xmlns/undeclared-root")
             try:
                 self.stream_header_received(ns, name, attrs)
             except ValueError:
-                self._document_attrs = None
+                self.document_attrs = None
                 raise
         if not self.last_is_data and self._ptr.parent:
             self._ptr.parent.data.append("")

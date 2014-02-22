@@ -80,12 +80,11 @@ class TCPSocket(PlugIn):
         server instead.
         """
         PlugIn.__init__(self)
-        self.DBG_LINE = "socket"
         self._exported_methods = [self.send, self.disconnect]
         self._server, self.use_srv = server, use_srv
         self._sock = None
         self._send = None
-        self._recv = None
+        self._receive = None
 
     def srv_lookup(self, server):
         """
@@ -111,15 +110,15 @@ class TCPSocket(PlugIn):
         Called internally.
         """
         if not self._server:
-            self._server = (self._owner.Server, 5222)
+            self._server = (self.owner.Server, 5222)
         if self.use_srv:
             server = self.srv_lookup(self._server)
         else:
             server = self._server
         if not self.connect(server):
             return None
-        self._owner.Connection = self
-        self._owner.RegisterDisconnectHandler(self.disconnected)
+        self.owner.connection = self
+        self.owner.register_disconnect_handler(self.disconnected)
         return "ok"
 
     def getHost(self):
@@ -150,7 +149,7 @@ class TCPSocket(PlugIn):
             self._sock = socket.socket(sock, socket.SOCK_STREAM)
             self._sock.connect(server)
             self._send = self._sock.sendall
-            self._recv = self._sock.recv
+            self._receive = self._sock.recv
         except socket.error as error:
             try:
                 code, error = error
@@ -167,9 +166,9 @@ class TCPSocket(PlugIn):
         the owner's dispatcher.
         """
         self._sock.close()
-        if hasattr(self._owner, "Connection"):
-            del self._owner.Connection
-            self._owner.UnregisterDisconnectHandler(self.disconnected)
+        if hasattr(self.owner, "Connection"):
+            del self.owner.Connection
+            self.owner.UnregisterDisconnectHandler(self.disconnected)
 
     def receive(self):
         """
@@ -177,20 +176,20 @@ class TCPSocket(PlugIn):
         In case of disconnection calls owner's disconnected() method and then raises IOError exception.
         """
         try:
-            data = self._recv(BU_FLEN)
+            data = self._receive(BU_FLEN)
         except socket.sslerror as e:
             self._seen_data = 0
             if e[0] in (socket.SSL_ERROR_WANT_READ, socket.SSL_ERROR_WANT_WRITE):
                 return ''
             logger.error('Socket error while receiving data')
             sys.exc_clear()
-            self._owner.disconnected()
+            self.owner.disconnected()
             raise IOError('disconnected')
         except Exception:
             data = ''
         while self.pending_data(0):
             try:
-                add = self._recv(BU_FLEN)
+                add = self._receive(BU_FLEN)
             except Exception:
                 break
             if not add:
@@ -199,12 +198,12 @@ class TCPSocket(PlugIn):
         if data:
             self._seen_data = 1
             logger.debug('got: %s' % data)
-            if hasattr(self._owner, "Dispatcher"):
-                self._owner.Dispatcher.Event("", DATA_RECEIVED, data)
+            if hasattr(self.owner, "Dispatcher"):
+                self.owner.Dispatcher.event("", DATA_RECEIVED, data)
         else:
             logger.error('Socket error while receiving data')
             sys.exc_clear()
-            self._owner.disconnected()
+            self.owner.disconnected()
             raise IOError("Disconnected!")
         return data
 
@@ -223,14 +222,14 @@ class TCPSocket(PlugIn):
             try:
                 self._send(data)
             except Exception:
-                self.DEBUG("Socket error while sending data.", "error")
-                self._owner.disconnected()
+                logger.debug('Socket error while sending data')
+                self.owner.disconnected()
             else:
                 if not data.strip():
                     data = repr(data)
-                self.DEBUG(data, "sent")
-                if hasattr(self._owner, "Dispatcher"):
-                    self._owner.Dispatcher.Event("", DATA_SENT, data)
+                logger.debug('sent: %s' % data)
+                if hasattr(self.owner, "Dispatcher"):
+                    self.owner.Dispatcher.event("", DATA_SENT, data)
 
     def pending_data(self, timeout=0):
         """

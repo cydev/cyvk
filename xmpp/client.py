@@ -21,34 +21,10 @@ examples of xmpppy structures usage.
 These classes can be used for simple applications "AS IS" though.
 """
 
-from xmpp import auth, dispatcher, transports, debug
+from xmpp import auth, dispatcher, transports
+import logging
 
-Debug = debug
-Debug.DEBUGGING_IS_ON = 1
-
-Debug.Debug.colors["socket"] = debug.color_dark_gray
-Debug.Debug.colors["CONNECTproxy"] = debug.color_dark_gray
-Debug.Debug.colors["nodebuilder"] = debug.color_brown
-Debug.Debug.colors["client"] = debug.color_cyan
-Debug.Debug.colors["component"] = debug.color_cyan
-Debug.Debug.colors["dispatcher"] = debug.color_green
-Debug.Debug.colors["browser"] = debug.color_blue
-Debug.Debug.colors["auth"] = debug.color_yellow
-Debug.Debug.colors["roster"] = debug.color_magenta
-Debug.Debug.colors["ibb"] = debug.color_yellow
-Debug.Debug.colors["down"] = debug.color_brown
-Debug.Debug.colors["up"] = debug.color_brown
-Debug.Debug.colors["data"] = debug.color_brown
-Debug.Debug.colors["ok"] = debug.color_green
-Debug.Debug.colors["warn"] = debug.color_yellow
-Debug.Debug.colors["error"] = debug.color_red
-Debug.Debug.colors["start"] = debug.color_dark_gray
-Debug.Debug.colors["stop"] = debug.color_dark_gray
-Debug.Debug.colors["sent"] = debug.color_yellow
-Debug.Debug.colors["got"] = debug.color_bright_cyan
-
-DBG_CLIENT = "client"
-DBG_COMPONENT = "component"
+logger = logging.getLogger("xmpp")
 
 
 class CommonClient:
@@ -64,100 +40,53 @@ class CommonClient:
         Full list: ["nodebuilder", "dispatcher", "gen_auth", "SASL_auth", "bind", "socket",
         "CONNECTproxy", "TLS", "roster", "browser", "ibb"].
         """
-        if not debug: debug = ["always", "nodebuilder"]
-        if isinstance(self, Client):
-            self.Namespace, self.DBG = "jabber:client", DBG_CLIENT
-        elif isinstance(self, Component):
-            self.Namespace, self.DBG = dispatcher.NS_COMPONENT_ACCEPT, DBG_COMPONENT
-        self.defaultNamespace = self.Namespace
-        self.disconnect_handlers = []
-        self.Server = server
-        self.Port = port
-        if debug and not isinstance(debug, list):
-            debug = ["always", "nodebuilder"]
-        self._DEBUG = Debug.Debug(debug)
-        self.DEBUG = self._DEBUG.Show
-        self.debug_flags = self._DEBUG.debug_flags
-        self.debug_flags.append(self.DBG)
-        self._owner = self
-        self._registered_name = None
-        self.RegisterDisconnectHandler(self.DisconnectHandler)
-        self.connected = ""
-        self._route = 0
+        # if isinstance(self, Client):
+        #     self.Namespace, self.DBG = "jabber:client", DBG_CLIENT
+        if isinstance(self, Component):
+            self.namespace = dispatcher.NS_COMPONENT_ACCEPT
 
-    def RegisterDisconnectHandler(self, handler):
+        self.default_namespace = self.namespace
+        self.disconnect_handlers = []
+        self.server = server
+        self.proxy = None
+        self.port = port
+        self.owner = self
+        self.registered_name = None
+        self.connected = ""
+        self.route = 0
+        self.connection = None
+
+    def register_disconnect_handler(self, handler):
         """
         Register handler that will be called on disconnect.
         """
         self.disconnect_handlers.append(handler)
-
-    def UnregisterDisconnectHandler(self, handler):
-        """
-        Unregister handler that is called on disconnect.
-        """
-        self.disconnect_handlers.remove(handler)
 
     def disconnected(self):
         """
         Called on disconnection. Calls disconnect handlers and cleans things up.
         """
         self.connected = ""
-        self.DEBUG(self.DBG, "Disconnect detected", "stop")
-        self.disconnect_handlers.reverse()
-        for dhnd in self.disconnect_handlers:
-            dhnd()
+
+        logger.warning('disconnect detected')
         self.disconnect_handlers.reverse()
 
-    def DisconnectHandler(self):
-        """
-        Default disconnect handler. Just raises an IOError.
-        If you choosed to use this class in your production client,
-        override this method or at least unregister it.
-        """
-        raise IOError("Disconnected!")
+        for handler in self.disconnect_handlers:
+            handler()
 
-    def event(self, eventName, args=None):
+        self.disconnect_handlers.reverse()
+
+    def event(self, name, args=None):
         """
         Default event handler. To be overriden.
         """
         if not args: args = {}
-        print("Event: %s-%s" % (eventName, args))
+        print("Event: %s-%s" % (name, args))
 
-    def isConnected(self):
+    def is_connected(self):
         """
         Returns connection state. F.e.: None / "tls" / "tcp+non_sasl" .
         """
-        return self.connected
-
-    def reconnectAndReauth(self, handlerssave=None):
-        """
-        Example of reconnection method. In fact, it can be used to batch connection and auth as well.
-        """
-        Dispatcher_ = False
-        if not handlerssave:
-            Dispatcher_, handlerssave = True, self.Dispatcher.dumpHandlers()
-        if self.__dict__.has_key("ComponentBind"):
-            self.ComponentBind.PlugOut()
-        if self.__dict__.has_key("Bind"):
-            self.Bind.PlugOut()
-        self._route = 0
-        if self.__dict__.has_key("NonSASL"):
-            self.NonSASL.PlugOut()
-        if self.__dict__.has_key("SASL"):
-            self.SASL.PlugOut()
-        if self.__dict__.has_key("TLS"):
-            self.TLS.PlugOut()
-        if Dispatcher_:
-            self.Dispatcher.PlugOut()
-        if self.__dict__.has_key("HTTPPROXYsocket"):
-            self.HTTPPROXYsocket.PlugOut()
-        if self.__dict__.has_key("TCPsocket"):
-            self.TCPsocket.PlugOut()
-        if not self.connect(server=self._Server, proxy=self._Proxy):
-            return None
-        if not self.auth(self._User, self._Password, self._Resource):
-            return None
-        self.Dispatcher.restoreHandlers(handlerssave)
         return self.connected
 
     def connect(self, server=None, proxy=None, ssl=None, use_srv=False):
@@ -166,105 +95,29 @@ class CommonClient:
         Returns None or "tcp" or "tls", depending on the result.
         """
         if not server:
-            server = (self.Server, self.Port)
+            server = (self.server, self.port)
         if proxy:
             raise NotImplementedError('proxy')
         else:
             sock = transports.TCPSocket(server, use_srv)
-        connected = sock.PlugIn(self)
+        connected = sock.attach(self)
         if not connected:
-            sock.PlugOut()
+            sock.remove()
             return None
-        self._Server, self._Proxy = server, proxy
+        self.server, self.proxy = server, proxy
         self.connected = "tcp"
-        if (ssl is None and self.Connection.getPort() in (5223, 443)) or ssl:
-            try:  # FIXME. This should be done in transports.py
-                transports.TLS().PlugIn(self, now=1)
-                self.connected = "ssl"
-            except transports.socket.sslerror:
+        dispatcher.Dispatcher().attach(self)
+        while self.Dispatcher.stream.document_attrs is None:
+            if not self.process(1):
                 return None
-        dispatcher.Dispatcher().PlugIn(self)
-        while self.Dispatcher.Stream._document_attrs is None:
-            if not self.Process(1):
-                return None
-        if self.Dispatcher.Stream._document_attrs.has_key("version") and self.Dispatcher.Stream._document_attrs[
-            "version"] == "1.0":
-            while not self.Dispatcher.Stream.features and self.Process(1):
+        document_attrs = self.Dispatcher.stream.document_attrs
+        if 'version' in document_attrs and document_attrs['version'] == "1.0":
+            while not self.Dispatcher.stream.features and self.process(1):
                 pass  # If we get version 1.0 stream the features tag MUST BE presented
         return self.connected
 
-
-class Client(CommonClient):
-    """
-    Example client class, based on CommonClient.
-    """
-
-    def connect(self, server=None, proxy=None, secure=None, use_srv=True):
-        """
-        Connect to jabber server. If you want to specify different ip/port to connect to you can
-        pass it as tuple as first parameter. If there is HTTP proxy between you and server
-        specify it's address and credentials (if needed) in the second argument.
-        If you want ssl/tls support to be discovered and enable automatically - leave third argument as None. (ssl will be autodetected only if port is 5223 or 443)
-        If you want to force SSL start (i.e. if port 5223 or 443 is remapped to some non-standard port) then set it to 1.
-        If you want to disable tls/ssl support completely, set it to 0.
-        Example: connect(("192.168.5.5", 5222), {"host": "proxy.my.net", "port": 8080, "user": "me", "password": "secret"})
-        Returns "" or "tcp" or "tls", depending on the result.
-        """
-        if not CommonClient.connect(self, server, proxy, secure, use_srv) or secure is not None and not secure:
-            return self.connected
-        transports.TLS().PlugIn(self)
-        if not hasattr(self, "Dispatcher"):
-            return None
-        if not self.Dispatcher.Stream._document_attrs.has_key("version") or not self.Dispatcher.Stream._document_attrs[
-            "version"] == "1.0":
-            return self.connected
-        while not self.Dispatcher.Stream.features and self.Process(1):
-            pass  # If we get version 1.0 stream the features tag MUST BE presented
-        if not self.Dispatcher.Stream.features.getTag("starttls"):
-            return self.connected  # TLS not supported by server
-        while not self.TLS.starttls and self.Process(1):
-            pass
-        if not hasattr(self, "TLS") or self.TLS.starttls != "success":
-            self.event("tls_failed")
-            return self.connected
-        self.connected = "tls"
-        return self.connected
-
-    def auth(self, user, password, resource="", sasl=1):
-        """
-        Authenticate connnection and bind resource. If resource is not provided
-        random one or library name used.
-        """
-        self._User, self._Password, self._Resource = user, password, resource
-        while not self.Dispatcher.Stream._document_attrs and self.Process(1):
-            pass
-        if self.Dispatcher.Stream._document_attrs.has_key("version") and self.Dispatcher.Stream._document_attrs[
-            "version"] == "1.0":
-            while not self.Dispatcher.Stream.features and self.Process(1):
-                pass  # If we get version 1.0 stream the features tag MUST BE presented
-        if not sasl or self.SASL.startsasl == "not-supported":
-            if not resource:
-                resource = "xmpppy"
-            if auth.NonSASL(user, password, resource).PlugIn(self):
-                self.connected += "+old_auth"
-                return "old_auth"
-            return None
-
-    def sendInitPresence(self, requestRoster=1):
-        """
-        Send roster request and initial <presence/>.
-        You can disable the first by setting requestRoster argument to 0.
-        """
-        self.sendPresence(requestRoster=requestRoster)
-
-    def sendPresence(self, jid=None, typ=None):
-        """
-        Send some specific presence state.
-        Can also request roster from server if according agrument is set.
-        """
-        # if requestRoster:
-        #     roster.Roster().PlugIn(self)
-        self.send(dispatcher.Presence(to=jid, typ=typ))
+    def process(self, _):
+        raise NotImplementedError('process')
 
 
 class Component(CommonClient):
@@ -285,7 +138,6 @@ class Component(CommonClient):
         in the "domains" argument.
         For jabberd2 servers you should set typ="jabberd2" argument.
         """
-        if not debug: debug = ["always", "nodebuilder"]
         CommonClient.__init__(self, transport, port=port, debug=debug)
         self.typ = typ
         self.sasl = sasl
@@ -304,54 +156,26 @@ class Component(CommonClient):
         "server" and "proxy" arguments have the same meaning as in xmpp.Client.connect().
         """
         if self.sasl:
-            self.Namespace = auth.NS_COMPONENT_1
-            self.Server = server[0]
+            self.namespace = auth.NS_COMPONENT_1
+            self.server = server[0]
         CommonClient.connect(self, server=server, proxy=proxy)
         if self.connected and (
-                self.typ == "jabberd2" or not self.typ and self.Dispatcher.Stream.features is not None) and (
+                        self.typ == "jabberd2" or not self.typ and self.Dispatcher.stream.features is not None) and (
                 not self.xcp):
-            self.defaultNamespace = auth.NS_CLIENT
-            self.Dispatcher.RegisterNamespace(self.defaultNamespace)
-            self.Dispatcher.RegisterProtocol("iq", dispatcher.Iq)
-            self.Dispatcher.RegisterProtocol("message", dispatcher.Message)
-            self.Dispatcher.RegisterProtocol("presence", dispatcher.Presence)
+            self.default_namespace = auth.NS_CLIENT
+            self.Dispatcher.register_namespace(self.default_namespace)
+            self.Dispatcher.register_protocol("iq", dispatcher.Iq)
+            self.Dispatcher.register_protocol("message", dispatcher.Message)
+            self.Dispatcher.register_protocol("presence", dispatcher.Presence)
         return self.connected
-
-    def dobind(self, sasl):
-        # This has to be done before binding, because we can receive a route stanza before binding finishes
-        self._route = self.route
-        if self.bind:
-            for domain in self.domains:
-                auth.ComponentBind(sasl).PlugIn(self)
-                while self.ComponentBind.bound is None:
-                    self.Process(1)
-                if not self.ComponentBind.Bind(domain):
-                    self.ComponentBind.PlugOut()
-                    return None
-                self.ComponentBind.PlugOut()
 
     def auth(self, name, password, dup=None):
         """
         Authenticate component "name" with password "password".
         """
         self._User, self._Password, self._Resource = name, password, ""
-        try:
-            if self.sasl:
-                auth.SASL(name, password).PlugIn(self)
-            if not self.sasl or self.SASL.startsasl == "not-supported":
-                if auth.NonSASL(name, password, "").PlugIn(self):
-                    self.dobind(sasl=False)
-                    self.connected += "+old_auth"
-                    return "old_auth"
-                return None
-            self.SASL.auth()
-            while self.SASL.startsasl == "in-process" and self.Process(1):
-                pass
-            if self.SASL.startsasl == "success":
-                self.dobind(sasl=True)
-                self.connected += "+sasl"
-                return "sasl"
-            else:
-                raise auth.NotAuthorized(self.SASL.startsasl)
-        except Exception:
-            self.DEBUG(self.DBG, "Failed to authenticate %s" % name, "error")
+        if auth.NonSASL(name, password, "").attach(self):
+            self.connected += "+old_auth"
+            return "old_auth"
+        return None
+
