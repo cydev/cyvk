@@ -37,10 +37,10 @@ def _handle(_, stanza):
         logger.debug('client %s not in list' % jid)
 
     if m.jid_to == TRANSPORT_ID:
-        return logger.error('message to transport_id')
+        return logger.error('not implemented - message to transport_id')
 
     if m.jid_from == TRANSPORT_ID:
-        return logger.error('not implemented - messages to watcher')
+        return logger.error('not implemented - message to watcher')
 
     uid = friends.get_friend_uid(m.jid_to)
     logger.debug('message to user (%s->%s)' % (jid, uid))
