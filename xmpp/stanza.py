@@ -1,19 +1,3 @@
-##   protocol.py
-##
-##   Copyright (C) 2003-2005 Alexey "Snake" Nezhdanov
-##
-##   This program is free software; you can redistribute it and/or modify
-##   it under the terms of the GNU General Public License as published by
-##   the Free Software Foundation; either version 2, or (at your option)
-##   any later version.
-##
-##   This program is distributed in the hope that it will be useful,
-##   but WITHOUT ANY WARRANTY; without even the implied warranty of
-##   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-##   GNU General Public License for more details.
-
-# $Id: protocol.py, v1.63 2013/12/06 alkorgun Exp $
-
 """
 Protocol module contains tools that is needed for processing of
 xmpp-related data structures.
@@ -468,7 +452,7 @@ class JID:
         return hash(self.__str__())
 
 
-class Protocol(Node):
+class Stanza(Node):
     """
     A "stanza" object class. Contains methods that are common for presences, iqs and messages.
     """
@@ -634,7 +618,7 @@ class Protocol(Node):
         return self.setAttr(item, val)
 
 
-class Message(Protocol):
+class Message(Stanza):
     """
     XMPP Message stanza - "push" mechanism.
     """
@@ -650,7 +634,7 @@ class Message(Protocol):
         attrs = attrs or {}
         payload = payload or []
 
-        Protocol.__init__(self, "message", to=to, typ=typ, attrs=attrs, frm=frm, payload=payload, timestamp=timestamp,
+        Stanza.__init__(self, "message", to=to, typ=typ, attrs=attrs, frm=frm, payload=payload, timestamp=timestamp,
                           xmlns=xmlns, node=node)
         if body:
             self.setBody(body)
@@ -705,7 +689,7 @@ class Message(Protocol):
         return msg
 
 
-class Presence(Protocol):
+class Presence(Stanza):
     """
     XMPP Presence object.
     """
@@ -721,7 +705,7 @@ class Presence(Protocol):
         attrs = attrs or {}
         payload = payload or []
 
-        Protocol.__init__(self, "presence", to=to, typ=typ, attrs=attrs, frm=frm, payload=payload, timestamp=timestamp,
+        Stanza.__init__(self, "presence", to=to, typ=typ, attrs=attrs, frm=frm, payload=payload, timestamp=timestamp,
                           xmlns=xmlns, node=node)
         if priority:
             self.setPriority(priority)
@@ -820,7 +804,7 @@ class Presence(Protocol):
         return self._muc_getItemAttr("status", "code")
 
 
-class Iq(Protocol):
+class Iq(Stanza):
     """
     XMPP Iq object - get/set dialog mechanism.
     """
@@ -935,7 +919,7 @@ class ErrorNode(Node):
             self.setAttr("code", cod)
 
 
-class Error(Protocol):
+class Error(Stanza):
     """
     Used to quickly transform received stanza into error reply.
     """
@@ -947,9 +931,9 @@ class Error(Protocol):
         specify the "reply" argument as false.
         """
         if reply:
-            Protocol.__init__(self, to=node.getFrom(), frm=node.getTo(), node=node)
+            Stanza.__init__(self, to=node.getFrom(), frm=node.getTo(), node=node)
         else:
-            Protocol.__init__(self, node=node)
+            Stanza.__init__(self, node=node)
         self.setError(error)
         if node.getType() == "error":
             self.__str__ = self.__dupstr__

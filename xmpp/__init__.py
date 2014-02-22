@@ -26,5 +26,5 @@ and use only methods for access all values you should not have any problems.
 """
 
 from xmpp.client import *
-from xmpp.protocol import *
-from xmpp import auth, dispatcher, simplexml, transports, protocol, plugin
+from xmpp.stanza import *
+from xmpp import auth, dispatcher, simplexml, transports, stanza, plugin

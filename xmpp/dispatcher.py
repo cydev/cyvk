@@ -26,8 +26,9 @@ from xml.parsers.expat import ExpatError
 import logging
 
 from xmpp.plugin import PlugIn
-from xmpp.protocol import *
+from xmpp.stanza import *
 from xmpp import simplexml
+from .exceptions import StreamError, NodeProcessed
 
 
 logger = logging.getLogger("xmpp")
@@ -180,8 +181,8 @@ class Dispatcher(PlugIn):
         """
         logger.debug('registering namespace %s' % name)
         self.handlers[name] = {}
-        self.register_protocol('unknown', Protocol, namespace=name)
-        self.register_protocol('default', Protocol, namespace=name)
+        self.register_protocol('unknown', Stanza, namespace=name)
+        self.register_protocol('default', Stanza, namespace=name)
 
     def register_protocol(self, tag_name, name, namespace=None):
         """
@@ -219,7 +220,7 @@ class Dispatcher(PlugIn):
         if not xml_ns in self.handlers:
             self.register_namespace(xml_ns)
         if not name in self.handlers[xml_ns]:
-            self.register_protocol(name, Protocol, xml_ns)
+            self.register_protocol(name, Stanza, xml_ns)
         if not typ + ns in self.handlers[xml_ns][name]:
             self.handlers[xml_ns][name][typ + ns] = []
         if make_first:
@@ -356,7 +357,7 @@ class Dispatcher(PlugIn):
         logger.debug('sending %s' % stanza)
         if isinstance(stanza, basestring):
             return self._owner_send(stanza)
-        if not isinstance(stanza, Protocol):
+        if not isinstance(stanza, Stanza):
             stanza_id = None
         elif not stanza.getID():
             global ID
@@ -374,7 +375,7 @@ class Dispatcher(PlugIn):
             frm = stanza.getFrom()
             if frm.getDomain():
                 frm = frm.getDomain()
-            route = Protocol('route', to=to, frm=frm, payload=[stanza])
+            route = Stanza('route', to=to, frm=frm, payload=[stanza])
             stanza = route
         stanza.setNamespace(self.owner.namespace)
         stanza.setParent(self.meta_stream)

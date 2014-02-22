@@ -1,30 +1,12 @@
-##   simplexml.py based on Mattew Allum's xmlstream.py
-##
-##   Copyright (C) 2003-2005 Alexey "Snake" Nezhdanov
-##
-##   This program is free software; you can redistribute it and/or modify
-##   it under the terms of the GNU General Public License as published by
-##   the Free Software Foundation; either version 2, or (at your option)
-##   any later version.
-##
-##   This program is distributed in the hope that it will be useful,
-##   but WITHOUT ANY WARRANTY; without even the implied warranty of
-##   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-##   GNU General Public License for more details.
-
-# $Id: simplexml.py, v1.35 2013/10/21 alkorgun Exp $
-
 """
 Simplexml module provides xmpppy library with all needed tools to handle
 XML nodes and XML streams.
 I'm personally using it in many other separate projects.
 It is designed to be as standalone as possible.
 """
-
+from __future__ import unicode_literals
 import xml.parsers.expat
-
 import logging
-
 logger = logging.getLogger('xmpp')
 
 XML_ls = (
@@ -44,7 +26,7 @@ def XMLescape(body):
     return body.strip()
 
 
-ENCODING = "utf-8"
+ENCODING = 'utf-8'
 
 
 def ustr(what):

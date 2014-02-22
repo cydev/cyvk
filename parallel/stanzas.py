@@ -9,7 +9,7 @@ except ImportError:
     import pickle
 
 from transport.stanza_queue import r, _get_stanza_queue_key
-from xmpp import Protocol as Stanza
+from xmpp import Stanza as Stanza
 
 
 def push(stanza):

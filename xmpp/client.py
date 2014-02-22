@@ -1,29 +1,11 @@
-##   client.py
-##
-##   Copyright (C) 2003-2005 Alexey "Snake" Nezhdanov
-##
-##   This program is free software; you can redistribute it and/or modify
-##   it under the terms of the GNU General Public License as published by
-##   the Free Software Foundation; either version 2, or (at your option)
-##   any later version.
-##
-##   This program is distributed in the hope that it will be useful,
-##   but WITHOUT ANY WARRANTY; without even the implied warranty of
-##   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-##   GNU General Public License for more details.
-
-# $Id: client.py, v1.62 2013/10/21 alkorgun Exp $
-
 """
 Provides PlugIn class functionality to develop extentions for xmpppy.
 Also provides Client and Component classes implementations as the
 examples of xmpppy structures usage.
 These classes can be used for simple applications "AS IS" though.
 """
-
 from xmpp import auth, dispatcher, transports
 import logging
-
 logger = logging.getLogger("xmpp")
 
 
@@ -40,8 +22,6 @@ class CommonClient:
         Full list: ["nodebuilder", "dispatcher", "gen_auth", "SASL_auth", "bind", "socket",
         "CONNECTproxy", "TLS", "roster", "browser", "ibb"].
         """
-        # if isinstance(self, Client):
-        #     self.Namespace, self.DBG = "jabber:client", DBG_CLIENT
         if isinstance(self, Component):
             self.namespace = dispatcher.NS_COMPONENT_ACCEPT
 
@@ -52,9 +32,13 @@ class CommonClient:
         self.port = port
         self.owner = self
         self.registered_name = None
-        self.connected = ""
+        self.connected = ''
         self.route = 0
         self.connection = None
+        self.user = None
+        self.password = None
+        self.resource = None
+        self.dispatcher = None
 
     def register_disconnect_handler(self, handler):
         """
@@ -78,10 +62,9 @@ class CommonClient:
 
     def event(self, name, args=None):
         """
-        Default event handler. To be overriden.
+        Default event handler. To be overridden.
         """
-        if not args: args = {}
-        print("Event: %s-%s" % (name, args))
+        raise NotImplementedError('event handler not overridden')
 
     def is_connected(self):
         """
@@ -98,8 +81,7 @@ class CommonClient:
             server = (self.server, self.port)
         if proxy:
             raise NotImplementedError('proxy')
-        else:
-            sock = transports.TCPSocket(server, use_srv)
+        sock = transports.TCPSocket(server, use_srv)
         connected = sock.attach(self)
         if not connected:
             sock.remove()
@@ -169,12 +151,9 @@ class Component(CommonClient):
             self.Dispatcher.register_protocol("presence", dispatcher.Presence)
         return self.connected
 
-    def auth(self, name, password, dup=None):
-        """
-        Authenticate component "name" with password "password".
-        """
-        self._User, self._Password, self._Resource = name, password, ""
-        if auth.NonSASL(name, password, "").attach(self):
+    def auth(self, user, password):
+        self.user, self.password, self.resource = user, password, ''
+        if auth.NonSASL(user, password, '').attach(self):
             self.connected += "+old_auth"
             return "old_auth"
         return None

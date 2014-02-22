@@ -1,6 +1,6 @@
 from __future__ import unicode_literals
 from xmpp import Message
-from xmpp.protocol import Presence, NS_NICK
+from xmpp.stanza import Presence, NS_NICK
 from config import TRANSPORT_ID
 
 

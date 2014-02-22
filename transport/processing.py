@@ -1,7 +1,7 @@
 # coding=utf-8
 
 from __future__ import unicode_literals
-from xmpp.protocol import Protocol
+from xmpp.stanza import Stanza
 import compat
 logger = compat.get_logger()
 
@@ -11,7 +11,7 @@ class Message(object):
         """
         Extract message attributes from stanza
         """
-        assert isinstance(stanza, Protocol)
+        assert isinstance(stanza, Stanza)
 
         self.msg_type = stanza.getType()
         self.body = stanza.getBody()

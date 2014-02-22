@@ -6,7 +6,7 @@ from __future__ import unicode_literals
 from hashlib import sha1
 import logging
 from plugin import PlugIn
-from protocol import *
+from stanza import *
 logger = logging.getLogger("xmpp")
 
 

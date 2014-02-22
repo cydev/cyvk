@@ -1,6 +1,6 @@
 import pickle
 import redis
-from xmpp import Protocol as Stanza
+from xmpp import Stanza as Stanza
 from config import REDIS_HOST, REDIS_PORT, REDIS_PREFIX
 import compat
 logger = compat.get_logger()

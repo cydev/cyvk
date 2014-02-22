@@ -12,7 +12,7 @@ import config
 from transport.stanzas import generate_error
 import transport.user as user_api
 from xmpp.exceptions import NodeProcessed
-from xmpp.protocol import (NS_REGISTER,
+from xmpp.stanza import (NS_REGISTER,
                            NS_DISCO_ITEMS, NS_DISCO_INFO, ERR_BAD_REQUEST, Node)
 from errors import AuthenticationException
 import database

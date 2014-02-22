@@ -1,19 +1,3 @@
-##   plugin.py
-##
-##   Copyright (C) 2003-2005 Alexey "Snake" Nezhdanov
-##
-##   This program is free software; you can redistribute it and/or modify
-##   it under the terms of the GNU General Public License as published by
-##   the Free Software Foundation; either version 2, or (at your option)
-##   any later version.
-##
-##   This program is distributed in the hope that it will be useful,
-##   but WITHOUT ANY WARRANTY; without even the implied warranty of
-##   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-##   GNU General Public License for more details.
-
-# $Id: plugin.py, v1.0 2013/10/21 alkorgun Exp $
-
 """
 Provides library with all Non-SASL and SASL authentication mechanisms.
 Can be used both for client and transport authentication.
