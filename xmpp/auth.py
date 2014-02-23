@@ -15,14 +15,14 @@ class NonSASL(PlugIn):
     Implements old Non-SASL (JEP-0078) authentication used in jabberd1.4 and transport authentication.
     """
 
-    def __init__(self, user, password, resource):
+    def __init__(self, user, password):
         """
         Caches username, password and resource for auth.
         """
         PlugIn.__init__(self)
         self.user = user
         self.password = password
-        self.resource = resource
+        self.resource = ''
         self.handshake = 0
 
     def plugin(self, owner):

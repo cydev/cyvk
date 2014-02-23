@@ -66,4 +66,4 @@ class Component(object):
         raise NotImplementedError('process')
 
     def auth(self, user, password):
-        return auth.NonSASL(user, password, '').attach(self)
+        return auth.NonSASL(user, password).attach(self)

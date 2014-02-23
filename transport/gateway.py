@@ -104,11 +104,7 @@ def halt_handler(sig=None, _=None):
 
 
 def get_transport_iteration(c):
-    try:
-        c.process()
-    except StreamError as stream_error:
-        logger.critical('StreamError while iterating: %s' % stream_error)
-        raise
+    c.process()
 
 
 def get_sender_iteration(c):
