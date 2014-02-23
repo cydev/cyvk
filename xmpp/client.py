@@ -17,6 +17,7 @@ class Component(object):
         self.registered_name = None
         self.dispatcher = dispatcher.Dispatcher()
         self.domains = [server, ]
+        self.auth_client = auth.AuthClient(self)
 
     def register_disconnect_handler(self, handler):
         # Register handler that will be called on disconnect.
@@ -61,4 +62,4 @@ class Component(object):
         raise NotImplementedError('process')
 
     def auth(self, user, password):
-        return auth.NonSASL(user, password).attach(self)
+        return self.auth_client.auth_component(user, password)
