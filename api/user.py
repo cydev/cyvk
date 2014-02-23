@@ -8,18 +8,18 @@ _logger = get_logger()
 
 def get_user_data(uid, target_uid, fields=None):
     _logger.debug('user api: sending user data for %s about %s' % (uid, target_uid))
-    fields = fields or ["screen_name"]
-    args = {"fields": ",".join(fields), "user_ids": target_uid}
-    m = "users.get"
+    fields = fields or ['screen_name']
+    args = dict(fields=','.join(fields), user_ids=target_uid)
+    m = 'users.get'
     data = method(m, uid, args)
 
     if data:
         data = data[0]
-        data["name"] = escape_name("", u"%s %s" % (data["first_name"], data["last_name"]))
-        del data["first_name"], data["last_name"]
+        data['name'] = escape_name('', u'%s %s' % (data['first_name'], data['last_name']))
+        del data['first_name'], data['last_name']
     else:
         data = {}
         for key in fields:
-            data[key] = "<unknown error>"
+            data[key] = '<unknown error>'
             _logger.error('failed to parse %s, got blank response' % fields)
     return data

@@ -142,14 +142,14 @@ def is_application_user(jid, token):
 
 
 def mark_messages_as_read(jid, msg_list):
-    method("messages.markAsRead", jid, {"message_ids": ','.join(msg_list)})
+    method('messages.markAsRead', jid, dict(message_ids=','.join(msg_list)))
 
 
 def get_messages(jid, count=5, last_msg_id=None):
     _logger.debug('getting messages for %s' % jid)
-    arguments = {"out": 0, "filters": 1, "count": count}
+    arguments = dict(out=0, filters=1, count=count)
     if last_msg_id:
         arguments.update({'last_message_id': last_msg_id})
     else:
         arguments.update({'count': count})
-    return method("messages.get", jid, arguments)
+    return method('messages.get', jid, arguments)
