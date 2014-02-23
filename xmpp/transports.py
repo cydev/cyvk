@@ -69,25 +69,6 @@ class TCPSocket(PlugIn):
         self._receive = None
         self._seen_data = None
 
-    @staticmethod
-    def srv_lookup(server):
-        """
-        SRV resolver. Takes server=(host, port) as argument. Returns new (host, port) pair.
-        """
-        if not dns:
-            return server
-        query = '_xmpp-client._tcp.%s' % server[0]
-        try:
-            dns.DiscoverNameServers()
-            dns__ = dns.Request()
-            response = dns__.req(query, qtype='SRV')
-            if response.answers:
-                (port, host) = response.answers[0]['data'][2:]
-                server = str(host), int(port)
-        except dns.DNSError:
-            logger.error('An error occurred while looking up %s.' % query)
-        return server
-
     def plugin(self, owner):
         """
         Fire up connection. Return non-empty string on success.
@@ -96,10 +77,7 @@ class TCPSocket(PlugIn):
         """
         if not self._server:
             self._server = (self.owner.Server, 5222)
-        if self.use_srv:
-            server = self.srv_lookup(self._server)
-        else:
-            server = self._server
+        server = self._server
         if not self.connect(server):
             return None
         self.owner.connection = self
@@ -107,15 +85,9 @@ class TCPSocket(PlugIn):
         return "ok"
 
     def get_host(self):
-        """
-        Returns the 'host' value that is connection is [will be] made to.
-        """
         return self._server[0]
 
     def get_port(self):
-        """
-        Returns the 'port' value that is connection is [will be] made to.
-        """
         return self._server[1]
 
     def connect(self, server=None):
@@ -175,21 +147,22 @@ class TCPSocket(PlugIn):
         while self.pending_data(0):
             try:
                 add = self._receive(BUFF_LEN)
+                if not add:
+                    break
+                data += add
             except socket.error:
                 break
-            if not add:
-                break
-            data += add
-        if data:
-            self._seen_data = 1
-            logger.debug('got: %s' % data)
-            if hasattr(self.owner, "Dispatcher"):
-                self.owner.Dispatcher.event("", DATA_RECEIVED, data)
-        else:
-            logger.error('Socket error while receiving data')
+
+        if not data:
+            logger.error('socket error while receiving data')
             sys.exc_clear()
             self.owner.disconnected()
             raise IOError("Disconnected!")
+
+        self._seen_data = 1
+        logger.debug('got: %s' % data)
+        if hasattr(self.owner, "Dispatcher"):
+            self.owner.Dispatcher.event("", DATA_RECEIVED, data)
         return data
 
     def send(self, data, timeout=0.002):

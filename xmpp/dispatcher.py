@@ -4,7 +4,7 @@ to different XMPP stanzas.
 Contains one tunable attribute: DefaultTimeout (25 seconds by default). It defines time that
 Dispatcher.SendAndWaitForResponce method will wait for reply stanza before giving up.
 """
-
+from __future__ import unicode_literals
 import sys
 from xml.parsers.expat import ExpatError
 import logging
@@ -12,15 +12,10 @@ import logging
 from xmpp.plugin import PlugIn
 from xmpp.stanza import *
 from xmpp import simplexml
+import uuid
 from .exceptions import StreamError, NodeProcessed
 
-
 logger = logging.getLogger("xmpp")
-
-TIMEOUT = 25
-ID = 0
-
-DBG_LINE = "dispatcher"
 
 
 class Dispatcher(PlugIn):
@@ -38,7 +33,6 @@ class Dispatcher(PlugIn):
         self._defaultHandler = None
         self._pendingExceptions = []
         self._eventHandler = None
-        self._cycleHandlers = []
         self._exported_methods = [
             self.process,
             self.register_handler,
@@ -68,13 +62,13 @@ class Dispatcher(PlugIn):
         Registers default namespaces/protocols/handlers. Used internally.
         """
         logger.debug('dispatcher init')
-        self.register_namespace("unknown")
+        self.register_namespace('unknown')
         self.register_namespace(NS_STREAMS)
         self.register_namespace(self.owner.default_namespace)
-        self.register_protocol("iq", Iq)
-        self.register_protocol("presence", Presence)
-        self.register_protocol("message", Message)
-        self.register_handler("error", self.stream_error_handler, xml_ns=NS_STREAMS)
+        self.register_protocol('iq', Iq)
+        self.register_protocol('presence', Presence)
+        self.register_protocol('message', Message)
+        self.register_handler('error', self.stream_error_handler, xml_ns=NS_STREAMS)
 
     def plugin(self, owner):
         """
@@ -83,7 +77,7 @@ class Dispatcher(PlugIn):
         logger.debug('dispatcher plugin')
         self._init()
         for method in self._old_owners_methods:
-            if method.__name__ == "send":
+            if method.__name__ == 'send':
                 self._owner_send = method
                 break
         self.owner.last_err_node = None
@@ -110,12 +104,11 @@ class Dispatcher(PlugIn):
         self.stream.dispatch = self.dispatch
         self.stream.stream_header_received = self._check_stream_start
         self.stream.features = None
-        self.meta_stream = Node("stream:stream")
+        self.meta_stream = Node('stream:stream')
         self.meta_stream.setNamespace(self.owner.namespace)
-        self.meta_stream.setAttr("version", "1.0")
-        self.meta_stream.setAttr("xmlns:stream", NS_STREAMS)
-        self.meta_stream.setAttr("to", self.owner.server)
-        self.owner.send("<?xml version=\"1.0\"?>%s>" % str(self.meta_stream)[:-2])
+        self.meta_stream.setAttr('version', '1.0')
+        self.meta_stream.setAttr('xmlns:stream', NS_STREAMS)
+        self.owner.send('<?xml version="1.0"?>%s>' % str(self.meta_stream)[:-2])
 
     @staticmethod
     def _check_stream_start(ns, tag, _):
@@ -133,9 +126,6 @@ class Dispatcher(PlugIn):
         disconnect handlers are called automatically.
         """
         logger.debug('dispatcher process')
-
-        for handler in self._cycleHandlers:
-            handler(self)
 
         if self._pendingExceptions:
             e = self._pendingExceptions.pop()
@@ -328,9 +318,8 @@ class Dispatcher(PlugIn):
         if not isinstance(stanza, Stanza):
             stanza_id = None
         elif not stanza.getID():
-            global ID
-            ID += 1
-            stanza_id = repr(ID)
+            uid = uuid.uuid1()
+            stanza_id = str(uid)
             stanza.setID(stanza_id)
         else:
             stanza_id = stanza.getID()
@@ -338,7 +327,6 @@ class Dispatcher(PlugIn):
             stanza.setAttr('from', self.owner.registered_name)
         stanza.setNamespace(self.owner.namespace)
         stanza.setParent(self.meta_stream)
-        logger.error('ns: %s' % stanza)
         self._owner_send(stanza)
         return stanza_id
 
