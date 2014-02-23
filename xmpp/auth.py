@@ -6,7 +6,7 @@ from __future__ import unicode_literals
 from hashlib import sha1
 import logging
 from plugin import PlugIn
-from stanza import *
+from stanza import NS_COMPONENT_ACCEPT, Node
 logger = logging.getLogger("xmpp")
 
 
@@ -38,21 +38,21 @@ class NonSASL(PlugIn):
         """
         Authenticate component. Send handshake stanza and wait for result. Returns "ok" on success.
         """
-        # logger.debug('authenticating component')
+        logger.debug('authenticating component')
         handshake_hash = sha1(owner.Dispatcher.stream.document_attrs['id'] + self.password)
-        owner.send(Node(NS_COMPONENT_ACCEPT + ' handshake', payload=[handshake_hash.hexdigest()]))
         owner.register_handler('handshake', self.handshake_handler, xml_ns=NS_COMPONENT_ACCEPT)
+        owner.send(Node(NS_COMPONENT_ACCEPT + ' handshake', payload=[handshake_hash.hexdigest()]))
         while not self.handshake:
             owner.process(0.5)
         owner._registered_name = self.user
-        if self.handshake + 1:
-            return 'ok'
+        if self.handshake:
+            return True
 
     def handshake_handler(self, _, stanza):
         """
         Handler for registering in dispatcher for accepting transport authentication.
         """
         if stanza.getName() == "handshake":
-            self.handshake = 1
+            self.handshake = True
         else:
-            self.handshake = -1
+            self.handshake = False

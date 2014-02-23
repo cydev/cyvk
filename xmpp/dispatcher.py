@@ -216,7 +216,7 @@ class Dispatcher(PlugIn):
             exc = stream_exceptions[name]
         else:
             exc = StreamError
-        raise exc((name, text))
+        raise exc(text)
 
     def event(self, realm, event, data):
         """
