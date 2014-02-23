@@ -8,8 +8,7 @@ from __future__ import unicode_literals
 from xml.parsers.expat import ExpatError
 import logging
 
-from xmpp.plugin import PlugIn
-from xmpp.stanza import *
+from xmpp.stanza import NS_STREAMS, Iq, Message, Presence, Node, Stanza, NS_XMPP_STREAMS, stream_exceptions
 from xmpp import simplexml
 import uuid
 from .exceptions import StreamError, NodeProcessed
@@ -17,14 +16,13 @@ from .exceptions import StreamError, NodeProcessed
 logger = logging.getLogger("xmpp")
 
 
-class Dispatcher(PlugIn):
+class Dispatcher():
     """
     Ancestor of PlugIn class. Handles XMPP stream, i.e. aware of stream headers.
     Can be plugged out/in to restart these headers (used for SASL f.e.).
     """
 
     def __init__(self, connection, client):
-        PlugIn.__init__(self)
         self.stream = None
         self.meta_stream = None
         self.handlers = {}
@@ -41,21 +39,7 @@ class Dispatcher(PlugIn):
         self.client = client
         self.connection = connection
 
-    def dump_handlers(self):
-        """
-        Return set of user-registered callbacks in it's internal format.
-        Used within the library to carry user handlers set over Dispatcher replugins.
-        """
-        return self.handlers
-
-    def restore_handlers(self, handlers):
-        """
-        Restores user-registered callbacks structure from dump previously obtained via dumpHandlers.
-        Used within the library to carry user handlers set over Dispatcher replugins.
-        """
-        self.handlers = handlers
-
-    def _init(self):
+    def init(self):
         """
         Registers default namespaces/protocols/handlers. Used internally.
         """
@@ -69,30 +53,10 @@ class Dispatcher(PlugIn):
         self.register_handler('error', self.stream_error_handler, xml_ns=NS_STREAMS)
         self.stream_init()
 
-    def plugin(self, owner):
-        """
-        Plug the Dispatcher instance into Client class instance and send initial stream header. Used internally.
-        """
-        logger.error('dispatcher plugin')
-        self._init()
-        logger.error('owner %s' % self.owner)
-        logger.error('connection send %s' % self.connection.send)
-        # self.stream_init()
-
-    def plugout(self):
-        """
-        Prepares instance to be destructed.
-        """
-        logger.debug('dispatcher plugout')
-        self.stream.dispatch = None
-        self.stream.features = None
-        self.stream.destroy()
-
     def stream_init(self):
         """
         Send an initial stream header.
         """
-        logger.error('dispatcher stream init')
         self.stream = simplexml.NodeBuilder()
         self.stream._dispatch_depth = 2
         self.stream.dispatch = self.dispatch
@@ -119,19 +83,23 @@ class Dispatcher(PlugIn):
         Take note that in case of disconnection detect during Process() call
         disconnect handlers are called automatically.
         """
-        logger.debug('dispatcher process')
+        logger.error('dispatcher process')
 
         if self.connection.pending_data(timeout):
             try:
                 data = self.connection.receive()
-            except IOError:
+            except IOError as e:
+                logger.error(e)
                 return None
             try:
                 self.stream.Parse(data)
-            except ExpatError:
+            except ExpatError as e:
+                logger.error(e)
                 pass
             if data:
+                logger.error(data)
                 return len(data)
+        logger.error('no data')
         return "0"
 
     def register_namespace(self, name):

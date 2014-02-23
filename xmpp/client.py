@@ -1,23 +1,25 @@
 from __future__ import unicode_literals
-from xmpp import auth, dispatcher, transports
+from hashlib import sha1
+from cystanza.namespaces import NS_COMPONENT_ACCEPT
+from stanza import Node
+from xmpp import dispatcher, transports
 import logging
 logger = logging.getLogger("xmpp")
 
 
 class Component(object):
     def __init__(self, server, port=5222):
-        self.namespace = dispatcher.NS_COMPONENT_ACCEPT
+        self.namespace = NS_COMPONENT_ACCEPT
         self.default_namespace = self.namespace
         self.disconnect_handlers = []
         self.server = server
         self.port = port
-        self.owner = self
         self.connected = None
         self.connection = None
         self.registered_name = None
         self.dispatcher = None
         self.domains = [server, ]
-        self.auth_client = auth.AuthClient(self)
+        self.handshake = False
 
     def register_disconnect_handler(self, handler):
         # Register handler that will be called on disconnect.
@@ -40,18 +42,18 @@ class Component(object):
         # Make a tcp/ip connection and start XMPP stream.
         if not server:
             server = (self.server, self.port)
-        sock = transports.TCPSocket(server)
-        connected = sock.connect(server)
+        self.connection = transports.TCPSocket(server)
+        connected = self.connection.connect(server)
         if not connected:
-            sock.remove()
             return None
         self.server = server
         self.connected = True
-        self.dispatcher = dispatcher.Dispatcher(sock, self)
-        self.dispatcher.attach(self)
+        self.dispatcher = dispatcher.Dispatcher(self.connection, self)
+        # self.dispatcher.attach(self)
+        self.dispatcher.init()
 
-        while self.dispatcher.stream.document_attrs is None:
-            if not self.process(1):
+        while not self.dispatcher.stream.document_attrs:
+            if not self.process(5):
                 return None
         document_attrs = self.dispatcher.stream.document_attrs
         if 'version' in document_attrs and document_attrs['version'] == "1.0":
@@ -59,8 +61,27 @@ class Component(object):
                 pass
         return self.connected
 
-    def process(self, timeout):
-        self.dispatcher.process(timeout)
+    def process(self, timeout=8):
+        return self.dispatcher.process(timeout)
 
     def auth(self, user, password):
-        return self.auth_client.auth_component(user, password)
+        return self.auth_component(user, password)
+
+    def auth_component(self, user, password):
+        logger.debug('authenticating component')
+        handshake_hash = sha1(self.dispatcher.stream.document_attrs['id'] + password)
+        self.dispatcher.register_handler('handshake', self.handshake_handler, xml_ns=NS_COMPONENT_ACCEPT)
+        self.connection.send(Node(NS_COMPONENT_ACCEPT + ' handshake', payload=[handshake_hash.hexdigest()]))
+        while not self.handshake:
+            self.process(1)
+        self.registered_name = user
+        return self.handshake
+
+    def handshake_handler(self, _, stanza):
+        self.handshake = stanza.getName() == "handshake"
+
+    def register_handler(self, *args, **kwargs):
+        self.dispatcher.register_handler(*args, **kwargs)
+
+    def send(self, stanza):
+        return self.dispatcher.send(stanza)

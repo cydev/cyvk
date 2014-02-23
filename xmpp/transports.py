@@ -83,7 +83,7 @@ class TCPSocket(object):
     def receive(self):
         """
         Reads all pending incoming data.
-        In case of disconnection calls owner's disconnected() method and then raises IOError exception.
+        In case of disconnection calls disconnected() method and then raises IOError exception.
         """
         try:
             data = self._receive(BUFF_LEN)
