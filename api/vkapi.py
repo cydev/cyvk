@@ -105,12 +105,12 @@ def method_wrapped(m, jid, args=None, token=None):
     try:
         result = method(m, jid, args, token=token)
     except CaptchaNeeded:
-        _logger.error("VKLogin: running captcha challenge for %s" % jid)
+        _logger.error('captcha challenge for %s' % jid)
         # TODO: Captcha
         raise NotImplementedError('Captcha')
     except NotAllowed:
         send(jid, "You're not allowed to perform this action.",
-             get_friend_jid(args.get("user_id", TRANSPORT_ID)))
+             get_friend_jid(args.get('user_id', TRANSPORT_ID)))
     except AccessRevokedError:
         _logger.debug('user %s revoked access' % jid)
         database.remove_user(jid)
