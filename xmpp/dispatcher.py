@@ -239,9 +239,9 @@ class Dispatcher(PlugIn):
         if self._eventHandler:
             self._eventHandler(realm, event, data)
 
-    def dispatch(self, stanza, session=None, direct=0):
+    def dispatch(self, stanza, session=None):
         """
-        Main procedure that performs XMPP stanza recognition and calling apppropriate handlers for it.
+        Main procedure that performs XMPP stanza recognition and calling appropriate handlers for it.
         Called internally.
         """
         logger.debug('dispatching')
@@ -251,36 +251,20 @@ class Dispatcher(PlugIn):
         session.stream._mini_dom = None
         name = stanza.getName()
 
-        if not direct and self.owner.route:
-            if name == "route":
-                if stanza.getAttr("error") is None:
-                    if len(stanza.getChildren()) == 1:
-                        stanza = stanza.getChildren()[0]
-                        name = stanza.getName()
-                    else:
-                        for each in stanza.getChildren():
-                            self.dispatch(each, session, direct=1)
-                        return None
-            elif name == "presence":
-                return None
-            elif name in ("features", "bind"):
-                pass
-            else:
-                raise UnsupportedStanzaType(name)
         if name == "features":
             session.stream.features = stanza
 
         ns = stanza.getNamespace()
 
         if ns not in self.handlers:
-            logger.error('Unknown namespace: ' + ns)
+            logger.error('unknown namespace: ' + ns)
             ns = 'unknown'
 
         if name not in self.handlers[ns]:
-            logger.error('Unknown stanza: ' + name)
+            logger.error('unknown stanza: ' + name)
             name = 'unknown'
         else:
-            logger.debug('Got %s/%s stanza' % (ns, name))
+            logger.debug('got %s/%s stanza' % (ns, name))
 
         if isinstance(stanza, Node):
             stanza = self.handlers[ns][name]["type"](node=stanza)
@@ -352,17 +336,9 @@ class Dispatcher(PlugIn):
             stanza_id = stanza.getID()
         if self.owner.registered_name and not stanza.getAttr('from'):
             stanza.setAttr('from', self.owner.registered_name)
-        if self.owner.route and stanza.getName() != 'bind':
-            to = self.owner.Server
-            if stanza.getTo() and stanza.getTo().getDomain():
-                to = stanza.getTo().getDomain()
-            frm = stanza.getFrom()
-            if frm.getDomain():
-                frm = frm.getDomain()
-            route = Stanza('route', to=to, frm=frm, payload=[stanza])
-            stanza = route
         stanza.setNamespace(self.owner.namespace)
         stanza.setParent(self.meta_stream)
+        logger.error('ns: %s' % stanza)
         self._owner_send(stanza)
         return stanza_id
 

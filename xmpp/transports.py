@@ -170,12 +170,12 @@ class TCPSocket(PlugIn):
             sys.exc_clear()
             self.owner.disconnected()
             raise IOError('disconnected')
-        except Exception:
+        except (IOError, KeyError):
             data = ''
         while self.pending_data(0):
             try:
                 add = self._receive(BUFF_LEN)
-            except Exception:
+            except socket.error:
                 break
             if not add:
                 break
@@ -206,7 +206,7 @@ class TCPSocket(PlugIn):
         else:
             try:
                 self._send(data)
-            except Exception:
+            except (socket.error, IOError):
                 logger.debug('Socket error while sending data')
                 self.owner.disconnected()
             else:
@@ -214,7 +214,7 @@ class TCPSocket(PlugIn):
                     data = repr(data)
                 logger.debug('sent: %s' % data)
                 if hasattr(self.owner, "Dispatcher"):
-                    self.owner.Dispatcher.event("", DATA_SENT, data)
+                    self.owner.Dispatcher.event('', DATA_SENT, data)
 
     def pending_data(self, timeout=0):
         """
