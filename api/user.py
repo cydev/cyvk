@@ -20,5 +20,6 @@ def get_user_data(uid, target_uid, fields=None):
     else:
         data = {}
         for key in fields:
-            data[key] = "Unknown error when trying to get user data. We're so sorry."
+            data[key] = "<unknown error>"
+            _logger.error('failed to parse %s, got blank response' % fields)
     return data
