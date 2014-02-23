@@ -1,6 +1,8 @@
+# coding=utf-8
 from __future__ import unicode_literals
 from lxml.etree import tostring
 from lxml import etree
+from namespaces import NS_NICK
 
 
 def update_if_exist(d, val, name):
@@ -12,11 +14,13 @@ class Stanza(object):
     """
     XMPP communication primitive
     """
-    def __init__(self, element_type, origin=None, destination=None, stanza_type=None):
+    def __init__(self, element_type, origin=None, destination=None, stanza_type=None, namespace=None, stanza_id=None):
         self.element_name = element_type
         self.origin = origin
         self.destination = destination
         self.stanza_type = stanza_type
+        self.namespace = namespace
+        self.stanza_id = stanza_id
         self.base = None
         self.build()
 
@@ -25,11 +29,13 @@ class Stanza(object):
         update_if_exist(attributes, self.origin, 'from')
         update_if_exist(attributes, self.destination, 'to')
         update_if_exist(attributes, self.stanza_type, 'type')
+        update_if_exist(attributes, self.namespace, 'xmlns')
+        update_if_exist(attributes, self.stanza_id, 'id')
         base_element = etree.Element(self.element_name, attributes)
         self.base = base_element
 
     def __str__(self):
-        return tostring(self.base)
+        return tostring(self.base, encoding='utf-8')
 
 
 class Message(Stanza):
@@ -48,13 +54,18 @@ class Presence(Stanza):
     """
     Network availability message of entity
     """
-    def __init__(self, origin, destination, status=None, show=None):
+    def __init__(self, origin, destination, status=None, show=None, nickname=None):
         self.status = status
         self.show = show
+        self.nickname = nickname
         super(Presence, self).__init__('presence', origin, destination)
 
     def build(self):
         super(Presence, self).build()
+
+        if self.nickname:
+            show = etree.SubElement(self.base, 'nick', xmlns=NS_NICK)
+            show.text = self.nickname
 
         if self.show:
             show = etree.SubElement(self.base, 'show')
@@ -75,5 +86,5 @@ class InfoQuery(Stanza):
 if __name__ == '__main__':
     s = Stanza('iq', 'vk.cydev', stanza_type='hallo')
     m = Message('cyvk@vk.cydev', 'ernado@vk.cydev', 'chat')
-    p = Presence('vk.s1.cydev', 'ernado@vk.cydev', 'down the')
+    p = Presence('vk.s1.cydev', 'ernado@vk.cydev', 'down the', nickname='Няшный Бишка')
     print(p)
