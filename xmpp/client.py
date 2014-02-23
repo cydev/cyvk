@@ -1,3 +1,4 @@
+from __future__ import unicode_literals
 from xmpp import auth, dispatcher, transports
 import logging
 logger = logging.getLogger("xmpp")
@@ -18,15 +19,11 @@ class Component(object):
         self.domains = [server, ]
 
     def register_disconnect_handler(self, handler):
-        """
-        Register handler that will be called on disconnect.
-        """
+        # Register handler that will be called on disconnect.
         self.disconnect_handlers.append(handler)
 
     def disconnected(self):
-        """
-        Called on disconnection. Calls disconnect handlers and cleans things up.
-        """
+        # Called on disconnection. Calls disconnect handlers
         self.connected = None
         logger.warning('disconnect detected')
         for handler in self.disconnect_handlers:
@@ -39,9 +36,7 @@ class Component(object):
         return self.connected
 
     def connect(self, server=None):
-        """
-        Make a tcp/ip connection, protect it with tls/ssl if possible and start XMPP stream.
-        """
+        # Make a tcp/ip connection and start XMPP stream.
         if not server:
             server = (self.server, self.port)
         sock = transports.TCPSocket(server)
