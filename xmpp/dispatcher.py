@@ -5,7 +5,6 @@ Contains one tunable attribute: DefaultTimeout (25 seconds by default). It defin
 Dispatcher.SendAndWaitForResponce method will wait for reply stanza before giving up.
 """
 from __future__ import unicode_literals
-import sys
 from xml.parsers.expat import ExpatError
 import logging
 
@@ -24,15 +23,13 @@ class Dispatcher(PlugIn):
     Can be plugged out/in to restart these headers (used for SASL f.e.).
     """
 
-    def __init__(self):
+    def __init__(self, connection, client):
         PlugIn.__init__(self)
         self.stream = None
         self.meta_stream = None
         self.handlers = {}
         self._expected = {}
         self._defaultHandler = None
-        self._pendingExceptions = []
-        self._eventHandler = None
         self._exported_methods = [
             self.process,
             self.register_handler,
@@ -40,8 +37,9 @@ class Dispatcher(PlugIn):
             self.send,
             self.disconnect,
         ]
-        self._owner_send = None
         self.connection = None
+        self.client = client
+        self.connection = connection
 
     def dump_handlers(self):
         """
@@ -64,26 +62,22 @@ class Dispatcher(PlugIn):
         logger.debug('dispatcher init')
         self.register_namespace('unknown')
         self.register_namespace(NS_STREAMS)
-        self.register_namespace(self.owner.default_namespace)
+        self.register_namespace(self.client.default_namespace)
         self.register_protocol('iq', Iq)
         self.register_protocol('presence', Presence)
         self.register_protocol('message', Message)
         self.register_handler('error', self.stream_error_handler, xml_ns=NS_STREAMS)
+        self.stream_init()
 
     def plugin(self, owner):
         """
         Plug the Dispatcher instance into Client class instance and send initial stream header. Used internally.
         """
-        logger.debug('dispatcher plugin')
+        logger.error('dispatcher plugin')
         self._init()
-        for method in self._old_owners_methods:
-            if method.__name__ == 'send':
-                self._owner_send = method
-                break
-        self.owner.last_err_node = None
-        self.owner.last_err = None
-        self.owner.last_err_code = None
-        self.stream_init()
+        logger.error('owner %s' % self.owner)
+        logger.error('connection send %s' % self.connection.send)
+        # self.stream_init()
 
     def plugout(self):
         """
@@ -98,17 +92,17 @@ class Dispatcher(PlugIn):
         """
         Send an initial stream header.
         """
-        logger.debug('dispatcher stream init')
+        logger.error('dispatcher stream init')
         self.stream = simplexml.NodeBuilder()
         self.stream._dispatch_depth = 2
         self.stream.dispatch = self.dispatch
         self.stream.stream_header_received = self._check_stream_start
         self.stream.features = None
         self.meta_stream = Node('stream:stream')
-        self.meta_stream.setNamespace(self.owner.namespace)
+        self.meta_stream.setNamespace(self.client.namespace)
         self.meta_stream.setAttr('version', '1.0')
         self.meta_stream.setAttr('xmlns:stream', NS_STREAMS)
-        self.owner.send('<?xml version="1.0"?>%s>' % str(self.meta_stream)[:-2])
+        self.connection.send('<?xml version="1.0"?>%s>' % str(self.meta_stream)[:-2])
 
     @staticmethod
     def _check_stream_start(ns, tag, _):
@@ -127,22 +121,15 @@ class Dispatcher(PlugIn):
         """
         logger.debug('dispatcher process')
 
-        if self._pendingExceptions:
-            e = self._pendingExceptions.pop()
-            raise e[0], e[1], e[2]
-
-        if self.owner.connection.pending_data(timeout):
+        if self.connection.pending_data(timeout):
             try:
-                data = self.owner.connection.receive()
+                data = self.connection.receive()
             except IOError:
                 return None
             try:
                 self.stream.Parse(data)
             except ExpatError:
                 pass
-            if self._pendingExceptions:
-                e = self._pendingExceptions.pop()
-                raise e[0], e[1], e[2]
             if data:
                 return len(data)
         return "0"
@@ -164,7 +151,7 @@ class Dispatcher(PlugIn):
         Needed to start registering handlers for such stanzas.
         Iq, message and presence protocols are registered by default.
         """
-        namespace = namespace or self.owner.default_namespace
+        namespace = namespace or self.client.default_namespace
         logger.debug('registering protocol "%s" as %s(%s)' % (tag_name, name, namespace))
         self.handlers[namespace][tag_name] = dict(type=name, default=[])
 
@@ -186,8 +173,7 @@ class Dispatcher(PlugIn):
                 will be called first nevertheless).
             "system" - call handler even if NodeProcessed Exception were raised already.
         """
-        if not xml_ns:
-            xml_ns = self.owner.default_namespace
+        xml_ns = xml_ns or self.client.default_namespace
         logger.debug('Registering handler %s for "%s" type->%s ns->%s(%s)' % (handler, name, typ, ns, xml_ns))
         if not typ and not ns:
             typ = 'default'
@@ -217,17 +203,6 @@ class Dispatcher(PlugIn):
         else:
             exc = StreamError
         raise exc(text)
-
-    def event(self, realm, event, data):
-        """
-        Raise some event. Takes three arguments:
-        1) "realm" - scope of event. Usually a namespace.
-        2) "event" - the event itself. F.e. "SUCCESSFUL SEND".
-        3) data that comes along with event. Depends on event.
-        """
-        logger.debug('handling event %s' % event)
-        if self._eventHandler:
-            self._eventHandler(realm, event, data)
 
     def dispatch(self, stanza, session=None):
         """
@@ -302,8 +277,6 @@ class Dispatcher(PlugIn):
                     handler["func"](session, stanza)
                 except NodeProcessed:
                     user = 0
-                except Exception:
-                    self._pendingExceptions.insert(0, sys.exc_info())
         if user and self._defaultHandler:
             self._defaultHandler(session, stanza)
 
@@ -314,7 +287,7 @@ class Dispatcher(PlugIn):
         """
         logger.debug('sending %s' % stanza)
         if isinstance(stanza, basestring):
-            return self._owner_send(stanza)
+            return self.connection.send(stanza)
         if not isinstance(stanza, Stanza):
             stanza_id = None
         elif not stanza.getID():
@@ -323,17 +296,17 @@ class Dispatcher(PlugIn):
             stanza.setID(stanza_id)
         else:
             stanza_id = stanza.getID()
-        if self.owner.registered_name and not stanza.getAttr('from'):
-            stanza.setAttr('from', self.owner.registered_name)
-        stanza.setNamespace(self.owner.namespace)
+        if self.client.registered_name and not stanza.getAttr('from'):
+            stanza.setAttr('from', self.client.registered_name)
+        stanza.setNamespace(self.client.namespace)
         stanza.setParent(self.meta_stream)
-        self._owner_send(stanza)
+        self.connection.send(stanza)
         return stanza_id
 
     def disconnect(self):
         """
         Send a stream terminator and and handle all incoming stanzas before stream closure.
         """
-        self._owner_send('</stream:stream>')
+        self.connection.send('</stream:stream>')
         while self.process(1):
             pass

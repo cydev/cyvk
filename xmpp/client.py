@@ -15,7 +15,7 @@ class Component(object):
         self.connected = None
         self.connection = None
         self.registered_name = None
-        self.dispatcher = dispatcher.Dispatcher()
+        self.dispatcher = None
         self.domains = [server, ]
         self.auth_client = auth.AuthClient(self)
 
@@ -41,12 +41,13 @@ class Component(object):
         if not server:
             server = (self.server, self.port)
         sock = transports.TCPSocket(server)
-        connected = sock.attach(self)
+        connected = sock.connect(server)
         if not connected:
             sock.remove()
             return None
         self.server = server
         self.connected = True
+        self.dispatcher = dispatcher.Dispatcher(sock, self)
         self.dispatcher.attach(self)
 
         while self.dispatcher.stream.document_attrs is None:
@@ -58,8 +59,8 @@ class Component(object):
                 pass
         return self.connected
 
-    def process(self, _):
-        raise NotImplementedError('process')
+    def process(self, timeout):
+        self.dispatcher.process(timeout)
 
     def auth(self, user, password):
         return self.auth_client.auth_component(user, password)

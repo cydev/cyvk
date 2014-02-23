@@ -1,3 +1,4 @@
+# coding=utf-8
 """
 This module contains the low-level implementations of xmpppy connect methods or
 (in other words) transports for xmpp-stanzas.
@@ -10,15 +11,12 @@ Transports are stackable so you - f.e. TLS use HTPPROXYsocket or TCPsocket as mo
 
 Also exception 'error' is defined to allow capture of this module specific exceptions.
 """
-
-import sys
+from __future__ import unicode_literals
 import socket
 from select import select
 import logging
 
 from xmpp.simplexml import ustr
-from xmpp.plugin import PlugIn
-
 logger = logging.getLogger("xmpp")
 
 try:
@@ -31,25 +29,7 @@ DATA_SENT = 'DATA SENT'
 BUFF_LEN = 1024
 
 
-class Error:
-    """
-    An exception to be raised in case of low-level errors in methods of 'transports' module.
-    """
-
-    def __init__(self, comment):
-        """
-        Cache the descriptive string.
-        """
-        self._comment = comment
-
-    def __str__(self):
-        """
-        Serialize exception into pre-cached descriptive string.
-        """
-        return self._comment
-
-
-class TCPSocket(PlugIn):
+class TCPSocket(object):
     """
     This class defines direct TCP connection method.
     """
@@ -61,28 +41,11 @@ class TCPSocket(PlugIn):
         ('_xmpp-client._tcp.' + host) SRV record in DNS and connect to the found (if it is)
         server instead.
         """
-        PlugIn.__init__(self)
-        self._exported_methods = [self.send, self.disconnect]
         self._server, self.use_srv = server, use_srv
         self._sock = None
         self._send = None
         self._receive = None
         self._seen_data = None
-
-    def plugin(self, owner):
-        """
-        Fire up connection. Return non-empty string on success.
-        Also registers self.disconnected method in the owner's dispatcher.
-        Called internally.
-        """
-        if not self._server:
-            self._server = (self.owner.Server, 5222)
-        server = self._server
-        if not self.connect(server):
-            return None
-        self.owner.connection = self
-        self.owner.register_disconnect_handler(self.disconnected)
-        return "ok"
 
     def get_host(self):
         return self._server[0]
@@ -117,16 +80,6 @@ class TCPSocket(PlugIn):
             logger.debug("Successfully connected to remote host %s." % repr(server))
             return 'ok'
 
-    def plugout(self):
-        """
-        Disconnect from the remote server and unregister self.disconnected method from
-        the owner's dispatcher.
-        """
-        self._sock.close()
-        if hasattr(self.owner, "Connection"):
-            del self.owner.Connection
-            self.owner.UnregisterDisconnectHandler(self.disconnected)
-
     def receive(self):
         """
         Reads all pending incoming data.
@@ -137,32 +90,21 @@ class TCPSocket(PlugIn):
         except socket.sslerror as e:
             self._seen_data = 0
             if e[0] in (socket.SSL_ERROR_WANT_READ, socket.SSL_ERROR_WANT_WRITE):
-                return ''
-            logger.error('Socket error while receiving data')
-            sys.exc_clear()
-            self.owner.disconnected()
-            raise IOError('disconnected')
+                return None
+            raise IOError('socket error while receiving data')
         except (IOError, KeyError):
             data = ''
         while self.pending_data(0):
-            try:
-                add = self._receive(BUFF_LEN)
-                if not add:
-                    break
-                data += add
-            except socket.error:
+            add = self._receive(BUFF_LEN)
+            if not add:
                 break
+            data += add
 
         if not data:
-            logger.error('socket error while receiving data')
-            sys.exc_clear()
-            self.owner.disconnected()
-            raise IOError("Disconnected!")
+            raise IOError("no data received")
 
         self._seen_data = 1
         logger.debug('got: %s' % data)
-        if hasattr(self.owner, "Dispatcher"):
-            self.owner.Dispatcher.event("", DATA_RECEIVED, data)
         return data
 
     def send(self, data, timeout=0.002):
@@ -176,18 +118,15 @@ class TCPSocket(PlugIn):
             data = ustr(data).encode("utf-8")
         while not select((), [self._sock], (), timeout)[1]:
             pass
+        try:
+            self._send(data)
+        except (socket.error, IOError):
+            logger.debug('disconnected from server')
+            raise
         else:
-            try:
-                self._send(data)
-            except (socket.error, IOError):
-                logger.debug('Socket error while sending data')
-                self.owner.disconnected()
-            else:
-                if not data.strip():
-                    data = repr(data)
-                logger.debug('sent: %s' % data)
-                if hasattr(self.owner, "Dispatcher"):
-                    self.owner.Dispatcher.event('', DATA_SENT, data)
+            if not data.strip():
+                data = repr(data)
+            logger.debug('sent: %s' % data.decode('utf-8'))
 
     def pending_data(self, timeout=0):
         """

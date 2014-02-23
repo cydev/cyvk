@@ -29,8 +29,7 @@ logger = log.get_logger()
 def get_disconnect_handler(c):
     def handler():
         logger.debug('handling disconnect')
-        if c.is_connected():
-            c.disconnect()
+        c.disconnect()
 
     return handler
 
