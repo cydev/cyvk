@@ -9,12 +9,12 @@ import logging
 logger = logging.getLogger("xmpp")
 
 
-class CommonClient:
+class CommonClient(object):
     """
     Base for Client and Component classes.
     """
 
-    def __init__(self, server, port=5222, debug=None):
+    def __init__(self, server, port=5222):
         """
         Caches server name and (optionally) port to connect to. "debug" parameter specifies
         the debug IDs that will go into debug output. You can either specifiy an "include"
@@ -28,17 +28,15 @@ class CommonClient:
         self.default_namespace = self.namespace
         self.disconnect_handlers = []
         self.server = server
-        self.proxy = None
         self.port = port
         self.owner = self
         self.registered_name = None
         self.connected = ''
-        self.route = 0
         self.connection = None
         self.user = None
         self.password = None
         self.resource = None
-        self.dispatcher = None
+        self.dispatcher = dispatcher.Dispatcher()
 
     def register_disconnect_handler(self, handler):
         """
@@ -72,29 +70,28 @@ class CommonClient:
         """
         return self.connected
 
-    def connect(self, server=None, proxy=None, ssl=None, use_srv=False):
+    def connect(self, server=None):
         """
         Make a tcp/ip connection, protect it with tls/ssl if possible and start XMPP stream.
         Returns None or "tcp" or "tls", depending on the result.
         """
         if not server:
             server = (self.server, self.port)
-        if proxy:
-            raise NotImplementedError('proxy')
-        sock = transports.TCPSocket(server, use_srv)
+        sock = transports.TCPSocket(server)
         connected = sock.attach(self)
         if not connected:
             sock.remove()
             return None
-        self.server, self.proxy = server, proxy
+        self.server = server
         self.connected = "tcp"
-        dispatcher.Dispatcher().attach(self)
-        while self.Dispatcher.stream.document_attrs is None:
+        self.dispatcher.attach(self)
+
+        while self.dispatcher.stream.document_attrs is None:
             if not self.process(1):
                 return None
-        document_attrs = self.Dispatcher.stream.document_attrs
+        document_attrs = self.dispatcher.stream.document_attrs
         if 'version' in document_attrs and document_attrs['version'] == "1.0":
-            while not self.Dispatcher.stream.features and self.process(1):
+            while not self.dispatcher.stream.features and self.process(1):
                 pass  # If we get version 1.0 stream the features tag MUST BE presented
         return self.connected
 
@@ -107,48 +104,12 @@ class Component(CommonClient):
     Component class. The only difference from CommonClient is ability to perform component authentication.
     """
 
-    def __init__(self, transport, port=5347, typ=None, debug=None, domains=None, sasl=0, bind=0, route=0, xcp=0):
-        """
-        Init function for Components.
-        As components use a different auth mechanism which includes the namespace of the component.
-        Jabberd1.4 and Ejabberd use the default namespace then for all client messages.
-        Jabberd2 uses jabber:client.
-        "transport" argument is a transport name that you are going to serve (f.e. "irc.localhost").
-        "port" can be specified if "transport" resolves to correct IP. If it is not then you'll have to specify IP
-        and port while calling "connect()".
-        If you are going to serve several different domains with single Component instance - you must list them ALL
-        in the "domains" argument.
-        For jabberd2 servers you should set typ="jabberd2" argument.
-        """
-        CommonClient.__init__(self, transport, port=port, debug=debug)
-        self.typ = typ
-        self.sasl = sasl
-        self.bind = bind
-        self.route = route
-        self.xcp = xcp
-        if domains:
-            self.domains = domains
-        else:
-            self.domains = [transport]
+    def __init__(self, transport, port=5347):
+        super(Component, self).__init__(transport, port)
+        self.domains = [transport, ]
 
     def connect(self, server=None, proxy=None):
-        """
-        This will connect to the server, and if the features tag is found then set
-        the namespace to be jabber:client as that is required for jabberd2.
-        "server" and "proxy" arguments have the same meaning as in xmpp.Client.connect().
-        """
-        if self.sasl:
-            self.namespace = auth.NS_COMPONENT_1
-            self.server = server[0]
-        CommonClient.connect(self, server=server, proxy=proxy)
-        if self.connected and (
-                        self.typ == "jabberd2" or not self.typ and self.Dispatcher.stream.features is not None) and (
-                not self.xcp):
-            self.default_namespace = auth.NS_CLIENT
-            self.Dispatcher.register_namespace(self.default_namespace)
-            self.Dispatcher.register_protocol("iq", dispatcher.Iq)
-            self.Dispatcher.register_protocol("message", dispatcher.Message)
-            self.Dispatcher.register_protocol("presence", dispatcher.Presence)
+        super(Component, self).connect(server)
         return self.connected
 
     def auth(self, user, password):
@@ -157,4 +118,3 @@ class Component(CommonClient):
             self.connected += "+old_auth"
             return "old_auth"
         return None
-

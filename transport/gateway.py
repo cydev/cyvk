@@ -64,7 +64,7 @@ def connect(c):
 
 
 def get_transport():
-    return xmpp.Component(HOST, debug=DEBUG_XMPPPY)
+    return xmpp.Component(HOST)
 
 
 def register_handler(c, name, handler):
