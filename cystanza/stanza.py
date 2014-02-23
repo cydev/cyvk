@@ -22,7 +22,7 @@ class Stanza(object):
         self.namespace = namespace
         self.stanza_id = stanza_id
         self.base = None
-        self.build()
+        # self.build()
 
     def build(self):
         attributes = {}
@@ -35,6 +35,7 @@ class Stanza(object):
         self.base = base_element
 
     def __str__(self):
+        self.build()
         return tostring(self.base, encoding='utf-8')
 
 
@@ -45,9 +46,25 @@ class Message(Stanza):
     def __init__(self, origin, destination, message_type, message_id=None):
         if message_type not in ['normal', 'chat', 'groupchat', 'headline', 'error']:
             raise ValueError('unknown message type %s' % message_type)
-        super(Message, self).__init__('message', origin, destination, message_type)
         self.message_type = message_type
         self.message_id = message_id
+        super(Message, self).__init__('message', origin, destination, message_type)
+
+
+class ChatMessage(Message):
+    def __init__(self, origin, destination, text, subject=None, message_type='chat'):
+        self.text = text
+        self.subject = subject
+        super(ChatMessage, self).__init__(origin, destination, message_type)
+
+    def build(self):
+        super(ChatMessage, self).build()
+        body = etree.SubElement(self.base, 'body')
+        body.text = self.text
+
+        if self.subject:
+            subject = etree.SubElement(self.base, 'subject')
+            subject.text = self.subject
 
 
 class Presence(Stanza):
@@ -86,5 +103,8 @@ class InfoQuery(Stanza):
 if __name__ == '__main__':
     s = Stanza('iq', 'vk.cydev', stanza_type='hallo')
     m = Message('cyvk@vk.cydev', 'ernado@vk.cydev', 'chat')
-    p = Presence('vk.s1.cydev', 'ernado@vk.cydev', 'down the', nickname='Няшный Бишка')
-    print(p)
+    p = Presence('vk.s1.cydev', 'ernado@vk.cydev', 'down the', nickname='Test')
+    # b = p.base
+    # b.append(s.base)
+    t = ChatMessage('ernado@vk.s1.cydev', 'vk.s1.cydev', 'hello, азаз', subject='приветствие')
+    print(t)
