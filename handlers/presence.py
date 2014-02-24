@@ -6,11 +6,12 @@ from parallel.stanzas import push
 from parallel.updates import set_online
 from events.toggle import raise_event
 from events.constants import USER_ONLINE
-from transport import user as user_api, statuses
+from transport import statuses
 from config import TRANSPORT_ID
 from transport.statuses import get_status_stanza
 from transport.presence import PresenceWrapper
 import compat
+import user as user_api
 
 _logger = compat.get_logger()
 
@@ -141,7 +142,7 @@ def _subscribe(jid, presence):
         push(get_status_stanza(TRANSPORT_ID, origin, status='subscribed'))
         push(get_status_stanza(TRANSPORT_ID, origin))
     else:
-        push(get_status_stanza(destination, origin,  status='subscribed'))
+        push(get_status_stanza(destination, origin, status='subscribed'))
 
         client_friends = realtime.get_friends(jid)
         _logger.debug('sending presence about friend <subscribe>')

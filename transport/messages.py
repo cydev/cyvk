@@ -3,10 +3,6 @@ import time
 from xmpp import Message
 
 
-class MessageAdapter(object):
-    pass
-
-
 def get_message_stanza(jid_to, body, jid_from, timestamp=None):
     assert isinstance(jid_to, unicode)
     assert isinstance(jid_from, unicode)

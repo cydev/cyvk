@@ -1,14 +1,18 @@
 """
 Main xmpppy mechanism. Provides library with methods to assign different handlers
 to different XMPP stanzas.
-Contains one tunable attribute: DefaultTimeout (25 seconds by default). It defines time that
-Dispatcher.SendAndWaitForResponce method will wait for reply stanza before giving up.
 """
 from __future__ import unicode_literals
+
+from cystanza.namespaces import NS_COMPONENT_ACCEPT
 from xml.parsers.expat import ExpatError
 import logging
+from lxml import etree
+from cystanza.builder import Builder
 
 from xmpp.stanza import NS_STREAMS, Iq, Message, Presence, Node, Stanza, NS_XMPP_STREAMS, stream_exceptions
+from cystanza.stanza import STANZA_MESSAGE, STANZA_IQ, STANZA_PRESENCE
+from cystanza.stanza import Stanza as CyStanza
 from xmpp import simplexml
 import uuid
 from .exceptions import StreamError, NodeProcessed
@@ -26,6 +30,7 @@ class Dispatcher():
         self.stream = None
         self.meta_stream = None
         self.handlers = {}
+        self.namespace = NS_COMPONENT_ACCEPT
         self._expected = {}
         self._defaultHandler = None
         self._exported_methods = [
@@ -38,6 +43,8 @@ class Dispatcher():
         self.connection = None
         self.client = client
         self.connection = connection
+        self.parser = etree.XMLPullParser(events=('start', 'end'))
+        self.builder = Builder(self.test_dispatch)
 
     def init(self):
         """
@@ -46,7 +53,7 @@ class Dispatcher():
         logger.debug('dispatcher init')
         self.register_namespace('unknown')
         self.register_namespace(NS_STREAMS)
-        self.register_namespace(self.client.default_namespace)
+        self.register_namespace(self.namespace)
         self.register_protocol('iq', Iq)
         self.register_protocol('presence', Presence)
         self.register_protocol('message', Message)
@@ -62,16 +69,44 @@ class Dispatcher():
         self.stream.dispatch = self.dispatch
         self.stream.stream_header_received = self._check_stream_start
         self.stream.features = None
-        self.meta_stream = Node('stream:stream')
-        self.meta_stream.setNamespace(self.client.namespace)
-        self.meta_stream.setAttr('version', '1.0')
-        self.meta_stream.setAttr('xmlns:stream', NS_STREAMS)
-        self.connection.send('<?xml version="1.0"?>%s>' % str(self.meta_stream)[:-2])
+        ns = self.namespace
+        init_str = '<?xml version="1.0"?><stream:stream xmlns="%s" version="1.0" xmlns:stream="%s">' % (ns, NS_STREAMS)
+        self.connection.send(init_str)
 
     @staticmethod
     def _check_stream_start(ns, tag, _):
         if ns != NS_STREAMS or tag != 'stream':
             raise ValueError('incorrect stream start: (%s,%s)' % (tag, ns))
+
+    @staticmethod
+    def test_dispatch(stanza):
+        stanza_name = stanza.xpath('local-name()')
+        attrs = stanza.attrib
+
+        def get_attr(name):
+            if name in attrs:
+                return attrs[name]
+            return None
+
+        if stanza_name == STANZA_PRESENCE:
+            p = Presence(get_attr('to'), get_attr('type'), frm=get_attr('from'))
+            logger.error(p)
+
+        if stanza_name == STANZA_MESSAGE:
+            logger.error('got message: %s' % etree.tostring(stanza, encoding='utf-8'))
+
+            text = stanza.findall('.//body')
+            if text:
+                logger.error('message text: %s' % etree.tostring(text))
+
+            compisong = stanza.find('composing')
+            if compisong:
+                logger.error('compising lalka')
+
+        if stanza_name == STANZA_IQ:
+            logger.error('got iq')
+
+        logger.error('dispatched: %s' % stanza.xpath('local-name()'))
 
     def process(self, timeout=8):
         """
@@ -92,12 +127,16 @@ class Dispatcher():
                 logger.error(e)
                 return None
             try:
+                self.builder.parse(data)
+            except etree.XMLSyntaxError as e:
+                logger.error('builder error: ' % e)
+            try:
                 self.stream.Parse(data)
-            except ExpatError as e:
-                logger.error(e)
+            except (ExpatError, etree.XMLSyntaxError) as e:
+                logger.error('expat error: %s' % e)
                 pass
             if data:
-                logger.error(data)
+                # logger.error(data)
                 return len(data)
         logger.error('no data')
         return "0"
@@ -119,7 +158,7 @@ class Dispatcher():
         Needed to start registering handlers for such stanzas.
         Iq, message and presence protocols are registered by default.
         """
-        namespace = namespace or self.client.default_namespace
+        namespace = namespace or self.namespace
         logger.debug('registering protocol "%s" as %s(%s)' % (tag_name, name, namespace))
         self.handlers[namespace][tag_name] = dict(type=name, default=[])
 
@@ -141,7 +180,7 @@ class Dispatcher():
                 will be called first nevertheless).
             "system" - call handler even if NodeProcessed Exception were raised already.
         """
-        xml_ns = xml_ns or self.client.default_namespace
+        xml_ns = xml_ns or self.namespace
         logger.debug('Registering handler %s for "%s" type->%s ns->%s(%s)' % (handler, name, typ, ns, xml_ns))
         if not typ and not ns:
             typ = 'default'
@@ -171,6 +210,10 @@ class Dispatcher():
         else:
             exc = StreamError
         raise exc(text)
+
+    def test_send(self, stanza):
+        if isinstance(stanza, CyStanza):
+            self.connection.send(stanza)
 
     def dispatch(self, stanza, session=None):
         """
@@ -264,10 +307,11 @@ class Dispatcher():
             stanza.setID(stanza_id)
         else:
             stanza_id = stanza.getID()
-        if self.client.registered_name and not stanza.getAttr('from'):
+        if not stanza.getAttr('from'):
             stanza.setAttr('from', self.client.registered_name)
-        stanza.setNamespace(self.client.namespace)
-        stanza.setParent(self.meta_stream)
+        stanza.setNamespace(self.namespace)
+        # stanza.setParent(self.meta_stream)
+        logger.error(stanza)
         self.connection.send(stanza)
         return stanza_id
 

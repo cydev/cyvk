@@ -1,9 +1,11 @@
 from __future__ import unicode_literals
 from hashlib import sha1
 from cystanza.namespaces import NS_COMPONENT_ACCEPT
+from cystanza.stanza import Stanza
 from stanza import Node
 from xmpp import dispatcher, transports
 import logging
+
 logger = logging.getLogger("xmpp")
 
 
@@ -84,4 +86,6 @@ class Component(object):
         self.dispatcher.register_handler(*args, **kwargs)
 
     def send(self, stanza):
+        if isinstance(stanza, Stanza):
+            return self.dispatcher.test_send(stanza)
         return self.dispatcher.send(stanza)

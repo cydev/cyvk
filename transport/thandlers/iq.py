@@ -6,14 +6,14 @@ import logging
 from config import IDENTIFIER, TRANSPORT_ID
 from handlers.iq import _send_form
 from parallel.stanzas import push
-from transport.features import TRANSPORT_FEATURES
+from features import TRANSPORT_FEATURES
 from parallel import realtime
 import config
 from transport.stanzas import generate_error
-import transport.user as user_api
+import user as user_api
 from xmpp.exceptions import NodeProcessed
 from xmpp.stanza import (NS_REGISTER,
-                           NS_DISCO_ITEMS, NS_DISCO_INFO, ERR_BAD_REQUEST, Node)
+                         NS_DISCO_ITEMS, NS_DISCO_INFO, ERR_BAD_REQUEST, Node)
 from errors import AuthenticationException
 import database
 

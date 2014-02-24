@@ -13,22 +13,18 @@ from friends import get_friend_jid
 from parallel import realtime
 from parallel.long_polling import start_polling
 
-import xmpp as xmpp
 from errors import CaptchaNeeded, InvalidTokenError, AuthenticationException
 from api.vkapi import is_application_user
 
 import database
-
+from cystanza.stanza import Presence as CyPresence
 
 logger = logging.getLogger("cyvk")
 
 
 def send_presence(target, jid_from, presence_type=None, nick=None, reason=None):
     logger.debug('sending presence for %s about %s' % (target, jid_from))
-    presence = xmpp.Presence(target, presence_type, frm=jid_from, status=reason)
-    if nick:
-        presence.setTag("nick", namespace=xmpp.NS_NICK)
-        presence.setTagData("nick", nick)
+    presence = CyPresence(jid_from, target, reason, nickname=nick, presence_type=presence_type)
     push(presence)
 
 

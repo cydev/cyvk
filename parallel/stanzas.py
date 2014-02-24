@@ -1,6 +1,9 @@
+# coding=utf-8
 from __future__ import unicode_literals
 
 from compat import get_logger
+from cystanza.stanza import Stanza as CyStanza
+
 _logger = get_logger()
 
 try:
@@ -15,13 +18,15 @@ from xmpp import Stanza as Stanza
 def push(stanza):
     """
     Add stanza to sending queue
-    @type stanza: Stanza
     @return:
     """
-    _logger.debug('pushing %s' % stanza)
+    # _logger.debug('pushing %s' % stanza)
 
-    if not isinstance(stanza, Stanza):
+    if not isinstance(stanza, Stanza) and not isinstance(stanza, CyStanza):
         raise ValueError('expected stanza, got %s' % type(stanza))
+
+    if isinstance(stanza, CyStanza):
+        stanza.base = None
 
     # todo: serialization to json?
     pickled_stanza = pickle.dumps(stanza)
