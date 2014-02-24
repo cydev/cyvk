@@ -2,7 +2,7 @@
 from __future__ import unicode_literals
 from lxml.etree import tostring
 from lxml import etree
-from namespaces import NS_NICK
+from namespaces import NS_NICK, NS_DELAY
 import uuid
 
 STANZA_MESSAGE = 'message'
@@ -52,19 +52,24 @@ class Message(Stanza):
     Message to or from transport with "from" attribute required
     """
 
-    def __init__(self, origin, destination, message_type, message_id=None):
+    def __init__(self, origin, destination, message_type, message_id=None, timestamp=None):
         if message_type not in ['normal', 'chat', 'groupchat', 'headline', 'error']:
             raise ValueError('unknown message type %s' % message_type)
         self.message_type = message_type
         self.message_id = message_id
+        self.timestamp = timestamp
         super(Message, self).__init__(STANZA_MESSAGE, origin, destination, message_type)
+
+    def build(self):
+        super(Message, self).build()
+        etree.SubElement(self.base, 'x', stamp=self.timestamp, xmlns=NS_DELAY)
 
 
 class ChatMessage(Message):
-    def __init__(self, origin, destination, text, subject=None, message_type='chat'):
+    def __init__(self, origin, destination, text, subject=None, message_type='chat', timestamp=None):
         self.text = text
         self.subject = subject
-        super(ChatMessage, self).__init__(origin, destination, message_type)
+        super(ChatMessage, self).__init__(origin, destination, message_type, timestamp=timestamp)
 
     def build(self):
         super(ChatMessage, self).build()
@@ -76,6 +81,15 @@ class ChatMessage(Message):
             subject.text = self.subject
 
         return self.base
+
+
+class Answer(Message):
+    def __init__(self, origin, destination, message_type='chat', message_id=None):
+        super(Answer, self).__init__(origin, destination, message_type=message_type, message_id=message_id)
+
+    def build(self):
+        super(Answer, self).build()
+        etree.SubElement(self.base, 'received', xmlns='urn:xmpp:receipts')
 
 
 class Presence(Stanza):

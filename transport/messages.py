@@ -1,6 +1,6 @@
 from __future__ import unicode_literals
 import time
-from xmpp import Message
+from cystanza.stanza import ChatMessage, Answer
 
 
 def get_message_stanza(jid_to, body, jid_from, timestamp=None):
@@ -8,12 +8,11 @@ def get_message_stanza(jid_to, body, jid_from, timestamp=None):
     assert isinstance(jid_from, unicode)
     assert isinstance(body, unicode)
 
-    message = Message(jid_to, body, "chat", frm=jid_from)
-
     if timestamp:
         timestamp = time.gmtime(timestamp)
-        message.setTimestamp(time.strftime("%Y%m%dT%H:%M:%S", timestamp))
+        timestamp = time.strftime("%Y%m%dT%H:%M:%S", timestamp)
 
+    message = ChatMessage(jid_from, jid_to, body, timestamp=timestamp)
     return message
 
 
@@ -25,12 +24,5 @@ def get_answer_stanza(jid_from, jid_to, message):
         return None
 
     m_id = message.getID()
-
-    answer = Message(jid_from)
-    answer.setFrom(jid_to)
-    answer.setID(m_id)
-
-    tag = answer.setTag("received", namespace="urn:xmpp:receipts")
-    tag.setAttr("id", m_id)
-
+    answer = Answer(jid_from, jid_to, message_id=m_id)
     return answer
