@@ -112,8 +112,8 @@ def iq_register_handler(stanza):
         return
 
     try:
-        handler = {'get': _send_form, 'set': _process_form}[stanza.getType()]
-        push(handler(stanza, jid))
+        h = {'get': _send_form, 'set': _process_form}[stanza.getType()]
+        push(h(stanza, jid))
     except (NotImplementedError, KeyError) as e:
         logger.debug('requested feature not implemented: %s' % e)
         push(generate_error(stanza, 0, "Requested feature not implemented: %s" % e))
