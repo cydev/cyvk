@@ -15,9 +15,11 @@ from handlers import message_handler
 
 from xmpp.stanza import NS_STREAMS, Iq, Message, Presence, Node, Stanza, NS_XMPP_STREAMS, stream_exceptions
 from cystanza.stanza import Stanza as CyStanza
+from cystanza.stanza import Presence as CyPresence
 from xmpp import simplexml
 import uuid
 from .exceptions import StreamError, NodeProcessed
+from handlers import presence_handler
 
 logger = logging.getLogger("xmpp")
 
@@ -78,6 +80,8 @@ class Dispatcher():
         s = get_stanza(stanza)
         if isinstance(s, ChatMessage):
             message_handler(s)
+        if isinstance(s, CyPresence):
+            presence_handler(s)
         logger.error(s)
 
     def process(self, timeout=8):

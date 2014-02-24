@@ -77,7 +77,7 @@ def initialize():
     authenticate(transport)
     logger.info('registering handlers')
     register_handler(transport, "iq", iq_handler)
-    register_handler(transport, "presence", presence_handler)
+    # register_handler(transport, "presence", presence_handler)
     # register_handler(transport, "message", message_handler)
     realtime.reset_online_users()
     logger.info('initialization finished')

@@ -9,7 +9,7 @@ from events.constants import USER_ONLINE
 import statuses
 from config import TRANSPORT_ID
 from statuses import get_status_stanza
-from transport.presence import PresenceWrapper
+from cystanza.stanza import Presence
 import compat
 import user as user_api
 
@@ -19,7 +19,7 @@ _logger = compat.get_logger()
 def _presence_handler_wrapper(h):
     def wrapper(jid, presence):
         assert isinstance(jid, unicode)
-        assert isinstance(presence, PresenceWrapper)
+        assert isinstance(presence, Presence)
         h(jid, presence)
 
     return wrapper
@@ -29,7 +29,7 @@ def _unavailable(jid, presence):
     """
     Unavailable presence handler
 
-    @type presence: PresenceWrapper
+    @type presence: Presence
     @type jid: str
     @param presence: Presence object
     @param jid: client jid
@@ -37,7 +37,7 @@ def _unavailable(jid, presence):
     """
     _logger.debug('unavailable presence %s' % presence)
 
-    if presence.destination_id != TRANSPORT_ID:
+    if presence.destination != TRANSPORT_ID:
         return
 
     _logger.warning('unavailable presence may be not implemented')
@@ -67,28 +67,28 @@ def _error(jid, presence):
 def _available(jid, presence):
     """
     Available status handler
-    @type presence: PresenceWrapper
+    @type presence: Presence
     @param presence: Presence object
     @param jid: client jid
     @return:
     """
-    if presence.destination_id != TRANSPORT_ID:
+    if presence.destination != TRANSPORT_ID:
         return
 
-    _logger.debug("user %s, will send sendInitPresence" % presence.origin_id)
-    _logger.warning('not adding resource %s to %s' % (presence.resource, jid))
+    _logger.debug("user %s, will send sendInitPresence" % presence.origin)
+    _logger.warning('not adding resource for %s' % jid)
 
 
 def _unsubscribe(jid, presence):
     """
     Client unsubscribe handler
     @type jid: str
-    @type presence: PresenceWrapper
+    @type presence: Presence
     @param presence: Presence object
     @param jid: client jid
     """
 
-    if realtime.is_client(jid) and presence.destination_id == TRANSPORT_ID:
+    if realtime.is_client(jid) and presence.destination == TRANSPORT_ID:
         database.remove_user(jid)
         _logger.debug("user removed registration: %s" % jid)
 
@@ -129,13 +129,13 @@ def _subscribe(jid, presence):
     Subscribe presence handler
 
     @type jid: str
-    @type presence: PresenceWrapper
+    @type presence: Presence
     @param presence: presence object
     @param jid: client jid
     @return:
     """
-    origin = presence.origin_id
-    destination = presence.destination_id
+    origin = presence.origin
+    destination = presence.destination
 
     if destination == TRANSPORT_ID:
         _logger.debug('sending presence about transport <subscribe>')
@@ -161,9 +161,6 @@ def _subscribe(jid, presence):
 
         push(get_status_stanza(destination, origin, status=friend_status))
 
-        # wtf?
-        push(get_status_stanza(origin, origin))
-
 
 _mapping = {'available': _available, 'probe': _available, None: _available,
             'unavailable': _unavailable, 'error': _error, 'subscribe': _subscribe,
@@ -173,7 +170,7 @@ _mapping = {'available': _available, 'probe': _available, None: _available,
 def _handle_presence(jid, presence):
     """
     Status update handler for client
-    @type presence: PresenceWrapper
+    @type presence: Presence
     @param presence: status presence
     @param jid: client jid
     """
@@ -184,15 +181,17 @@ def _handle_presence(jid, presence):
     except KeyError:
         _logger.debug('unable to handle status %s' % status)
 
-    if presence.destination_id == TRANSPORT_ID:
+    if presence.destination == TRANSPORT_ID:
         _logger.debug('setting last status %s for %s' % (status, jid))
         realtime.set_last_status(jid, status)
 
 
-def handler(_, stanza):
-    presence = PresenceWrapper(stanza)
+def handler(presence):
+    """
 
-    jid = presence.origin_id
+    :type stanza: Presence
+    """
+    jid = presence.origin
 
     _logger.debug('user %s presence handling: %s' % (jid, presence))
 
