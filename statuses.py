@@ -1,22 +1,15 @@
 from __future__ import unicode_literals
-# from xmpp import Message
 from config import TRANSPORT_ID
 
 from cystanza.stanza import Probe
-from cystanza.stanza import Presence as CyPresence
+from cystanza.stanza import Presence
 
 
 def get_status_stanza(origin, destination, nickname=None, status=None, reason=None):
     if status == 'online':
         status = None
 
-    # presence = Presence(destination, status, status=reason, frm=origin)
-    #
-    # if nickname:
-    #     presence.setTag('nick', namespace=NS_NICK)
-    #     presence.setTagData('nick', nickname)
-
-    presence = CyPresence(origin, destination, presence_type=status, status=reason, nickname=nickname)
+    presence = Presence(origin, destination, presence_type=status, status=reason, nickname=nickname)
 
     return presence
 
@@ -33,6 +26,6 @@ def get_probe_stanza(jid):
 
 
 def get_unavailable_stanza(jid):
-    return CyPresence(TRANSPORT_ID, jid, 'unavailable')
+    return Presence(TRANSPORT_ID, jid, 'unavailable')
 
 

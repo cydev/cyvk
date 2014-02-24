@@ -6,9 +6,9 @@ from parallel.stanzas import push
 from parallel.updates import set_online
 from events.toggle import raise_event
 from events.constants import USER_ONLINE
-from transport import statuses
+import statuses
 from config import TRANSPORT_ID
-from transport.statuses import get_status_stanza
+from statuses import get_status_stanza
 from transport.presence import PresenceWrapper
 import compat
 import user as user_api
@@ -42,8 +42,8 @@ def _unavailable(jid, presence):
 
     _logger.warning('unavailable presence may be not implemented')
     user_api.send_out_presence(jid)
-    xmpp_presence = statuses.get_unavailable_stanza(jid)
-    push(xmpp_presence)
+    stanza = statuses.get_unavailable_stanza(jid)
+    push(stanza)
     realtime.remove_online_user(jid)
 
 

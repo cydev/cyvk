@@ -13,7 +13,7 @@ def get(attrs, name):
         return None
 
 
-def normalize_jid(jid):
+def remove_resource(jid):
     if jid is None:
         return None
     if jid.find('/'):
@@ -27,8 +27,8 @@ def get_stanza(root):
     if stanza_name == 'handshake':
         logger.error('handshake got')
 
-    origin = normalize_jid(get(a, 'from'))
-    destination = normalize_jid(get(a, 'to'))
+    origin = remove_resource(get(a, 'from'))
+    destination = remove_resource(get(a, 'to'))
     stanza_type = get(a, 'type')
 
     if stanza_name == STANZA_PRESENCE:

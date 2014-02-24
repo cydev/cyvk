@@ -2,8 +2,9 @@ from __future__ import unicode_literals
 from friends import get_friend_jid
 from parallel import realtime
 from parallel.stanzas import push
-from transport.statuses import get_status_stanza
+from statuses import get_status_stanza
 from compat import get_logger
+
 _logger = get_logger()
 
 

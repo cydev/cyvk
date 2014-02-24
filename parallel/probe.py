@@ -1,7 +1,8 @@
 from database import get_all_users
 from parallel.stanzas import push
-from transport.statuses import get_probe_stanza
+from statuses import get_probe_stanza
 from compat import get_logger
+
 _logger = get_logger()
 
 
