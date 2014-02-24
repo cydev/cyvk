@@ -2,7 +2,7 @@
 from __future__ import unicode_literals
 from lxml.etree import tostring
 from lxml import etree
-from namespaces import NS_NICK, NS_DELAY
+from namespaces import NS_NICK, NS_DELAY, NS_RECEIPTS
 import uuid
 
 STANZA_MESSAGE = 'message'
@@ -16,12 +16,23 @@ def update_if_exist(d, val, name):
         d.update({name: val})
 
 
+def assert_unicode(val):
+    if val is not None and not isinstance(val, unicode):
+        raise ValueError('%s (%s) is not unicode' % (val, type(val)))
+
+
 class Stanza(object):
     """
     XMPP communication primitive
     """
 
     def __init__(self, element_type, origin=None, destination=None, stanza_type=None, namespace=None, stanza_id=None):
+        assert_unicode(element_type)
+        assert_unicode(origin)
+        assert_unicode(destination)
+        assert_unicode(stanza_type)
+        assert_unicode(namespace)
+        assert_unicode(stanza_id)
         self.element_name = element_type
         self.origin = origin
         self.destination = destination
@@ -62,13 +73,21 @@ class Message(Stanza):
 
     def build(self):
         super(Message, self).build()
-        etree.SubElement(self.base, 'x', stamp=self.timestamp, xmlns=NS_DELAY)
+
+        attrs = {'xmlns': NS_DELAY}
+        if self.timestamp:
+            attrs.update({'stamp': self.timestamp})
+        etree.SubElement(self.base, 'x', attrs)
+
+        return self.base
 
 
 class ChatMessage(Message):
-    def __init__(self, origin, destination, text, subject=None, message_type='chat', timestamp=None):
+    def __init__(self, origin, destination, text, subject=None,
+                 message_type='chat', timestamp=None, requests_answer=False):
         self.text = text
         self.subject = subject
+        self.requests_answer = requests_answer
         super(ChatMessage, self).__init__(origin, destination, message_type, timestamp=timestamp)
 
     def build(self):
@@ -79,6 +98,9 @@ class ChatMessage(Message):
         if self.subject:
             subject = etree.SubElement(self.base, 'subject')
             subject.text = self.subject
+
+        if self.requests_answer:
+            etree.SubElement(self.base, 'request', xmlns=NS_RECEIPTS)
 
         return self.base
 

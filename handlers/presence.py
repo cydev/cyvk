@@ -134,7 +134,7 @@ def _subscribe(jid, presence):
     @param jid: client jid
     @return:
     """
-    origin = presence.origin
+    origin = presence.origin_id
     destination = presence.destination_id
 
     if destination == TRANSPORT_ID:

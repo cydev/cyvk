@@ -17,6 +17,7 @@ from select import select
 import logging
 
 from xmpp.simplexml import ustr
+
 logger = logging.getLogger("xmpp")
 
 try:
@@ -104,7 +105,7 @@ class TCPSocket(object):
             raise IOError("no data received")
 
         self._seen_data = 1
-        logger.debug('got: %s' % data)
+        logger.debug('got: %s' % data.decode('utf-8'))
         return data
 
     def send(self, data, timeout=0.002):

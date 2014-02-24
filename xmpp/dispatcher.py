@@ -5,13 +5,15 @@ to different XMPP stanzas.
 from __future__ import unicode_literals
 
 from cystanza.namespaces import NS_COMPONENT_ACCEPT
+from cystanza.fabric import get_stanza
+from cystanza.stanza import ChatMessage
 from xml.parsers.expat import ExpatError
 import logging
 from lxml import etree
 from cystanza.builder import Builder
+from handlers import message_handler
 
 from xmpp.stanza import NS_STREAMS, Iq, Message, Presence, Node, Stanza, NS_XMPP_STREAMS, stream_exceptions
-from cystanza.stanza import STANZA_MESSAGE, STANZA_IQ, STANZA_PRESENCE
 from cystanza.stanza import Stanza as CyStanza
 from xmpp import simplexml
 import uuid
@@ -33,13 +35,6 @@ class Dispatcher():
         self.namespace = NS_COMPONENT_ACCEPT
         self._expected = {}
         self._defaultHandler = None
-        self._exported_methods = [
-            self.process,
-            self.register_handler,
-            self.register_protocol,
-            self.send,
-            self.disconnect,
-        ]
         self.connection = None
         self.client = client
         self.connection = connection
@@ -80,33 +75,10 @@ class Dispatcher():
 
     @staticmethod
     def test_dispatch(stanza):
-        stanza_name = stanza.xpath('local-name()')
-        attrs = stanza.attrib
-
-        def get_attr(name):
-            if name in attrs:
-                return attrs[name]
-            return None
-
-        if stanza_name == STANZA_PRESENCE:
-            p = Presence(get_attr('to'), get_attr('type'), frm=get_attr('from'))
-            logger.error(p)
-
-        if stanza_name == STANZA_MESSAGE:
-            logger.error('got message: %s' % etree.tostring(stanza, encoding='utf-8'))
-
-            text = stanza.findall('.//body')
-            if text:
-                logger.error('message text: %s' % etree.tostring(text))
-
-            compisong = stanza.find('composing')
-            if compisong:
-                logger.error('compising lalka')
-
-        if stanza_name == STANZA_IQ:
-            logger.error('got iq')
-
-        logger.error('dispatched: %s' % stanza.xpath('local-name()'))
+        s = get_stanza(stanza)
+        if isinstance(s, ChatMessage):
+            message_handler(s)
+        logger.error(s)
 
     def process(self, timeout=8):
         """
@@ -128,6 +100,7 @@ class Dispatcher():
                 return None
             try:
                 self.builder.parse(data)
+
             except etree.XMLSyntaxError as e:
                 logger.error('builder error: ' % e)
             try:

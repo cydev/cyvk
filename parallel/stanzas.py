@@ -12,7 +12,7 @@ except ImportError:
     import pickle
 
 from transport.stanza_queue import r, _get_stanza_queue_key
-from xmpp import Stanza as Stanza
+# from xmpp import Stanza as Stanza
 
 
 def push(stanza):
@@ -22,8 +22,8 @@ def push(stanza):
     """
     # _logger.debug('pushing %s' % stanza)
 
-    if not isinstance(stanza, Stanza) and not isinstance(stanza, CyStanza):
-        raise ValueError('expected stanza, got %s' % type(stanza))
+    # if not isinstance(stanza, Stanza) and not isinstance(stanza, CyStanza):
+    #     raise ValueError('expected stanza, got %s' % type(stanza))
 
     if isinstance(stanza, CyStanza):
         stanza.base = None

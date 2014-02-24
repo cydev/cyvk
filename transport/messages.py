@@ -1,6 +1,9 @@
 from __future__ import unicode_literals
 import time
+import compat
 from cystanza.stanza import ChatMessage, Answer
+
+_logger = compat.get_logger()
 
 
 def get_message_stanza(jid_to, body, jid_from, timestamp=None):
@@ -22,6 +25,8 @@ def get_answer_stanza(jid_from, jid_to, message):
 
     if not message.getTag("request"):
         return None
+
+    # _logger.error(message)
 
     m_id = message.getID()
     answer = Answer(jid_from, jid_to, message_id=m_id)

@@ -6,7 +6,7 @@ import friends
 import messaging.message
 from messaging.parsing import sorting, escape, escape_name
 from parallel import status, realtime, sending
-from parallel.sending import send_typing_status
+# from parallel.sending import send_typing_status
 from compat import get_logger, html_unespace
 
 NEW_MESSAGE = 4
@@ -31,8 +31,8 @@ def process_data(jid, data):
     if code == FRIEND_OFFLINE:
         return status.update_friend_status(jid, friend_id, status='unavailable')
 
-    if code == FRIEND_TYPING_CHAT:
-        return send_typing_status(jid, friends.get_friend_jid(friend_id))
+    # if code == FRIEND_TYPING_CHAT:
+    #     return send_typing_status(jid, friends.get_friend_jid(friend_id))
 
     _logger.debug('doing nothing on code %s' % code)
 
