@@ -1,7 +1,3 @@
-"""
-Main xmpppy mechanism. Provides library with methods to assign different handlers
-to different XMPP stanzas.
-"""
 from __future__ import unicode_literals
 import logging
 
@@ -19,11 +15,6 @@ logger = logging.getLogger("xmpp")
 
 
 class Dispatcher():
-    """
-    Ancestor of PlugIn class. Handles XMPP stream, i.e. aware of stream headers.
-    Can be plugged out/in to restart these headers (used for SASL f.e.).
-    """
-
     def __init__(self, connection, client):
         self.handshake_handler = None
         self.namespace = NS_COMPONENT_ACCEPT
@@ -37,9 +28,6 @@ class Dispatcher():
         self.handshake_handler = handler
 
     def init(self):
-        """
-        Registers default namespaces/protocols/handlers. Used internally.
-        """
         logger.debug('dispatcher init')
         ns = self.namespace
         init_str = '<?xml version="1.0"?><stream:stream xmlns="%s" version="1.0" xmlns:stream="%s">' % (ns, NS_STREAMS)
@@ -63,17 +51,15 @@ class Dispatcher():
 
     def process(self, timeout=8):
         logger.error('dispatcher process')
-
         if self.connection.pending_data(timeout):
             try:
                 data = self.connection.receive()
             except IOError as e:
-                logger.error(e)
+                logger.error('IO error while reading from socket: %s' % e)
                 return None
             try:
                 self.builder.parse(data)
-
-            except etree.XMLSyntaxError as e:
+            except etree.Error as e:
                 logger.error('builder error: ' % e)
             if data:
                 return len(data)
@@ -86,9 +72,6 @@ class Dispatcher():
             self.connection.send(stanza)
 
     def disconnect(self):
-        """
-        Send a stream terminator and and handle all incoming stanzas before stream closure.
-        """
         self.connection.send('</stream:stream>')
         while self.process(1):
             pass
