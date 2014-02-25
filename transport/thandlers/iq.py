@@ -84,7 +84,9 @@ def _process_form(iq, jid):
 
     return result
 
+
 def _process_regform(iq):
+    jid = iq.origin
     logger.debug('received register form from %s' % jid)
 
     result = iq.buildReply("result")
@@ -196,23 +198,24 @@ def feature_discover_handler(iq):
     push(answer)
 
 
-def registrarion_query_handler(iq):
+def registration_query_handler(iq):
+    jid = iq.origin
     logger.debug('register handler for %s' % jid)
     if iq.destination != TRANSPORT_ID:
         return
     try:
-        handler = {'get': _send_form, 'set': _process_regform}[iq.query_type]
-        push(handler(iq))
+        h = {'get': _send_form, 'set': _process_regform}[iq.query_type]
+        h(handler(iq))
     except (NotImplementedError, KeyError) as e:
         logger.debug('requested feature not implemented: %s' % e)
-        push(generate_error(stanza, 0, "Requested feature not implemented: %s" % e))
+        push(generate_error(iq, 0, "Requested feature not implemented: %s" % e))
 
 
 def query_handler(iq):
-    ns = stanza.namespace
+    ns = iq.namespace
 
     if ns == NS_REGISTER:
-        registrarion_query_handler(iq)
+        registration_query_handler(iq)
 
     if ns == NS_DISCO_INFO or ns == NS_DISCO_ITEMS:
         feature_discover_handler(iq)
