@@ -15,7 +15,6 @@ from config import (DATABASE_FILE,
                     HOST, SERVER, PORT, TRANSPORT_ID, PASSWORD)
 from parallel import realtime
 from parallel.probe import probe_users
-from handlers import message_handler, presence_handler
 from thandlers import iq_handler
 from transport.stanza_queue import enqueue
 from parallel.long_polling import start_thread_lp_requests, start_thread_lp
@@ -77,8 +76,6 @@ def initialize():
     authenticate(transport)
     logger.info('registering handlers')
     register_handler(transport, "iq", iq_handler)
-    # register_handler(transport, "presence", presence_handler)
-    # register_handler(transport, "message", message_handler)
     realtime.reset_online_users()
     logger.info('initialization finished')
 
