@@ -64,7 +64,7 @@ class Dispatcher():
             if data:
                 return len(data)
         logger.error('no data')
-        return "0"
+        return True
 
     def send(self, stanza):
         if isinstance(stanza, Stanza):
