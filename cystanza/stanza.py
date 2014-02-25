@@ -10,6 +10,7 @@ STANZA_IQ = 'iq'
 STANZA_PRESENCE = 'presence'
 STANZA_PROBE = 'probe'
 
+# TODO: Make getters/setters?
 
 def update_if_exist(d, val, name):
     if val:
@@ -59,9 +60,7 @@ class Stanza(object):
 
 
 class Message(Stanza):
-    """
-    Message to or from transport with "from" attribute required
-    """
+    """Message to or from transport with "from" attribute required"""
 
     def __init__(self, origin, destination, message_type, message_id=None, timestamp=None):
         if message_type not in ['normal', 'chat', 'groupchat', 'headline', 'error']:
@@ -115,9 +114,7 @@ class Answer(Message):
 
 
 class Presence(Stanza):
-    """
-    Network availability message of entity
-    """
+    """Network availability message of entity"""
 
     def __init__(self, origin, destination, status=None, show=None, nickname=None, presence_type=None):
         self.status = status
@@ -149,11 +146,27 @@ class Probe(Presence):
 
 
 class InfoQuery(Stanza):
-    def __init__(self, origin, destination, iq_type):
-        if iq_type not in ['get', 'set', 'result', 'error']:
-            raise ValueError('unknown iq type %s' % iq_type)
-        super(InfoQuery, self).__init__(STANZA_IQ, origin, destination, iq_type)
-        self.iq_type = iq_type
+    def __init__(self, origin, destination, query_type, query_id=None):
+        if query_type not in ['get', 'set', 'result', 'error']:
+            raise ValueError('unknown iq type %s' % query_type)
+        self.query_type = query_type
+        super(InfoQuery, self).__init__(STANZA_IQ, origin, destination,
+                                        query_type, stanza_id=query_id)
+
+class FeatureQuery(InfoQuery):
+    """Stanza for quering features"""
+    def __init__(self, origin, destination, query_id, identity, features=None):
+        self.identity = identity
+        self.features = features
+        super(FeatureQuery, self).__init__(origin, destination, 'result', query_id)
+
+    def build(self):
+        super(FeatureQuery, self).build()
+        q = etree.SubElement(self.base, 'identity')
+        q.text = self.identity
+        for feature in self.features:
+            etree.SubElement(self.base, 'feature', var=feature)
+        return self.base()
 
 
 if __name__ == '__main__':
