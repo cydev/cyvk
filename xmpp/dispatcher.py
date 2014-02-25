@@ -190,6 +190,7 @@ class Dispatcher():
 
     def test_send(self, stanza):
         if isinstance(stanza, CyStanza):
+            stanza.namespace = self.namespace
             self.connection.send(stanza)
 
     def dispatch(self, stanza, session=None):
