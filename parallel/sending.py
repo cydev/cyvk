@@ -1,7 +1,8 @@
 from parallel.stanzas import push
-from transport.messages import get_message_stanza
+from messages import get_message_stanza
 # from transport.statuses import get_typing_stanza
 from compat import get_logger
+
 _logger = get_logger()
 
 
