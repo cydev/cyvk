@@ -35,7 +35,6 @@ class Dispatcher():
 
     def test_dispatch(self, stanza):
         s = get_stanza(stanza)
-        logger.debug('dispatched: %s' % unicode(s))
         if isinstance(s, ChatMessage):
             return message_handler(s)
         if isinstance(s, Presence):

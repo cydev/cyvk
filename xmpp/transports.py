@@ -16,8 +16,6 @@ import socket
 from select import select
 import logging
 
-from xmpp.simplexml import ustr
-
 logger = logging.getLogger("xmpp")
 
 try:
@@ -116,7 +114,7 @@ class TCPSocket(object):
         if isinstance(data, unicode):
             data = data.encode("utf-8")
         elif not isinstance(data, str):
-            data = ustr(data).encode("utf-8")
+            data = str(data)
         while not select((), [self._sock], (), timeout)[1]:
             pass
         try:

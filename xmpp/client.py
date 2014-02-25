@@ -2,7 +2,7 @@ from __future__ import unicode_literals
 from hashlib import sha1
 from cystanza.namespaces import NS_COMPONENT_ACCEPT
 from cystanza.stanza import Stanza
-from stanza import Node
+from lxml import etree
 from xmpp import dispatcher, transports
 import logging
 
@@ -41,7 +41,6 @@ class Component(object):
         return self.connected
 
     def connect(self, server=None):
-        # Make a tcp/ip connection and start XMPP stream.
         if not server:
             server = (self.server, self.port)
         self.connection = transports.TCPSocket(server)
@@ -51,16 +50,12 @@ class Component(object):
         self.server = server
         self.connected = True
         self.dispatcher = dispatcher.Dispatcher(self.connection, self)
-        # self.dispatcher.attach(self)
         self.dispatcher.init()
 
         while not self.dispatcher.builder.attributes:
             if not self.process(5):
                 return None
-        document_attrs = self.dispatcher.builder.attributes
-        if 'version' in document_attrs and document_attrs['version'] == "1.0":
-            while not self.dispatcher.stream.features and self.process(1):
-                pass
+
         return self.connected
 
     def process(self, timeout=8):
@@ -72,9 +67,11 @@ class Component(object):
     def auth_component(self, user, password):
         logger.debug('authenticating component')
         handshake_hash = sha1(self.dispatcher.builder.attributes['id'] + password)
-        # self.dispatcher.register_handler('handshake', self.handshake_handler, xml_ns=NS_COMPONENT_ACCEPT)
         self.dispatcher.set_handshake_handler(self.handshake_handler_test)
-        self.connection.send(Node(NS_COMPONENT_ACCEPT + ' handshake', payload=[handshake_hash.hexdigest()]))
+        q = etree.Element('handshake', xmlns=NS_COMPONENT_ACCEPT)
+        q.text = handshake_hash.hexdigest()
+        logger.error('a: %s' % etree.tostring(q))
+        self.connection.send(etree.tostring(q))
         while not self.handshake:
             self.process(1)
         self.registered_name = user
