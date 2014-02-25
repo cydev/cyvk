@@ -7,7 +7,7 @@ import compat
 _logger = compat.get_logger()
 _mapping = {'geo': parse_geo, 'fwd_messages': parse_forwarded_messages, 'attachments': parse_attachments}
 
-
+# TODO: move to vk api
 def parse(jid, message):
     if not jid:
         raise ValueError('user is None')

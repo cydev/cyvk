@@ -30,35 +30,41 @@ def get_stanza(root):
     origin = remove_resource(get(a, 'from'))
     destination = remove_resource(get(a, 'to'))
     stanza_type = get(a, 'type')
+    stanza_id = get(a, 'id')
+    ns = get(a, 'xmlns')
 
     if stanza_name == STANZA_PRESENCE:
         logger.error('got presence')
         status = root.findtext('{*}status')
+        # TODO: add id, namespace
         return Presence(origin, destination, status=status, presence_type=stanza_type)
 
     if stanza_name == STANZA_MESSAGE:
-        # logger.error('got message: %s' % etree.tostring(root, encoding='utf-8'))
-        logger.error('got message')
         text = root.findtext('{*}body')
         requests_answer = root.find('{%s}request' % NS_RECEIPTS) is not None
 
         if text:
             text = unicode(text)
             logger.error('got text: %s' % text)
-
+            # TODO: add id, namespace
             return ChatMessage(origin, destination, text, message_type=stanza_type, requests_answer=requests_answer)
 
-        # return ChatMessage object
         composing = root.find('{*}composing')
         if composing is not None:
             logger.error('got composing')
 
     if stanza_name == STANZA_IQ:
-        logger.error('got iq')
-
         query = root.find('{*}query')
 
         if query is not None:
             logger.error('iq with query')
+
+        return InfoQuery(origin, destination, stanza_type, stanza_id)
+
+            # process form
+
+
+
+
 
             # logger.error('dispatched: %s' % root.xpath('local-name()'))

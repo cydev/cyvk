@@ -15,6 +15,7 @@ from xmpp.exceptions import NodeProcessed
 from xmpp.stanza import (NS_REGISTER,
                          NS_DISCO_ITEMS, NS_DISCO_INFO, ERR_BAD_REQUEST, Node)
 from errors import AuthenticationException
+from cystanza.stanza import FeatureQuery
 import database
 
 
@@ -83,6 +84,50 @@ def _process_form(iq, jid):
 
     return result
 
+def _process_regform(iq):
+    logger.debug('received register form from %s' % jid)
+
+    result = iq.buildReply("result")
+    query = iq.getTag("query")
+
+    try:
+        token = query.getTag("x").getTag("field", {"var": "password"}).getTagData("value")
+    except AttributeError:
+        raise AuthenticationException('no password')
+
+    try:
+        token = token.split("#access_token=")[1].split("&")[0].strip()
+    except (IndexError, AttributeError):
+        logger.debug('access token is probably in raw format')
+
+    logger.debug('form processed')
+
+    user_attributes = database.get_description(jid)
+
+    logger.debug('got description %s' % user_attributes)
+    if not user_attributes:
+        logger.debug('user %s is not in database' % jid)
+    else:
+        return generate_error(iq, ERR_BAD_REQUEST, 'You are already registered')
+
+    try:
+        if not token:
+            raise AuthenticationException('no token')
+        user_api.connect(jid, token)
+        realtime.set_token(jid, token)
+        user_api.initialize(jid)
+    except AuthenticationException:
+        logger.error('user %s connection failed (from iq)' % jid)
+        return generate_error(iq, ERR_BAD_REQUEST, 'Incorrect password or access token')
+
+    realtime.set_last_activity_now(jid)
+    user_api.add_client(jid)
+    database.insert_user(jid, None, token, None, False)
+    logger.debug('registration for %s completed' % jid)
+
+    return result
+
+
 
 def handler(_, stanza):
     ns = stanza.getQueryNS()
@@ -135,4 +180,40 @@ def iq_disco_handler(iq_raw):
         elif iq.ns == NS_DISCO_ITEMS:
             result.setQueryPayload(query)
         push(result)
+
+def feature_discover_handler(iq):
+    logger.debug('test_handling disco')
+    
+    # check if user is discovering
+    if iq.query_type != 'get' or iq.destination != TRANSPORT_ID:
+        return
+
+    features = None
+    if iq.namespace == NS_DISCO_ITEMS:
+        features = TRANSPORT_FEATURES
+
+    answer = FeatureQuery(TRANSPORT_ID, iq.origin, iq.query_id, IDENTIFIER, features)
+    push(answer)
+
+
+def registrarion_query_handler(iq):
+    logger.debug('register handler for %s' % jid)
+    if iq.destination != TRANSPORT_ID:
+        return
+    try:
+        handler = {'get': _send_form, 'set': _process_regform}[iq.query_type]
+        push(handler(iq))
+    except (NotImplementedError, KeyError) as e:
+        logger.debug('requested feature not implemented: %s' % e)
+        push(generate_error(stanza, 0, "Requested feature not implemented: %s" % e))
+
+
+def query_handler(iq):
+    ns = stanza.namespace
+
+    if ns == NS_REGISTER:
+        registrarion_query_handler(iq)
+
+    if ns == NS_DISCO_INFO or ns == NS_DISCO_ITEMS:
+        feature_discover_handler(iq)
 
