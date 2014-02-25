@@ -1,9 +1,12 @@
 from __future__ import unicode_literals, print_function
+
+from lxml import etree
+
 from cystanza.namespaces import NS_REGISTER, NS_DATA
 from cystanza.stanza import InfoQuery
-from lxml import etree
 from config import OAUTH_URL
 from compat import text_type
+
 
 FORM_TOKEN_VAR = 'token'
 

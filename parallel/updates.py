@@ -2,7 +2,6 @@
 from __future__ import unicode_literals
 from api.vkapi import get_messages, mark_messages_as_read, method
 from friends import get_friend_jid
-import friends
 import messaging.message
 from messaging.parsing import sorting, escape, escape_name
 from parallel import status, realtime, sending
@@ -90,7 +89,7 @@ def set_online(user):
 def get_friends(jid, fields=None):
     _logger.debug('getting friends from api for %s' % jid)
     fields = fields or ["screen_name"]
-    friends_raw = method("friends.get", jid, {"fields": ",".join(fields)}) or {} # friends.getOnline
+    friends_raw = method("friends.get", jid, {"fields": ",".join(fields)}) or {}  # friends.getOnline
     friends = {}
     for friend in friends_raw:
         uid = friend["uid"]

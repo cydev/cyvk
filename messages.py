@@ -1,5 +1,6 @@
 from __future__ import unicode_literals
 import time
+
 import compat
 from cystanza.stanza import ChatMessage, Answer
 

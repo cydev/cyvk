@@ -3,10 +3,10 @@ import logging
 
 from config import DB_FILE
 
+
 #
 
 logger = logging.getLogger("cyvk")
-
 
 """
 Module "itypes"
@@ -18,8 +18,8 @@ Distributed under the GNU GPLv3.
 """
 
 import sqlite3
-connect = sqlite3.connect
 
+connect = sqlite3.connect
 
 __version__ = "0.8"
 
@@ -61,7 +61,7 @@ class Number(object):
     __le__ = lambda self, number: self.number <= number
 
 
-class LazyDescriptor(object): # not really lazy, but setter is not needed
+class LazyDescriptor(object):  # not really lazy, but setter is not needed
 
     def __init__(self, function):
         self.fget = function
@@ -169,7 +169,7 @@ def insert_user(jid, username, token, last_msg_id, roster_set):
 def get_description(jid):
     with Database(DB_FILE) as db:
         db("SELECT * FROM users WHERE jid=?", (jid,))
-        data =  db.fetchone()
+        data = db.fetchone()
     try:
         jid, username, token, last_message_id, roster_set_flag = data
     except TypeError:

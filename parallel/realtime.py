@@ -1,8 +1,12 @@
 import time
 import ujson as json
+
 import redis
+
 from config import REDIS_PREFIX, REDIS_HOST, REDIS_PORT, API_MAXIMUM_RATE, POLLING_WAIT
 from compat import get_logger
+
+
 _logger = get_logger()
 r = redis.StrictRedis(REDIS_HOST, REDIS_PORT, )
 

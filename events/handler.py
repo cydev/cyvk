@@ -1,10 +1,14 @@
 import ujson as json
-import redis
 import threading
+
+import redis
+
 from compat import text_type, binary_type, get_logger
 from config import REDIS_HOST, REDIS_PORT, REDIS_DB, REDIS_CHARSET
 from events.constants import all_events, EVENTS_KEY, NAME_KEY
 from parallel.long_polling import event_handler, UPDATE_RESULT
+
+
 _logger = get_logger()
 
 

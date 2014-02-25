@@ -1,5 +1,7 @@
-from lxml import etree
 import logging
+
+from lxml import etree
+
 
 logger = logging.getLogger("xmpp")
 

@@ -5,19 +5,16 @@ import logging
 
 from parallel.stanzas import push
 from parallel.updates import send_messages, get_friends
-
 from config import TRANSPORT_ID, IDENTIFIER
 from database import set_token
 from friends import get_friend_jid
-
 from parallel import realtime
 from parallel.long_polling import start_polling
-
 from errors import CaptchaNeeded, InvalidTokenError, AuthenticationException
 from api.vkapi import is_application_user
-
 import database
 from cystanza.stanza import Presence as CyPresence
+
 
 logger = logging.getLogger("cyvk")
 
@@ -153,7 +150,7 @@ def initialize(jid, send=True):
         logger.debug("user api: subscribing friends for %s" % jid)
         roster_subscribe(jid, friends)
 
-    roster_subscribe(jid)   # subscribing to transport
+    roster_subscribe(jid)  # subscribing to transport
 
     if send:
         logger.debug('sending initial presence')

@@ -2,6 +2,7 @@ from __future__ import unicode_literals
 import logging
 
 from lxml import etree
+
 from cystanza.namespaces import NS_COMPONENT_ACCEPT, NS_STREAMS
 from cystanza.fabric import get_stanza
 from cystanza.builder import Builder

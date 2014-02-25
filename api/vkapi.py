@@ -1,15 +1,18 @@
 from __future__ import unicode_literals
 import logging
 import time
-import requests
-import database
 import ujson as json
+
+import requests
+
+import database
 from friends import get_friend_jid
 from errors import AuthenticationException, CaptchaNeeded, NotAllowed, AccessRevokedError, InvalidTokenError
 from parallel import realtime
 from parallel.sending import send
 from compat import text_type, get_logger
 from config import MAX_API_RETRY, API_MAXIMUM_RATE, TRANSPORT_ID
+
 
 VK_ERROR_BURST = 6
 _logger = get_logger()

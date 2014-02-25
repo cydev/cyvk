@@ -11,6 +11,7 @@ _logger = logging.getLogger("cyvk")
 def get_logger():
     return _logger
 
+
 try:
     from html.parser import HTMLParser
 except ImportError:
@@ -28,7 +29,6 @@ if sys.version < '3':
 else:
     text_type = str
     binary_type = bytes
-
 
 try:
     from urllib2 import urlopen

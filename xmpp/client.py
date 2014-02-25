@@ -1,10 +1,14 @@
 from __future__ import unicode_literals
 from hashlib import sha1
-from cystanza.namespaces import NS_COMPONENT_ACCEPT
-from cystanza.stanza import Stanza
-from lxml import etree
-from xmpp import dispatcher, transports
 import logging
+
+from lxml import etree
+
+from cystanza.namespaces import NS_COMPONENT_ACCEPT
+
+from cystanza.stanza import Stanza
+from xmpp import dispatcher, transports
+
 
 logger = logging.getLogger("xmpp")
 

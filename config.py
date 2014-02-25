@@ -90,8 +90,8 @@ PID_FILE = "pidFile.txt"
 LOG_FILE = "cyvk.log"
 
 IDENTIFIER = {"type": "vk",
-                "category": "gateway",
-                "name": "cyvk transport"}
+              "category": "gateway",
+              "name": "cyvk transport"}
 
 try:
     # noinspection PyUnresolvedReferences
@@ -104,7 +104,6 @@ LOCALE = 'ru'
 LOCALE_PATH = 'locales'
 
 DESC = "cyvk transport"
-
 
 url = 'https://oauth.vk.com/authorize?client_id=%s&scope=%s&redirect_uri=' \
       'http://oauth.vk.com/blank.html&display=page&response_type=token'
@@ -126,6 +125,6 @@ REDIS_PORT = 6379
 REDIS_DB = 0
 REDIS_CHARSET = 'utf-8'
 
-API_MAXIMUM_RATE = 1.1/3
+API_MAXIMUM_RATE = 1.1 / 3
 POLLING_WAIT = 25
 

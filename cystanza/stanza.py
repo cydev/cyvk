@@ -1,11 +1,14 @@
 # coding=utf-8
 from __future__ import unicode_literals
+import uuid
+
 from lxml.etree import tostring
 from lxml import etree
+
 from namespaces import NS_NICK, NS_DELAY, NS_RECEIPTS, NS_DISCO_INFO, NS_DISCO_ITEMS
 from cystanza.errors import ERR_FEATURE_NOT_IMPLEMENTED, ERR_BAD_REQUEST
 from cystanza.namespaces import NS_STANZAS
-import uuid
+
 
 STANZA_MESSAGE = 'message'
 STANZA_IQ = 'iq'

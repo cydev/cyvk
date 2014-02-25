@@ -1,5 +1,6 @@
 # coding: utf-8
 from __future__ import unicode_literals
+
 __all__ = ['parse_attachments']
 
 import urllib
@@ -45,6 +46,7 @@ def _audio(attachment):
 
 def _doc(_):
     return '\nDocument: %(title)s — %(url)s'
+
 
 _mapping = dict(wall=_wall, photo=_photo, video=_video, audio=_audio, doc=_doc)
 

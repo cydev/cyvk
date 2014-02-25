@@ -1,6 +1,7 @@
 __author__ = 'ernado'
 
 import logging
+
 from config import LOG_FILE, LOG_LEVEL
 
 
@@ -10,20 +11,21 @@ def get_logger():
     h = logging.FileHandler(LOG_FILE)
     try:
         import colorlog
+
         f = colorlog.ColoredFormatter('%(yellow)s%(name)-8s %(white)s%(asctime)s %(log_color)s%(message)s', log_colors={
-                'DEBUG':    'cyan',
-                'INFO':     'green',
-                'WARNING':  'yellow',
-                'ERROR':    'red',
-                'CRITICAL': 'red',
+            'DEBUG': 'cyan',
+            'INFO': 'green',
+            'WARNING': 'yellow',
+            'ERROR': 'red',
+            'CRITICAL': 'red',
         })
 
         fx = colorlog.ColoredFormatter('%(green)s%(name)-8s %(log_color)s%(message)s', log_colors={
-                'DEBUG':    'cyan',
-                'INFO':     'yellow',
-                'WARNING':  'cyan',
-                'ERROR':    'red',
-                'CRITICAL': 'red',
+            'DEBUG': 'cyan',
+            'INFO': 'yellow',
+            'WARNING': 'cyan',
+            'ERROR': 'red',
+            'CRITICAL': 'red',
         })
     except ImportError:
         f = logging.Formatter("%(asctime)s:%(levelname)s:%(name)s %(message)s")
