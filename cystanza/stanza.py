@@ -12,6 +12,7 @@ STANZA_IQ = 'iq'
 STANZA_PRESENCE = 'presence'
 STANZA_PROBE = 'probe'
 STANZA_ERROR = 'error'
+STANZA_HANDSHAKE = 'handshake'
 
 
 # TODO: Make getters/setters?
@@ -61,7 +62,8 @@ class Stanza(object):
         self.build()
         return tostring(self.base, encoding='utf-8')
 
-    def get_stripped(self, jid):
+    @staticmethod
+    def get_stripped(jid):
         if jid is None:
             return None
         if jid.find('/'):
@@ -72,6 +74,11 @@ class Stanza(object):
 
     def get_destination(self):
         return self.get_stripped(self.destination)
+
+
+class Handshake(Stanza):
+    def __init__(self):
+        super(Handshake, self).__init__(STANZA_HANDSHAKE)
 
 
 class Message(Stanza):

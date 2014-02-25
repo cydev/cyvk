@@ -1,5 +1,5 @@
 from __future__ import unicode_literals
-from cystanza.stanza import STANZA_MESSAGE, STANZA_PRESENCE, Presence, STANZA_IQ, ChatMessage, FeatureQuery
+from cystanza.stanza import STANZA_MESSAGE, STANZA_PRESENCE, Presence, STANZA_IQ, ChatMessage, FeatureQuery, Handshake
 from cystanza.namespaces import NS_RECEIPTS, NS_DISCO_INFO, NS_DISCO_ITEMS, NS_REGISTER
 from cystanza.forms import FORM_TOKEN_VAR, RegistrationFormStanza, RegistrationRequest
 import logging
@@ -21,7 +21,7 @@ def get_stanza(root):
     a = root.attrib
 
     if stanza_name == 'handshake':
-        logger.error('handshake got')
+        return Handshake()
 
     origin = get(a, 'from')
     destination = get(a, 'to')
