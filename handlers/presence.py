@@ -4,8 +4,6 @@ from friends import get_friend_jid
 from parallel import realtime, sending
 from parallel.stanzas import push
 from parallel.updates import set_online
-from events.toggle import raise_event
-from events.constants import USER_ONLINE
 import statuses
 from config import TRANSPORT_ID
 from statuses import get_status_stanza
@@ -115,7 +113,6 @@ def _attempt_to_add_client(jid, _):
         user_api.initialize(jid, send=True)
         user_api.add_client(jid)
         set_online(jid)
-        raise_event(USER_ONLINE)
     except AuthenticationException as e:
         _logger.error('unable to authenticate %s: %s' % (jid, e))
         message = "Authentication failed! " \
@@ -189,7 +186,7 @@ def _handle_presence(jid, presence):
 def handler(presence):
     """
 
-    :type stanza: Presence
+    :type presence: Presence
     """
     jid = presence.origin
 
