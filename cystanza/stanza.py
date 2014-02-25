@@ -153,6 +153,7 @@ class InfoQuery(Stanza):
         super(InfoQuery, self).__init__(STANZA_IQ, origin, destination,
                                         query_type, stanza_id=query_id)
 
+
 class FeatureQuery(InfoQuery):
     """Stanza for quering features"""
     def __init__(self, origin, destination, query_id, identity, features=None):
