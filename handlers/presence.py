@@ -131,13 +131,13 @@ def _subscribe(jid, presence):
     @param jid: client jid
     @return:
     """
-    origin = presence.origin
-    destination = presence.destination
+    origin = presence.get_origin()
+    destination = presence.get_destination()
 
     if destination == TRANSPORT_ID:
         _logger.debug('sending presence about transport <subscribe>')
         push(get_status_stanza(TRANSPORT_ID, origin, status='subscribed'))
-        push(get_status_stanza(TRANSPORT_ID, origin))
+        push(get_status_stanza(TRANSPORT_ID, origin, status='available'))
     else:
         push(get_status_stanza(destination, origin, status='subscribed'))
 
@@ -188,7 +188,7 @@ def handler(presence):
 
     :type presence: Presence
     """
-    jid = presence.origin
+    jid = presence.get_origin()
 
     _logger.debug('user %s presence handling: %s' % (jid, presence))
 

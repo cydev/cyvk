@@ -18,7 +18,7 @@ def handler(m):
     """
     assert isinstance(m, ChatMessage)
 
-    jid = m.origin
+    jid = m.get_origin()
 
     _logger.debug('message_handler handling: (%s->%s)' % (jid, m.destination))
 

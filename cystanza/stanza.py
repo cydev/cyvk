@@ -13,8 +13,8 @@ STANZA_PRESENCE = 'presence'
 STANZA_PROBE = 'probe'
 STANZA_ERROR = 'error'
 
-# TODO: Make getters/setters?
 
+# TODO: Make getters/setters?
 def update_if_exist(d, val, name):
     if val:
         d.update({name: val})
@@ -61,17 +61,29 @@ class Stanza(object):
         self.build()
         return tostring(self.base, encoding='utf-8')
 
+    def get_stripped(self, jid):
+        if jid is None:
+            return None
+        if jid.find('/'):
+            return jid.split('/')[0]
+
+    def get_origin(self):
+        return self.get_stripped(self.origin)
+
+    def get_destination(self):
+        return self.get_stripped(self.destination)
+
 
 class Message(Stanza):
     """Message to or from transport with "from" attribute required"""
 
-    def __init__(self, origin, destination, message_type, message_id=None, timestamp=None):
+    def __init__(self, origin, destination, message_type, message_id=None, timestamp=None, namespace=None):
         if message_type not in ['normal', 'chat', 'groupchat', 'headline', 'error']:
             raise ValueError('unknown message type %s' % message_type)
         self.message_type = message_type
         self.message_id = message_id
         self.timestamp = timestamp
-        super(Message, self).__init__(STANZA_MESSAGE, origin, destination, message_type)
+        super(Message, self).__init__(STANZA_MESSAGE, origin, destination, message_type, namespace=namespace)
 
     def build(self):
         super(Message, self).build()
@@ -85,12 +97,12 @@ class Message(Stanza):
 
 
 class ChatMessage(Message):
-    def __init__(self, origin, destination, text, subject=None,
-                 message_type='chat', timestamp=None, requests_answer=False):
+    def __init__(self, origin, destination, text, namespace=None, requests_answer=False,
+                 message_type='chat', timestamp=None, subject=None):
         self.text = text
         self.subject = subject
         self.requests_answer = requests_answer
-        super(ChatMessage, self).__init__(origin, destination, message_type, timestamp=timestamp)
+        super(ChatMessage, self).__init__(origin, destination, message_type, timestamp=timestamp, namespace=namespace)
 
     def build(self):
         super(ChatMessage, self).build()
@@ -108,8 +120,9 @@ class ChatMessage(Message):
 
 
 class Answer(Message):
-    def __init__(self, origin, destination, message_type='chat', message_id=None):
-        super(Answer, self).__init__(origin, destination, message_type=message_type, message_id=message_id)
+    def __init__(self, origin, destination, message_type='chat', message_id=None, namespace=None):
+        super(Answer, self).__init__(origin, destination, message_type=message_type, message_id=message_id,
+                                     namespace=namespace)
 
     def build(self):
         super(Answer, self).build()
@@ -119,11 +132,12 @@ class Answer(Message):
 class Presence(Stanza):
     """Network availability message of entity"""
 
-    def __init__(self, origin, destination, status=None, show=None, nickname=None, presence_type=None):
+    def __init__(self, origin, destination, status=None, show=None, nickname=None, presence_type=None, namespace=None):
         self.status = status
         self.show = show
         self.nickname = nickname
-        super(Presence, self).__init__(STANZA_PRESENCE, origin, destination, stanza_type=presence_type)
+        super(Presence, self).__init__(STANZA_PRESENCE, origin, destination, stanza_type=presence_type,
+                                       namespace=namespace)
 
     def build(self):
         super(Presence, self).build()
@@ -149,41 +163,45 @@ class Probe(Presence):
 
 
 class InfoQuery(Stanza):
-    def __init__(self, origin, destination, query_type, query_id=None):
+    def __init__(self, origin, destination, query_type, query_id=None, namespace=None):
         if query_type not in ['get', 'set', 'result', 'error']:
             raise ValueError('unknown iq type %s' % query_type)
         self.query_type = query_type
-        super(InfoQuery, self).__init__(STANZA_IQ, origin, destination,
-                                        query_type, stanza_id=query_id)
+        super(InfoQuery, self).__init__(STANZA_IQ, origin, destination, namespace=namespace,
+                                        stanza_type=query_type, stanza_id=query_id)
 
 
 class FeatureQuery(InfoQuery):
     """Stanza for quering features"""
-    def __init__(self, origin, destination, query_id, identity, features=None):
+
+    def __init__(self, origin, destination, query_id, identity=None, features=None, namespace=None,
+                 query_namespace=None):
         self.identity = identity
-        self.features = features
-        self.query_ns = NS_DISCO_INFO
-        super(FeatureQuery, self).__init__(origin, destination, 'result', query_id)
+        namespace = namespace or NS_DISCO_ITEMS
+        self.features = features or []
+        self.query_ns = query_namespace or NS_DISCO_INFO
+        super(FeatureQuery, self).__init__(origin, destination, 'result', query_id, namespace=namespace)
 
     def build(self):
         super(FeatureQuery, self).build()
         q = etree.SubElement(self.base, 'query', xmlns=self.query_ns)
-        i = etree.SubElement(q, 'identity')
-        i.text = self.identity
-        for feature in self.features:
-            etree.SubElement(q, 'feature', var=feature)
+        if self.identity:
+            etree.SubElement(q, 'identity', {'category': 'gateway', 'type': 'vk', 'name': self.identity})
+        if self.query_ns:
+            for feature in self.features:
+                etree.SubElement(q, 'feature', var=feature)
         return self.base
 
 
 class ErrorStanza(Stanza):
-    def __init__(self, stanza, error_name, error_ns, text=None):
+    def __init__(self, stanza, error_name, error_ns, text=None, namespace=None):
         """
         :type stanza: Stanza
         """
         self.text = text
         self.error_name = error_name
         self.error_ns = error_ns
-        super(ErrorStanza, self).__init__(stanza.element_name, stanza.destination, stanza.origin,
+        super(ErrorStanza, self).__init__(stanza.element_name, stanza.destination, stanza.origin, namespace=namespace,
                                           stanza_type=STANZA_ERROR, stanza_id=stanza.stanza_id)
 
     def build(self):
@@ -198,15 +216,23 @@ class ErrorStanza(Stanza):
 
 
 class NotImplementedErrorStanza(ErrorStanza):
-    def __init__(self, stanza):
-        super(NotImplementedErrorStanza, self).__init__(stanza, ERR_FEATURE_NOT_IMPLEMENTED, NS_STANZAS)
+    def __init__(self, stanza, text=None, namespace=None):
+        ns = NS_STANZAS
+        super(NotImplementedErrorStanza, self).__init__(stanza, ERR_FEATURE_NOT_IMPLEMENTED, ns, text, namespace)
 
 
 class BadRequestErrorStanza(ErrorStanza):
-    def __init__(self, stanza):
-        super(BadRequestErrorStanza, self).__init__(stanza, ERR_BAD_REQUEST, NS_STANZAS)
+    def __init__(self, stanza, text=None, namespace=None):
+        super(BadRequestErrorStanza, self).__init__(stanza, ERR_BAD_REQUEST, NS_STANZAS, text, namespace)
 
 
 if __name__ == '__main__':
-    p = Probe('s1.cydev.ru', 'ernado@vk.cydev')
-    print(FeatureQuery('s1.cydev.ru', 'ernado@vk.cydev', unicode(uuid.uuid1()), 'vk.s1.cydev', ['keks', 'pels']))
+    s = "<iq from='ernado@s1.cydev/7888950191393122917632183' to='vk.s1.cydev' type='set' id='purplee266aec6'><query xmlns='jabber:iq:register'><x xmlns='jabber:x:data' type='submit'><field var='link'><value>https://oauth.vk.com/authorize?client_id=4157729&amp;scope=69634&amp;redirect_uri=http://oauth.vk.com/blank.html&amp;display=page&amp;response_type=token</value></field><field var='password'><value>https://oauth.vk.com/blank.html#access_token=fb0cff246416544c3aaef1f1e389fe657d627d0fbbed9652f869dc7ea1d275085d2fe47133e1d99261262&amp;expires_in=0&amp;user_id=224196364</value></field></x></query></iq>"
+    e = etree.fromstring(s)
+    password_field = e.findtext('.//{*}field[@var="password"]/{*}value')
+    if password_field is not None:
+        print(password_field)
+        # <iq xmlns="jabber:component:accept" to="ernado@s1.cydev/7888950191393122917632183" from="vk.s1.cydev" id="purpledisco9bf061e" type="result"><query xmlns="http://jabber.org/protocol/disco#info"><identity category="gateway" type="vk" name="cyvk transport" /><feature var="http://jabber.org/protocol/disco#items" /><feature var="http://jabber.org/protocol/disco#info" /><feature var="urn:xmpp:receipts" /><feature var="jabber:iq:register" /><feature var="jabber:x:delay" /><feature var="jabber:iq:last" /></query></iq>
+        # <iq from="vk.s1.cydev" id="purpledisco9bf063e" to="ernado@s1.cydev" type="result" xmlns="jabber:component:accept"><query xmlns="http://jabber.org/protocol/disco#info">                          <identity category="gateway" name="cyvk transport" type="vk"/><feature var="http://jabber.org/protocol/disco#items"/><feature var="http://jabber.org/protocol/disco#info"/><feature var="urn:xmpp:receipts"/><feature var="jabber:iq:register"/><feature var="jabber:x:delay"/><feature var="jabber:iq:last"/></query></iq>
+        # print(e.findtext('.//{*}field[@var="password"]'))
+        # print(FeatureQuery('s1.cydev.ru', 'ernado@vk.cydev', unicode(uuid.uuid1()), 'vk.s1.cydev', ['keks', 'pels']))

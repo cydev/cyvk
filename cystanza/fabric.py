@@ -1,7 +1,9 @@
 from __future__ import unicode_literals
-from cystanza.stanza import STANZA_MESSAGE, STANZA_PRESENCE, Presence, STANZA_IQ, ChatMessage
-from cystanza.namespaces import NS_RECEIPTS
+from cystanza.stanza import STANZA_MESSAGE, STANZA_PRESENCE, Presence, STANZA_IQ, ChatMessage, FeatureQuery
+from cystanza.namespaces import NS_RECEIPTS, NS_DISCO_INFO, NS_DISCO_ITEMS, NS_REGISTER
+from cystanza.forms import FORM_TOKEN_VAR, RegistrationFormStanza, RegistrationRequest
 import logging
+from lxml import etree
 
 logger = logging.getLogger("xmpp")
 
@@ -13,22 +15,16 @@ def get(attrs, name):
         return None
 
 
-def remove_resource(jid):
-    if jid is None:
-        return None
-    if jid.find('/'):
-        return jid.split('/')[0]
-
-
 def get_stanza(root):
+    logger.error(etree.tostring(root))
     stanza_name = root.xpath('local-name()')
     a = root.attrib
 
     if stanza_name == 'handshake':
         logger.error('handshake got')
 
-    origin = remove_resource(get(a, 'from'))
-    destination = remove_resource(get(a, 'to'))
+    origin = get(a, 'from')
+    destination = get(a, 'to')
     stanza_type = get(a, 'type')
     stanza_id = get(a, 'id')
     ns = get(a, 'xmlns')
@@ -36,8 +32,7 @@ def get_stanza(root):
     if stanza_name == STANZA_PRESENCE:
         logger.error('got presence')
         status = root.findtext('{*}status')
-        # TODO: add id, namespace
-        return Presence(origin, destination, status=status, presence_type=stanza_type)
+        return Presence(origin, destination, status, presence_type=stanza_type, namespace=ns)
 
     if stanza_name == STANZA_MESSAGE:
         text = root.findtext('{*}body')
@@ -46,25 +41,28 @@ def get_stanza(root):
         if text:
             text = unicode(text)
             logger.error('got text: %s' % text)
-            # TODO: add id, namespace
-            return ChatMessage(origin, destination, text, message_type=stanza_type, requests_answer=requests_answer)
+            return ChatMessage(origin, destination, text, ns, requests_answer)
 
         composing = root.find('{*}composing')
         if composing is not None:
             logger.error('got composing')
 
     if stanza_name == STANZA_IQ:
-        query = root.find('{*}query')
+        query = root.find('.//{*}query')
+        query_namespace = None
 
         if query is not None:
-            logger.error('iq with query')
+            query_raw = unicode(etree.tostring(query))
+            start_attribute = 'xmlns="'
+            start = query_raw.find(start_attribute) + len(start_attribute)
+            query_namespace = query_raw[start:query_raw.find('"', start)]
 
-        return InfoQuery(origin, destination, stanza_type, stanza_id)
+        if (query_namespace == NS_DISCO_INFO or query_namespace == NS_DISCO_ITEMS) and stanza_type == 'get':
+            return FeatureQuery(origin, destination, stanza_id, namespace=ns, query_namespace=query_namespace)
 
-            # process form
+        if query_namespace == NS_REGISTER and stanza_type == 'get':
+            return RegistrationRequest(origin, destination, stanza_id, ns)
 
-
-
-
-
-            # logger.error('dispatched: %s' % root.xpath('local-name()'))
+        token = root.findtext('.//{*}field[@var="%s"]/{*}value' % FORM_TOKEN_VAR)
+        if token:
+            return RegistrationFormStanza(origin, destination, unicode(token), stanza_id, stanza_type)

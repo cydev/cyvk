@@ -11,15 +11,17 @@ from xml.parsers.expat import ExpatError
 import logging
 from lxml import etree
 from cystanza.builder import Builder
-from handlers import message_handler
+from handlers import message_handler, presence_handler
+from handlers import registration_form_handler, registration_request_handler, discovery_request_handler
 
 from xmpp.stanza import NS_STREAMS, Iq, Message, Presence, Node, Stanza, NS_XMPP_STREAMS, stream_exceptions
 from cystanza.stanza import Stanza as CyStanza
 from cystanza.stanza import Presence as CyPresence
+from cystanza.forms import RegistrationRequest, RegistrationFormStanza
+from cystanza.stanza import FeatureQuery
 from xmpp import simplexml
 import uuid
 from .exceptions import StreamError, NodeProcessed
-from handlers import presence_handler
 
 logger = logging.getLogger("xmpp")
 
@@ -78,11 +80,17 @@ class Dispatcher():
     @staticmethod
     def test_dispatch(stanza):
         s = get_stanza(stanza)
-        if isinstance(s, ChatMessage):
-            message_handler(s)
-        if isinstance(s, CyPresence):
-            presence_handler(s)
         logger.error(s)
+        if isinstance(s, ChatMessage):
+            return message_handler(s)
+        if isinstance(s, CyPresence):
+            return presence_handler(s)
+        if isinstance(s, RegistrationRequest):
+            return registration_request_handler(s)
+        if isinstance(s, RegistrationFormStanza):
+            return registration_form_handler(s)
+        if isinstance(s, FeatureQuery):
+            return discovery_request_handler(s)
 
     def process(self, timeout=8):
         """
