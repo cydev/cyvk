@@ -1,9 +1,12 @@
 from __future__ import unicode_literals
+import logging
+
+from lxml import etree
+
 from cystanza.stanza import STANZA_MESSAGE, STANZA_PRESENCE, Presence, STANZA_IQ, ChatMessage, FeatureQuery, Handshake
 from cystanza.namespaces import NS_RECEIPTS, NS_DISCO_INFO, NS_DISCO_ITEMS, NS_REGISTER
 from cystanza.forms import FORM_TOKEN_VAR, RegistrationFormStanza, RegistrationRequest
-import logging
-from lxml import etree
+
 
 logger = logging.getLogger("xmpp")
 
@@ -16,7 +19,7 @@ def get(attrs, name):
 
 
 def get_stanza(root):
-    logger.error(etree.tostring(root))
+    logger.error('got stanza: %s' % etree.tostring(root))
     stanza_name = root.xpath('local-name()')
     a = root.attrib
 
@@ -30,7 +33,6 @@ def get_stanza(root):
     ns = get(a, 'xmlns')
 
     if stanza_name == STANZA_PRESENCE:
-        logger.error('got presence')
         status = root.findtext('{*}status')
         return Presence(origin, destination, status, presence_type=stanza_type, namespace=ns)
 
@@ -40,12 +42,11 @@ def get_stanza(root):
 
         if text:
             text = unicode(text)
-            logger.error('got text: %s' % text)
             return ChatMessage(origin, destination, text, ns, requests_answer)
 
         composing = root.find('{*}composing')
         if composing is not None:
-            logger.error('got composing')
+            logger.warning('composing not implemented')
 
     if stanza_name == STANZA_IQ:
         query = root.find('.//{*}query')
