@@ -3,18 +3,17 @@ Main xmpppy mechanism. Provides library with methods to assign different handler
 to different XMPP stanzas.
 """
 from __future__ import unicode_literals
+import logging
+
+from lxml import etree
 from cystanza.namespaces import NS_COMPONENT_ACCEPT, NS_STREAMS
 from cystanza.fabric import get_stanza
-from cystanza.stanza import ChatMessage
-import logging
-from lxml import etree
 from cystanza.builder import Builder
+from cystanza.stanza import Stanza, Presence, FeatureQuery, Handshake, ChatMessage
+from cystanza.forms import RegistrationRequest, RegistrationFormStanza
 from handlers import message_handler, presence_handler
 from handlers import registration_form_handler, registration_request_handler, discovery_request_handler
-from cystanza.stanza import Stanza as CyStanza
-from cystanza.stanza import Presence as CyPresence
-from cystanza.forms import RegistrationRequest, RegistrationFormStanza
-from cystanza.stanza import FeatureQuery, Handshake
+
 
 logger = logging.getLogger("xmpp")
 
@@ -51,7 +50,7 @@ class Dispatcher():
         logger.debug('dispatched: %s' % unicode(s))
         if isinstance(s, ChatMessage):
             return message_handler(s)
-        if isinstance(s, CyPresence):
+        if isinstance(s, Presence):
             return presence_handler(s)
         if isinstance(s, RegistrationRequest):
             return registration_request_handler(s)
@@ -82,7 +81,7 @@ class Dispatcher():
         return "0"
 
     def send(self, stanza):
-        if isinstance(stanza, CyStanza):
+        if isinstance(stanza, Stanza):
             stanza.namespace = self.namespace
             self.connection.send(stanza)
 
