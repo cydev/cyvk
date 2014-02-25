@@ -1,3 +1,4 @@
+from __future__ import unicode_literals
 import database
 from errors import AuthenticationException
 from friends import get_friend_jid
