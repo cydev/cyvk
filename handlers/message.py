@@ -16,14 +16,13 @@ def handler(m):
     """
     :type m: ChatMessage
     """
-
     assert isinstance(m, ChatMessage)
 
     jid = m.origin
 
     _logger.debug('message_handler handling: (%s->%s)' % (jid, m.destination))
 
-    if m.origin == TRANSPORT_ID:
+    if jid == TRANSPORT_ID:
         return _logger.error('not implemented - message to watcher')
 
     if not realtime.is_client(jid):
