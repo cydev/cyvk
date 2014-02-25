@@ -2,13 +2,16 @@
 from __future__ import unicode_literals
 from lxml.etree import tostring
 from lxml import etree
-from namespaces import NS_NICK, NS_DELAY, NS_RECEIPTS
+from namespaces import NS_NICK, NS_DELAY, NS_RECEIPTS, NS_DISCO_INFO, NS_DISCO_ITEMS
+from cystanza.errors import ERR_FEATURE_NOT_IMPLEMENTED, ERR_BAD_REQUEST
+from cystanza.namespaces import NS_STANZAS
 import uuid
 
 STANZA_MESSAGE = 'message'
 STANZA_IQ = 'iq'
 STANZA_PRESENCE = 'presence'
 STANZA_PROBE = 'probe'
+STANZA_ERROR = 'error'
 
 # TODO: Make getters/setters?
 
@@ -39,7 +42,7 @@ class Stanza(object):
         self.destination = destination
         self.stanza_type = stanza_type
         self.namespace = namespace
-        self.stanza_id = stanza_id or str(uuid.uuid1())
+        self.stanza_id = stanza_id or unicode(uuid.uuid1())
         self.base = None
 
     def build(self):
@@ -159,18 +162,51 @@ class FeatureQuery(InfoQuery):
     def __init__(self, origin, destination, query_id, identity, features=None):
         self.identity = identity
         self.features = features
+        self.query_ns = NS_DISCO_INFO
         super(FeatureQuery, self).__init__(origin, destination, 'result', query_id)
 
     def build(self):
         super(FeatureQuery, self).build()
-        q = etree.SubElement(self.base, 'identity')
-        q.text = self.identity
+        q = etree.SubElement(self.base, 'query', xmlns=self.query_ns)
+        i = etree.SubElement(q, 'identity')
+        i.text = self.identity
         for feature in self.features:
-            etree.SubElement(self.base, 'feature', var=feature)
-        return self.base()
+            etree.SubElement(q, 'feature', var=feature)
+        return self.base
+
+
+class ErrorStanza(Stanza):
+    def __init__(self, stanza, error_name, error_ns, text=None):
+        """
+        :type stanza: Stanza
+        """
+        self.text = text
+        self.error_name = error_name
+        self.error_ns = error_ns
+        super(ErrorStanza, self).__init__(stanza.element_name, stanza.destination, stanza.origin,
+                                          stanza_type=STANZA_ERROR, stanza_id=stanza.stanza_id)
+
+    def build(self):
+        super(ErrorStanza, self).build()
+        error_base = etree.SubElement(self.base, 'error')
+        attributes = {}
+        update_if_exist(attributes, self.error_ns, 'xmlns')
+        error_element = etree.SubElement(error_base, self.error_name, attributes)
+        if self.text:
+            error_element.text = self.text
+        return self.base
+
+
+class NotImplementedErrorStanza(ErrorStanza):
+    def __init__(self, stanza):
+        super(NotImplementedErrorStanza, self).__init__(stanza, ERR_FEATURE_NOT_IMPLEMENTED, NS_STANZAS)
+
+
+class BadRequestErrorStanza(ErrorStanza):
+    def __init__(self, stanza):
+        super(BadRequestErrorStanza, self).__init__(stanza, ERR_BAD_REQUEST, NS_STANZAS)
 
 
 if __name__ == '__main__':
     p = Probe('s1.cydev.ru', 'ernado@vk.cydev')
-    print(p.stanza_type)
-    print(p)
+    print(FeatureQuery('s1.cydev.ru', 'ernado@vk.cydev', unicode(uuid.uuid1()), 'vk.s1.cydev', ['keks', 'pels']))
