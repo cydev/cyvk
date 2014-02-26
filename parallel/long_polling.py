@@ -1,6 +1,4 @@
 from __future__ import unicode_literals
-import ssl
-import time
 import threading
 import ujson as json
 
@@ -8,7 +6,7 @@ import redis
 
 from compat import urlopen, get_logger
 from config import POLLING_WAIT, REDIS_DB, REDIS_CHARSET, REDIS_PREFIX, REDIS_PORT, REDIS_HOST
-from api.vkapi import method
+from api.test_api import Api
 from parallel import realtime, updates
 from events.toggle import raise_event
 
@@ -32,14 +30,8 @@ def _start_polling(jid, attempts=0):
         return _logger.error('too many long polling attempts for %s' % jid)
 
     r = redis.StrictRedis(REDIS_HOST, REDIS_PORT, REDIS_DB, charset=REDIS_CHARSET)
-
-    try:
-        args = method('messages.getLongPollServer', jid)
-    except ssl.SSLError as e:
-        _logger.error('SSL error %s' % e)
-        time.sleep(3)
-        return _start_polling(jid, attempts + 1)
-
+    api = Api(jid)
+    args = api.messages.get_lp_server()
     args['wait'] = POLLING_WAIT
     url = 'http://{server}?act=a_check&key={key}&ts={ts}&wait={wait}&mode=2'.format(**args)
     r.lpush(LONG_POLLING_KEY, json.dumps({'jid': jid, 'url': url}))

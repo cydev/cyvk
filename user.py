@@ -11,7 +11,8 @@ from friends import get_friend_jid
 from parallel import realtime
 from parallel.long_polling import start_polling
 from errors import CaptchaNeeded, InvalidTokenError, AuthenticationException
-from api.vkapi import is_application_user
+# from api.vkapi import is_application_user
+from api.test_api import Api
 import database
 from cystanza.stanza import Presence as CyPresence
 
@@ -183,9 +184,10 @@ def connect(jid, token):
         raise AuthenticationException('no token for %s' % jid)
 
     # logger.debug("user api: vk api initialized")
+    api = Api(jid, token)
     try:
         logger.debug('user api: trying to auth with token')
-        if not is_application_user(jid, token):
+        if not api.is_application_user():
             raise InvalidTokenError('not application user')
         set_token(jid, token)
         logger.debug("user api: authenticated %s" % jid)

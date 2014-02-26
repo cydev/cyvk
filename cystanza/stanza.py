@@ -6,7 +6,7 @@ from lxml.etree import tostring
 from lxml import etree
 
 from namespaces import NS_NICK, NS_DELAY, NS_RECEIPTS, NS_DISCO_INFO, NS_DISCO_ITEMS
-from cystanza.errors import ERR_FEATURE_NOT_IMPLEMENTED, ERR_BAD_REQUEST
+from cystanza.errors import ERR_FEATURE_NOT_IMPLEMENTED, ERR_BAD_REQUEST, ERR_NOT_ALLOWED
 from cystanza.namespaces import NS_STANZAS
 
 
@@ -236,13 +236,3 @@ class BadRequestErrorStanza(ErrorStanza):
         super(BadRequestErrorStanza, self).__init__(stanza, ERR_BAD_REQUEST, NS_STANZAS, text, namespace)
 
 
-if __name__ == '__main__':
-    s = "<iq from='ernado@s1.cydev/7888950191393122917632183' to='vk.s1.cydev' type='set' id='purplee266aec6'><query xmlns='jabber:iq:register'><x xmlns='jabber:x:data' type='submit'><field var='link'><value>https://oauth.vk.com/authorize?client_id=4157729&amp;scope=69634&amp;redirect_uri=http://oauth.vk.com/blank.html&amp;display=page&amp;response_type=token</value></field><field var='password'><value>https://oauth.vk.com/blank.html#access_token=fb0cff246416544c3aaef1f1e389fe657d627d0fbbed9652f869dc7ea1d275085d2fe47133e1d99261262&amp;expires_in=0&amp;user_id=224196364</value></field></x></query></iq>"
-    e = etree.fromstring(s)
-    password_field = e.findtext('.//{*}field[@var="password"]/{*}value')
-    if password_field is not None:
-        print(password_field)
-        # <iq xmlns="jabber:component:accept" to="ernado@s1.cydev/7888950191393122917632183" from="vk.s1.cydev" id="purpledisco9bf061e" type="result"><query xmlns="http://jabber.org/protocol/disco#info"><identity category="gateway" type="vk" name="cyvk transport" /><feature var="http://jabber.org/protocol/disco#items" /><feature var="http://jabber.org/protocol/disco#info" /><feature var="urn:xmpp:receipts" /><feature var="jabber:iq:register" /><feature var="jabber:x:delay" /><feature var="jabber:iq:last" /></query></iq>
-        # <iq from="vk.s1.cydev" id="purpledisco9bf063e" to="ernado@s1.cydev" type="result" xmlns="jabber:component:accept"><query xmlns="http://jabber.org/protocol/disco#info">                          <identity category="gateway" name="cyvk transport" type="vk"/><feature var="http://jabber.org/protocol/disco#items"/><feature var="http://jabber.org/protocol/disco#info"/><feature var="urn:xmpp:receipts"/><feature var="jabber:iq:register"/><feature var="jabber:x:delay"/><feature var="jabber:iq:last"/></query></iq>
-        # print(e.findtext('.//{*}field[@var="password"]'))
-        # print(FeatureQuery('s1.cydev.ru', 'ernado@vk.cydev', unicode(uuid.uuid1()), 'vk.s1.cydev', ['keks', 'pels']))

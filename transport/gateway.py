@@ -108,7 +108,7 @@ def get_sender_iteration(c):
 
 def get_main_iteration(_):
     user_api.process_users()
-    time.sleep(6)
+    time.sleep(16)
 
 
 def start_thread(component, target, name):

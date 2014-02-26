@@ -1,5 +1,4 @@
 from __future__ import unicode_literals
-import logging
 import time
 
 import ujson as json
@@ -9,24 +8,27 @@ import database
 from friends import get_friend_jid
 from errors import AuthenticationException, CaptchaNeeded, NotAllowed, AccessRevokedError, InvalidTokenError
 from parallel import realtime
-from parallel.sending import send
 from compat import text_type, get_logger
 from config import MAX_API_RETRY, API_MAXIMUM_RATE, TRANSPORT_ID
-from api.user import UserApi
-from api.messages import MessagesApi
-
+from .user import UserApi
+from .messages import MessagesApi
+from parallel.realtime import get_token
+from parallel.sending import push
+from cystanza.stanza import ChatMessage
+from .api import method_wrapper
 
 VK_ERROR_BURST = 6
 _logger = get_logger()
 
 
-class IncorrectApiResponce(exception):
+class IncorrectApiResponse(Exception):
     pass
         
 
 class Api(object):
     URL = 'https://api.vk.com/method/%s'
     VERSION = '3.0'
+
     def __init__(self, jid, token=None):
         if not isinstance(jid, text_type):
             raise ValueError('Expected %s jid, got %s' % (text_type, type(jid)))
@@ -50,20 +52,21 @@ class Api(object):
         assert isinstance(method_name, text_type)
 
         if retry > MAX_API_RETRY:
-            raise TooMuchAttemts('reached max api retry for %s, %s' % (method_name, jid))
+            raise IncorrectApiResponse('reached max api retry for %s, %s' % (method_name, self.jid))
 
         args = args or {}
-        args.update({'v' self.VERSION, 'access_token': self.token})
+        args.update({'v': self.VERSION, 'access_token': self.token})
         _logger.debug('calling api method %s, arguments: %s' % (method_name, args))
 
         time.sleep(additional_timeout)
-        realtime.wait_for_api_call(jid)
+        realtime.wait_for_api_call(self.jid)
 
         try:
             response = requests.post(self.URL % method_name, args)
             if response.status_code != 200:
                 raise requests.HTTPError('no response')
             body = json.loads(response.text)
+            _logger.debug('got: %s' % body)
             if 'response' in body:
                 return body['response'] 
             code = None
@@ -71,49 +74,50 @@ class Api(object):
                 code = body['error']['error_code']
             if code == VK_ERROR_BURST:
                 additional_timeout = additional_timeout or API_MAXIMUM_RATE
-                raise IncorrectApiResponce(code)
+                raise IncorrectApiResponse(code)
             raise NotImplementedError('unable to process %s' % body)
-                        
-        except (requests.RequestException, IncorrectApiResponce) as e:
+
+        except (requests.RequestException, IncorrectApiResponse) as e:
             _logger.error('method error: %s' % e)
 
             if not additional_timeout:
                 additional_timeout = 1
             additional_timeout *= 2
 
-            return self._method(method_name, args, additional_timeout, retry+1)   
+            return self._method(method_name, args, additional_timeout, retry+1)
 
-    def method(self, method_name, args=None, additional_timeout=0, retry=0):
+    @method_wrapper
+    def method(self, method_name, args=None, raise_auth=False):
         """Call method with error handling"""
         try:
-            return self._method(method_name, args=None, additional_timeout=0, retry=0)
+            return self._method(method_name, args)
         except CaptchaNeeded:
-            _logger.error('captcha challenge for %s' % jid)
+            _logger.error('captcha challenge for %s' % self.jid)
             raise NotImplementedError('captcha')
         except AuthenticationException as e:
-            send(jid, 'Authentication error: %s' % e)
+            push(ChatMessage(TRANSPORT_ID, self.jid, 'Authentication error: %s' % e))
         except NotAllowed:
             friend_jid = get_friend_jid(args.get('user_id', TRANSPORT_ID))
             text = "You're not allowed to perform this action"
-            send(self.jid, text, friend_jid)
+            push(ChatMessage(friend_jid, self.jid, text))
         except AccessRevokedError:
             _logger.debug('user %s revoked access' % self.jid)
+            push(ChatMessage(TRANSPORT_ID, self.jid, "You've revoked access and will be unregistered from transport"))
             database.remove_user(self.jid)
             realtime.remove_online_user(self.jid)
         except InvalidTokenError:
-            send(self.jid, 'Your token is invalid. Please, register again', TRANSPORT_ID)
-        except IncorrectApiResponce:
-            send(self.jid, 'Unable to retrieve correct response from vk api')
+            push(ChatMessage(TRANSPORT_ID, self.jid, 'Your token is invalid. Please, register again'))
         except NotImplementedError as e:
-            send(self.jid, 'Feature not implemented: %s' % e)
-        
-        if reraise_auth:
+            push(ChatMessage(TRANSPORT_ID, self.jid, 'Feature not implemented: %s' % e))
+
+        if raise_auth:
             raise AuthenticationException()
 
-        def is_application_user(self):
-            """Check if client is application user and validate token"""
-            try:
-                self.method('isAppUser', reraise_auth=True)
-                return True
-            except AuthenticationException:
-                return False
+    @method_wrapper
+    def is_application_user(self):
+        """Check if client is application user and validate token"""
+        try:
+            self.method('isAppUser', raise_auth=True)
+            return True
+        except AuthenticationException:
+            return False

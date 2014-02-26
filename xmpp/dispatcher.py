@@ -50,7 +50,7 @@ class Dispatcher():
             return self.handle_handshake()
 
     def process(self, timeout=8):
-        logger.error('dispatcher process')
+        logger.debug('dispatcher iteration started')
         if self.connection.pending_data(timeout):
             try:
                 data = self.connection.receive()
@@ -63,7 +63,7 @@ class Dispatcher():
                 logger.error('builder error: ' % e)
             if data:
                 return len(data)
-        logger.error('no data')
+        logger.debug('dispatcher iteration ended with no data')
         return True
 
     def send(self, stanza):

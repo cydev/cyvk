@@ -2,13 +2,13 @@ from __future__ import unicode_literals
 import database
 from errors import AuthenticationException
 from friends import get_friend_jid
-from parallel import realtime, sending
+from parallel import realtime
 from parallel.stanzas import push
 from parallel.updates import set_online
 import statuses
 from config import TRANSPORT_ID
 from statuses import get_status_stanza
-from cystanza.stanza import Presence
+from cystanza.stanza import Presence, ChatMessage
 import compat
 import user as user_api
 
@@ -119,7 +119,7 @@ def _attempt_to_add_client(jid, _):
         message = "Authentication failed! " \
                   "If this error repeated, please register again. " \
                   "Error: %s" % e
-        sending.send(jid, message, TRANSPORT_ID)
+        push(ChatMessage(TRANSPORT_ID, jid, message))
 
 
 def _subscribe(jid, presence):

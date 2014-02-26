@@ -1,5 +1,4 @@
-	import pickle
-
+import pickle
 import redis
 
 # from xmpp import Stanza as Stanza
