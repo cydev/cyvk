@@ -39,3 +39,27 @@ class UserApi(ApiWrapper):
             _logger.error('failed to parse %s' % data)
             return None
 
+    def set_online(self, user):
+        self.method("account.setOnline")
+
+    def get_friends(self, fields=None, online=None):
+        fields = fields or ["screen_name"]
+        method_name = "friends.get"
+        if online:
+            method_name = "friends.getOnline"
+        friends_raw = self.method(method_name, jid, {"fields": ",".join(fields)}) or {} 
+        friends = {}
+        for friend in friends_raw:
+            try:
+                uid = friend["uid"]
+                name = escape_name("", u"%s %s" % (friend["first_name"], friend["last_name"]))
+                friends[uid] = {"name": name, "online": friend["online"]}
+                for key in fields:
+                    if key != "screen_name":
+                        friends[uid][key] = friend.get(key)
+            except KeyError as key_error:
+                _logger.error('%s while processing %s' % (key_error, uid))
+                continue
+        return friends
+
+
