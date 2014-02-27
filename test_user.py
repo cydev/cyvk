@@ -1,4 +1,4 @@
-from api.test_api import Api
+from api.vkapi import Api
 from cystanza.stanza import ChatMessage
 from parallel.sending import push
 

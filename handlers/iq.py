@@ -1,5 +1,5 @@
 from __future__ import unicode_literals
-from errors import AuthenticationException
+from api.errors import AuthenticationException
 from compat import get_logger
 from cystanza.stanza import FeatureQuery, BadRequestErrorStanza, NotImplementedErrorStanza
 from cystanza.forms import RegistrationFormStanza, RegistrationResult, RegistrationRequest
@@ -8,7 +8,20 @@ import user as user_api
 from parallel import realtime
 from parallel.stanzas import push
 from config import IDENTIFIER, TRANSPORT_ID
-from features import TRANSPORT_FEATURES
+from cystanza.namespaces import NS_DISCO_INFO, NS_DISCO_ITEMS, NS_REGISTER, NS_DELAY, NS_LAST, NS_RECEIPTS
+
+TRANSPORT_FEATURES = (NS_DISCO_ITEMS,
+                      NS_DISCO_INFO,
+                      NS_RECEIPTS,
+                      NS_REGISTER,
+                      # NS_GATEWAY,
+                      # NS_VERSION,
+                      # xmpp.NS_CAPTCHA,
+                      # xmpp.NS_STATS,
+                      # xmpp.NS_VCARD,
+                      NS_DELAY,
+                      # NS_PING,
+                      NS_LAST)
 
 logger = get_logger()
 

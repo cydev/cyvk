@@ -6,7 +6,7 @@ import redis
 
 from compat import urlopen, get_logger
 from config import POLLING_WAIT, REDIS_DB, REDIS_CHARSET, REDIS_PREFIX, REDIS_PORT, REDIS_HOST
-from api.test_api import Api
+from api.vkapi import Api
 from parallel import realtime, updates
 from events.toggle import raise_event
 

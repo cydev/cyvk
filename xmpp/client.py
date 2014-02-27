@@ -5,7 +5,6 @@ import logging
 from lxml import etree
 
 from cystanza.namespaces import NS_COMPONENT_ACCEPT
-
 from cystanza.stanza import Stanza
 from xmpp import dispatcher, transports
 
@@ -71,23 +70,19 @@ class Component(object):
     def auth_component(self, user, password):
         logger.debug('authenticating component')
         handshake_hash = sha1(self.dispatcher.builder.attributes['id'] + password)
-        self.dispatcher.set_handshake_handler(self.handshake_handler_test)
+        self.dispatcher.set_handshake_handler(self.handshake_handler)
         q = etree.Element('handshake', xmlns=NS_COMPONENT_ACCEPT)
         q.text = handshake_hash.hexdigest()
-        logger.error('a: %s' % etree.tostring(q))
         self.connection.send(etree.tostring(q))
         while not self.handshake:
             self.process(1)
         self.registered_name = user
         return self.handshake
 
-    def handshake_handler(self, _, stanza):
-        self.handshake = stanza.getName() == "handshake"
-
     def register_handler(self, *args, **kwargs):
         self.dispatcher.register_handler(*args, **kwargs)
 
-    def handshake_handler_test(self):
+    def handshake_handler(self):
         self.handshake = True
 
     def send(self, stanza):

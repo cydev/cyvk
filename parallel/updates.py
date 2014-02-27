@@ -1,10 +1,13 @@
 # coding=utf-8
 from __future__ import unicode_literals
-from api.test_api import Api
-from parallel import status, sending
-from cystanza.stanza import ChatMessage
-from compat import get_logger
 import time
+
+from api.vkapi import Api
+from parallel import sending
+from friends import get_friend_jid
+from cystanza.stanza import ChatMessage, Presence
+from compat import get_logger
+
 
 NEW_MESSAGE = 4
 FRIEND_ONLINE = 8
@@ -15,21 +18,21 @@ _logger = get_logger()
 
 
 def process_data(jid, data):
-    code = data[0]
+    try:
+        code, friend_id = data[0], abs(data[1])
+    except (IndexError, ValueError) as e:
+        return _logger.error('unable to process update data %s: %s' % (data, e))
 
     if code == NEW_MESSAGE:
         return send_messages(jid)
 
-    friend_id = abs(data[1])
+    origin = get_friend_jid(friend_id)
 
     if code == FRIEND_ONLINE:
-        return status.update_friend_status(jid, friend_id, status='online')
+        return Presence(origin, jid)
 
     if code == FRIEND_OFFLINE:
-        return status.update_friend_status(jid, friend_id, status='unavailable')
-
-    # if code == FRIEND_TYPING_CHAT:
-    #     return send_typing_status(jid, friends.get_friend_jid(friend_id))
+        return Presence(origin, jid, presence_type='unavailable')
 
     _logger.debug('doing nothing on code %s' % code)
 

@@ -1,17 +1,22 @@
+import traceback
+
 from compat import get_logger
 from .errors import ApiError
-import traceback
+
 
 _logger = get_logger()
 
 
 class ApiWrapper(object):
-    def __init__(self, api, jid):
-        self.jid = jid
+    def __init__(self, api):
         self.api = api
 
     def method(self, *args, **kwargs):
         return self.api.method(*args, **kwargs)
+
+    @property
+    def jid(self):
+        return self.api.jid
 
 
 def method_wrapper(f):

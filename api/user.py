@@ -1,29 +1,9 @@
 from __future__ import unicode_literals
 from .parsing import escape_name
-from vkapi import method
 from .api import ApiWrapper, method_wrapper
 from compat import get_logger
 
 _logger = get_logger()
-
-
-def get_user_data(uid, target_uid, fields=None):
-    _logger.debug('user api: sending user data for %s about %s' % (uid, target_uid))
-    fields = fields or ['screen_name']
-    args = dict(fields=','.join(fields), user_ids=target_uid)
-    m = 'users.get'
-    data = method(m, uid, args)
-
-    if data:
-        data = data[0]
-        data['name'] = escape_name('', u'%s %s' % (data['first_name'], data['last_name']))
-        del data['first_name'], data['last_name']
-    else:
-        data = {}
-        for key in fields:
-            data[key] = '<unknown error>'
-            _logger.error('failed to parse %s, got blank response' % fields)
-    return data
 
 
 class UserApi(ApiWrapper):

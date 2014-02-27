@@ -1,4 +1,3 @@
-
 class ApiError(Exception):
     def __init__(self, code, *args, **kwargs):
         self.code = code
@@ -41,9 +40,17 @@ class InvalidUserIds(ApiError):
 
 
 api_errors = {
-    1:UnknownError('Unknown error occurred.'),
-    2:ApplicationIsDisabled('Application is disabled. Enable your application or use test mode.'), 
-    4:IncorrectSignature('Incorrect signature.'),
-    5:TooManyRequestsPerSecond('Too many requests per second.'),
-    113:InvalidUserIds('Invalid user ids.')
+    1: UnknownError('Unknown error occurred.'),
+    2: ApplicationIsDisabled('Application is disabled. Enable your application or use test mode.'),
+    4: IncorrectSignature('Incorrect signature.'),
+    5: TooManyRequestsPerSecond('Too many requests per second.'),
+    113: InvalidUserIds('Invalid user ids.')
 }
+
+
+class InvalidTokenError(ApiError):
+    pass
+
+
+class AuthenticationException(ApiError):
+    pass

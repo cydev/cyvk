@@ -1,5 +1,7 @@
 import pickle
+
 import redis
+
 
 # from xmpp import Stanza as Stanza
 from config import REDIS_HOST, REDIS_PORT, REDIS_PREFIX

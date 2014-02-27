@@ -1,8 +1,7 @@
 from __future__ import unicode_literals
 from .api import ApiWrapper, method_wrapper
 from parallel import realtime
-from .parsing import sorting, escape
-from .message import parse
+from .parsing import sorting, escape, MessageParser
 from friends import get_friend_jid
 from compat import html_unespace
 
@@ -15,6 +14,14 @@ class Message(object):
 
 
 class MessagesApi(ApiWrapper):
+    def __init__(self, api):
+        self._parser = MessageParser(api)
+        super(MessagesApi, self).__init__(api)
+
+    @method_wrapper
+    def parse(self, message):
+        return self._parser.parse(message)
+
     @method_wrapper
     def mark_as_read(self, message_list):
         self.method('messages.markAsRead', self.jid, dict(message_ids=','.join(message_list)))

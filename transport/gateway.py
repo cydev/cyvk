@@ -6,15 +6,16 @@ import signal
 import threading
 import time
 
+from api.errors import AuthenticationException
 from events.handler import EventHandler
 import log
-from errors import AuthenticationException, all_errors, ConnectionError
 from friends import get_friend_jid
 from database import initialize_database
 from config import (DATABASE_FILE,
                     HOST, SERVER, PORT, TRANSPORT_ID, PASSWORD)
 from parallel import realtime
 from parallel.probe import probe_users
+from transport.errors import ConnectionError
 from transport.stanza_queue import enqueue
 from parallel.long_polling import start_thread_lp_requests, start_thread_lp
 import user as user_api
@@ -140,7 +141,7 @@ def start():
         start_thread_lp()
         h.start()
         probe_users()
-    except all_errors as e:
+    except ConnectionError as e:
         logger.critical('unable to initialize: %s' % e)
         halt_handler()
         time.sleep(2)

@@ -3,6 +3,7 @@ from __future__ import unicode_literals
 import time
 import logging
 
+from api.errors import InvalidTokenError, AuthenticationException
 from parallel.stanzas import push
 from parallel.updates import send_messages, get_friends
 from config import TRANSPORT_ID, IDENTIFIER
@@ -10,9 +11,7 @@ from database import set_token
 from friends import get_friend_jid
 from parallel import realtime
 from parallel.long_polling import start_polling
-from errors import CaptchaNeeded, InvalidTokenError, AuthenticationException
-# from api.vkapi import is_application_user
-from api.test_api import Api
+from api.vkapi import Api
 import database
 from cystanza.stanza import Presence as CyPresence
 
@@ -191,9 +190,9 @@ def connect(jid, token):
             raise InvalidTokenError('not application user')
         set_token(jid, token)
         logger.debug("user api: authenticated %s" % jid)
-    except CaptchaNeeded:
-        logger.debug("user api: captcha needed for %s" % jid)
-        raise AuthenticationException('Captcha')
+    # except CaptchaNeeded:
+    #     logger.debug("user api: captcha needed for %s" % jid)
+    #     raise AuthenticationException('Captcha')
     except InvalidTokenError as token_error:
         raise AuthenticationException('invalid token: %s' % token_error)
 
