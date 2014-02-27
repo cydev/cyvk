@@ -31,10 +31,7 @@ def registration_form_handler(iq):
     except (IndexError, AttributeError):
         logger.debug('access token is probably in raw format')
 
-    user_attributes = database.get_description(jid)
-
-    logger.debug('got description %s' % user_attributes)
-    if user_attributes:
+    if database.get_description(jid):
         return push(NotImplementedErrorStanza(iq, 'You are already in database'))
 
     try:

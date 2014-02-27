@@ -8,7 +8,7 @@ from parallel.updates import set_online
 import statuses
 from config import TRANSPORT_ID
 from statuses import get_status_stanza
-from cystanza.stanza import Presence, ChatMessage
+from cystanza.stanza import Presence, ChatMessage, AvailablePresence, SubscribedPresence
 import compat
 import user as user_api
 
@@ -39,10 +39,6 @@ def _unavailable(jid, presence):
     if presence.destination != TRANSPORT_ID:
         return
 
-    _logger.warning('unavailable presence may be not implemented')
-    user_api.send_out_presence(jid)
-    stanza = statuses.get_unavailable_stanza(jid)
-    push(stanza)
     realtime.remove_online_user(jid)
 
 
@@ -134,30 +130,17 @@ def _subscribe(jid, presence):
     """
     origin = presence.get_origin()
     destination = presence.get_destination()
+    push(SubscribedPresence(destination, origin))
 
     if destination == TRANSPORT_ID:
-        _logger.debug('sending presence about transport <subscribe>')
-        push(get_status_stanza(TRANSPORT_ID, origin, status='subscribed'))
-        push(get_status_stanza(TRANSPORT_ID, origin, status='available'))
-    else:
-        push(get_status_stanza(destination, origin, status='subscribed'))
+        return push(AvailablePresence(destination, origin))
 
-        client_friends = realtime.get_friends(jid)
-        _logger.debug('sending presence about friend <subscribe>')
+    friend_id = get_friend_jid(destination)
+    client_friends = realtime.get_friends(jid) or []
+    _logger.debug('sending presence about friend <subscribe>')
 
-        if not client_friends:
-            return
-
-        friend_id = get_friend_jid(destination)
-
-        if friend_id not in client_friends:
-            return
-
-        friend_status = 'unavailable'
-        if client_friends[friend_id]['online']:
-            friend_status = 'available'
-
-        push(get_status_stanza(destination, origin, status=friend_status))
+    if friend_id in client_friends and client_friends[friend_id]['online']:
+        push(AvailablePresence(destination, origin))
 
 
 _mapping = {'available': _available, 'probe': _available, None: _available,
@@ -177,7 +160,7 @@ def _handle_presence(jid, presence):
     try:
         _presence_handler_wrapper(_mapping[status])(jid, presence)
     except KeyError:
-        _logger.debug('unable to handle status %s' % status)
+        _logger.error('unable to handle status %s' % status)
 
     if presence.destination == TRANSPORT_ID:
         _logger.debug('setting last status %s for %s' % (status, jid))

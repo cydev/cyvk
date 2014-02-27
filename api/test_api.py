@@ -18,12 +18,9 @@ from cystanza.stanza import ChatMessage
 from .api import method_wrapper
 
 VK_ERROR_BURST = 6
+WAIT_RATE = 2.
 _logger = get_logger()
 
-
-class IncorrectApiResponse(Exception):
-    pass
-        
 
 class Api(object):
     URL = 'https://api.vk.com/method/%s'
@@ -64,27 +61,22 @@ class Api(object):
         try:
             response = requests.post(self.URL % method_name, args)
             if response.status_code != 200:
-                raise requests.HTTPError('no response')
+                raise requests.HTTPError('incorrect response status code')
             body = json.loads(response.text)
             _logger.debug('got: %s' % body)
             if 'response' in body:
                 return body['response'] 
-            code = None
             if 'error' in body and 'error_code' in body['error']:
                 code = body['error']['error_code']
-            if code == VK_ERROR_BURST:
-                additional_timeout = additional_timeout or API_MAXIMUM_RATE
-                raise IncorrectApiResponse(code)
+                raise _api_errors.get(code, UnknownError())
             raise NotImplementedError('unable to process %s' % body)
-
-        except (requests.RequestException, IncorrectApiResponse) as e:
+        except (requests.RequestException, ValueError) as e:
             _logger.error('method error: %s' % e)
-
-            if not additional_timeout:
-                additional_timeout = 1
-            additional_timeout *= 2
-
-            return self._method(method_name, args, additional_timeout, retry+1)
+            additional_timeout = additional_timeout or 1
+        except TooManyRequestsPerSecond:
+            additional_timeout = additional_timeout or API_MAXIMUM_RATE/WAIT_RATE
+        additional_timeout *= WAIT_RATE
+        return self._method(method_name, args, additional_timeout, retry+1)
 
     @method_wrapper
     def method(self, method_name, args=None, raise_auth=False):

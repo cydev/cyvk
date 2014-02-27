@@ -167,6 +167,36 @@ class Presence(Stanza):
         return self.base
 
 
+class UnavailablePresence(Presence):
+    def __init__(self, origin, destination, show=None, nickname=None, presence_type=None, namespace=None):
+        super(UnavailablePresence, self).__init__(origin, destination, 'unavailable', show, 
+                                                  nickname, presence_type, namespace)
+
+
+class AvailablePresence(Presence):
+    def __init__(self, origin, destination, show=None, nickname=None, presence_type=None, namespace=None):
+        super(AvailablePresence, self).__init__(origin, destination, 'available', show, 
+                                                  nickname, presence_type, namespace)
+
+
+class UnsubscribePresence(Presence):
+    def __init__(self, origin, destination, show=None, nickname=None, presence_type=None, namespace=None):
+        super(UnsubscribePresence, self).__init__(origin, destination, 'unsubscribe', show, 
+                                                  nickname, presence_type, namespace)
+
+
+class SubscribePresence(Presence):
+    def __init__(self, origin, destination, show=None, nickname=None, presence_type=None, namespace=None):
+        super(SubscribePresence, self).__init__(origin, destination, 'subscribe', show, 
+                                                  nickname, presence_type, namespace)
+
+
+class SubscribedPresence(Presence):
+    def __init__(self, origin, destination, show=None, nickname=None, presence_type=None, namespace=None):
+        super(SubscribedPresence, self).__init__(origin, destination, 'subscribed', show, 
+                                                  nickname, presence_type, namespace)
+
+
 class Probe(Presence):
     def __init__(self, origin, destination):
         super(Probe, self).__init__(origin, destination, presence_type=STANZA_PROBE)
@@ -234,5 +264,3 @@ class NotImplementedErrorStanza(ErrorStanza):
 class BadRequestErrorStanza(ErrorStanza):
     def __init__(self, stanza, text=None, namespace=None):
         super(BadRequestErrorStanza, self).__init__(stanza, ERR_BAD_REQUEST, NS_STANZAS, text, namespace)
-
-
