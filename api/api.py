@@ -1,6 +1,3 @@
-from parallel.sending import push
-from cystanza.stanza import ChatMessage
-from config import TRANSPORT_ID
 from compat import get_logger
 from .errors import ApiError
 import traceback
