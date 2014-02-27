@@ -6,7 +6,8 @@ import requests
 
 import database
 from friends import get_friend_jid
-from errors import AuthenticationException, CaptchaNeeded, NotAllowed, AccessRevokedError, InvalidTokenError
+from errors import (AuthenticationException, CaptchaNeeded, NotAllowed, api_errors, UnknownError,
+                    AccessRevokedError, InvalidTokenError, IncorrectApiResponse, TooManyRequestsPerSecond)
 from parallel import realtime
 from compat import text_type, get_logger
 from config import MAX_API_RETRY, API_MAXIMUM_RATE, TRANSPORT_ID
@@ -68,7 +69,7 @@ class Api(object):
                 return body['response'] 
             if 'error' in body and 'error_code' in body['error']:
                 code = body['error']['error_code']
-                raise _api_errors.get(code, UnknownError())
+                raise api_errors.get(code, UnknownError())
             raise NotImplementedError('unable to process %s' % body)
         except (requests.RequestException, ValueError) as e:
             _logger.error('method error: %s' % e)
