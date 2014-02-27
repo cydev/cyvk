@@ -13,7 +13,7 @@ from config import MAX_API_RETRY, API_MAXIMUM_RATE, TRANSPORT_ID
 from .user import UserApi
 from .messages import MessagesApi
 from parallel.realtime import get_token
-from parallel.sending import push
+from parallel.stanzas import push
 from cystanza.stanza import ChatMessage
 from .api import method_wrapper
 

@@ -1,6 +1,6 @@
 from api.vkapi import Api
 from cystanza.stanza import ChatMessage
-from parallel.sending import push
+from parallel.stanzas import push
 
 
 class UserApi(object):

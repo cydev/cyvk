@@ -3,7 +3,7 @@ from __future__ import unicode_literals
 import time
 
 from api.vkapi import Api
-from parallel import sending
+from parallel.stanzas import push
 from friends import get_friend_jid
 from cystanza.stanza import ChatMessage, Presence
 from compat import get_logger
@@ -42,8 +42,7 @@ def send_messages(jid):
     messages = api.messages.get(200) or []
     for message in messages:
         timestamp = time.strftime("%Y%m%dT%H:%M:%S", time.gmtime(message.date))
-        sending.push(ChatMessage(message.origin, jid, message.text, timestamp=timestamp))
-        sending.send(jid, message.origin, message.text, message.date)
+        push(ChatMessage(message.origin, jid, message.text, timestamp=timestamp))
 
 
 def send_message(jid, body, destination_uid):
