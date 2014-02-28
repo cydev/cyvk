@@ -6,8 +6,8 @@ import redis
 
 from compat import urlopen, get_logger
 from config import POLLING_WAIT, REDIS_DB, REDIS_CHARSET, REDIS_PREFIX, REDIS_PORT, REDIS_HOST
-from api.vkapi import Api
-from parallel import realtime, updates
+from user import UserApi
+from parallel import updates
 from events.toggle import raise_event
 
 
@@ -17,32 +17,28 @@ LONG_POLLING_KEY = ':'.join([REDIS_PREFIX, 'long_polling_queue'])
 START_POLLING_KEY = ':'.join([REDIS_PREFIX, 'long_polling_start_queue'])
 
 
-def start_polling(jid):
-    r = redis.StrictRedis(REDIS_HOST, REDIS_PORT, REDIS_DB, charset=REDIS_CHARSET)
-    r.lpush(START_POLLING_KEY, jid)
-
-
 def _start_polling(jid, attempts=0):
-    if realtime.is_polling(jid):
+    user = UserApi(jid)
+    if user.is_polling:
         return _logger.debug('%s is already polling' % jid)
 
     if attempts > 5:
         return _logger.error('too many long polling attempts for %s' % jid)
 
     r = redis.StrictRedis(REDIS_HOST, REDIS_PORT, REDIS_DB, charset=REDIS_CHARSET)
-    api = Api(jid)
-    args = api.messages.get_lp_server()
+    args = user.vk.messages.get_lp_server()
     args['wait'] = POLLING_WAIT
     url = 'http://{server}?act=a_check&key={key}&ts={ts}&wait={wait}&mode=2'.format(**args)
     r.lpush(LONG_POLLING_KEY, json.dumps({'jid': jid, 'url': url}))
 
 
 def _handle_url(jid, url):
-    realtime.set_polling(jid)
+    user = UserApi(jid)
+    user.set_polling()
     _logger.debug('got url, starting polling')
     data = urlopen(url).read()
     _logger.debug('got data from polling server')
-    realtime.unset_polling(jid)
+    user.unset_polling()
     raise_event(UPDATE_RESULT, response=data, jid=jid)
 
 
@@ -53,21 +49,21 @@ def event_handler(event_body):
     except ValueError as e:
         _logger.error('unable to parse json: %s (%s)' % (data, e))
     jid = event_body['jid']
-    is_client = realtime.is_client(jid)
+    user = UserApi(jid)
 
     try:
         if not data['updates']:
             _logger.debug('no updates for %s' % jid)
 
         for update in data['updates']:
-            updates.process_data(jid, update)
+            updates.handle_update(jid, update)
     except KeyError:
         _logger.error('unable to process %s' % event_body)
 
-    if is_client:
-        start_polling(jid)
-    else:
-        _logger.debug('ending polling for %s' % jid)
+    if not user.is_client:
+        return _logger.debug('ending polling for %s' % jid)
+
+    user.start_polling()
 
 
 def loop_for_starting():

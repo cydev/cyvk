@@ -5,7 +5,6 @@ from cystanza.stanza import FeatureQuery, BadRequestErrorStanza, NotImplementedE
 from cystanza.forms import RegistrationFormStanza, RegistrationResult, RegistrationRequest
 import database
 from user import UserApi
-from parallel import realtime
 from parallel.stanzas import push
 from config import IDENTIFIER, TRANSPORT_ID
 from cystanza.namespaces import NS_DISCO_INFO, NS_DISCO_ITEMS, NS_REGISTER, NS_DELAY, NS_LAST, NS_RECEIPTS
@@ -52,22 +51,20 @@ def registration_form_handler(iq):
         if not token:
             raise AuthenticationException('no token')
         user.connect(token)
-        realtime.set_token(jid, token)
+        user.set_token(token)
         user.initialize()
     except AuthenticationException as e:
         logger.error('user %s connection failed (from iq)' % jid)
         return push(BadRequestErrorStanza(iq, 'Incorrect password or access token: %s' % e))
 
     user.add()
-    database.insert_user(jid, None, token, None, False)
+    user.save()
     logger.debug('registration for %s completed' % jid)
     push(RegistrationResult(iq))
 
 
 def registration_request_handler(request):
-    """
-    :type request: RegistrationRequest
-    """
+    """:type request: RegistrationRequest"""
     if request.destination != TRANSPORT_ID:
         return
 
@@ -75,9 +72,7 @@ def registration_request_handler(request):
 
 
 def discovery_request_handler(request):
-    """
-    :type request: FeatureQuery
-    """
+    """:type request: FeatureQuery"""
     if request.destination != TRANSPORT_ID:
         return
 

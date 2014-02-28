@@ -1,9 +1,13 @@
 from __future__ import unicode_literals
+import time
+
 from .api import ApiWrapper, method_wrapper
 from parallel import realtime
 from .parsing import sorting, escape, MessageParser
 from friends import get_friend_jid
 from compat import html_unespace
+from parallel.stanzas import push
+from cystanza.stanza import ChatMessage
 
 
 class Message(object):
@@ -65,3 +69,21 @@ class MessagesApi(ApiWrapper):
         assert isinstance(uid, int)
         assert isinstance(body, unicode)
         return self.method('messages.send', {'user_id': uid, "message": body, "type": 0})
+
+    @method_wrapper
+    def send_messages(self):
+        messages = self.get(200) or []
+
+        if messages is None:
+            return
+
+        for message in messages:
+            timestamp = time.strftime("%Y%m%dT%H:%M:%S", time.gmtime(message.date))
+            push(ChatMessage(message.origin, self.jid, message.text, timestamp=timestamp))
+
+            # @method_wrapper
+            # def send_messages(self):
+            # messages = get(200) or []
+            # for message in messages:
+            #     timestamp = time.strftime("%Y%m%dT%H:%M:%S", time.gmtime(message.date))
+            #     push(ChatMessage(message.origin, jid, message.text, timestamp=timestamp))

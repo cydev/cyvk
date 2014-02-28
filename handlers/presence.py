@@ -2,9 +2,7 @@ from __future__ import unicode_literals
 from api.errors import AuthenticationException
 import database
 from friends import get_friend_jid
-from parallel import realtime
 from parallel.stanzas import push
-from parallel.updates import set_online
 from config import TRANSPORT_ID
 from cystanza.stanza import Presence, ChatMessage, AvailablePresence, SubscribedPresence, UnavailablePresence
 import compat
@@ -14,48 +12,43 @@ _logger = compat.get_logger()
 
 
 def _presence_handler_wrapper(h):
-    def wrapper(jid, presence):
-        assert isinstance(jid, unicode)
+    def wrapper(user, presence):
         assert isinstance(presence, Presence)
-        h(jid, presence)
+        h(user, presence)
 
     return wrapper
 
 
-def _unavailable(jid, presence):
+def _unavailable(user, presence):
     """Unavailable presence handler"""
     _logger.debug('unavailable presence %s' % presence)
 
     if presence.destination != TRANSPORT_ID:
         return
+    user.set_offline()
 
-    realtime.remove_online_user(jid)
 
-
-def _error(jid, presence):
+def _error(user, presence):
     _logger.debug('error presence %s' % presence)
-
-    if presence.error_code == "404":
-        raise NotImplementedError('client_disconnect for %s' % jid)
-
-    raise NotImplementedError('error presence')
+    raise NotImplementedError('error presence for %s' % user)
 
 
-def _available(jid, presence):
+def _available(user, presence):
     if presence.destination != TRANSPORT_ID:
         return
 
     _logger.debug("user %s, will send sendInitPresence" % presence.origin)
-    _logger.warning('not adding resource for %s' % jid)
+    _logger.warning('not adding resource for %s' % user.jid)
 
 
-def _unsubscribe(jid, presence):
-    if realtime.is_client(jid) and presence.destination == TRANSPORT_ID:
-        database.remove_user(jid)
-        _logger.debug("user removed registration: %s" % jid)
+def _unsubscribe(user, presence):
+    if user.is_client and presence.destination == TRANSPORT_ID:
+        user.delete()
+        _logger.debug("user removed registration: %s" % user.jid)
 
 
-def _attempt_to_add_client(jid, _):
+def _attempt_to_add_client(user, _):
+    jid = user.jid
     _logger.debug('presence: attempting to add %s to transport' % jid)
 
     description = database.get_description(jid)
@@ -67,11 +60,10 @@ def _attempt_to_add_client(jid, _):
     token = description['token']
 
     try:
-        user = UserApi(jid)
         user.connect(token)
         user.initialize()
         user.add()
-        set_online(jid)
+        user.vk.set_online()
     except AuthenticationException as e:
         _logger.error('unable to authenticate %s: %s' % (jid, e))
         message = "Authentication failed! " \
@@ -80,7 +72,7 @@ def _attempt_to_add_client(jid, _):
         push(ChatMessage(TRANSPORT_ID, jid, message))
 
 
-def _subscribe(jid, presence):
+def _subscribe(user, presence):
     origin = presence.get_origin()
     destination = presence.get_destination()
     push(SubscribedPresence(destination, origin))
@@ -89,7 +81,7 @@ def _subscribe(jid, presence):
         return push(AvailablePresence(destination, origin))
 
     friend_id = get_friend_jid(destination)
-    client_friends = realtime.get_friends(jid) or []
+    client_friends = user.friends or []
     _logger.debug('sending presence about friend <subscribe>')
 
     if friend_id in client_friends and client_friends[friend_id]['online']:
@@ -102,11 +94,11 @@ _mapping = {'available': _available, 'probe': _available, None: _available,
             'unsubscribe': _unsubscribe}
 
 
-def _handle_presence(jid, presence):
+def _handle_presence(user, presence):
     status = presence.stanza_type
     _logger.debug('presence status: %s' % status)
     try:
-        _presence_handler_wrapper(_mapping[status])(jid, presence)
+        _presence_handler_wrapper(_mapping[status])(user, presence)
     except KeyError:
         _logger.error('unable to handle status %s' % status)
 
@@ -119,8 +111,8 @@ def handler(presence):
 
     if not isinstance(jid, unicode):
         raise ValueError('jid %s (%s) is not str' % (jid, type(jid)))
-
-    if realtime.is_client(jid):
-        _handle_presence(jid, presence)
+    user = UserApi(jid)
+    if user.is_client:
+        _handle_presence(user, presence)
     elif presence.status in ("available", None):
-        _attempt_to_add_client(jid, presence)
+        _attempt_to_add_client(user, presence)

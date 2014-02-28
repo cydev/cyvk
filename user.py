@@ -3,25 +3,28 @@ from __future__ import unicode_literals
 import time
 import logging
 
+import redis
+
 from api.errors import InvalidTokenError, AuthenticationException
 from parallel.stanzas import push
-from parallel.updates import send_messages, get_friends
 from config import TRANSPORT_ID, IDENTIFIER
 from database import set_token, get_all_users
 from friends import get_friend_jid
 from parallel import realtime
-from parallel.long_polling import start_polling
 from api.vkapi import Api
 import database
 from cystanza.stanza import SubscribePresence, AvailablePresence, UnavailablePresence, Probe
+from config import REDIS_DB, REDIS_CHARSET, REDIS_PREFIX, REDIS_PORT, REDIS_HOST
 
 
+START_POLLING_KEY = ':'.join([REDIS_PREFIX, 'long_polling_start_queue'])
 logger = logging.getLogger("cyvk")
 
 
 class UserApi(object):
     def __init__(self, jid):
         self.jid = jid
+        self.vk = Api(self)
 
     def roster_subscribe(self, subscriptions=None):
         """Subscribe user for jid in dist"""
@@ -29,6 +32,10 @@ class UserApi(object):
             return push(SubscribePresence(TRANSPORT_ID, self.jid))
         for uid, value in subscriptions.iteritems():
             push(SubscribePresence(get_friend_jid(uid), self.jid, nickname=value["name"]))
+
+    def start_polling(self):
+        r = redis.StrictRedis(REDIS_HOST, REDIS_PORT, REDIS_DB, charset=REDIS_CHARSET)
+        r.lpush(START_POLLING_KEY, self.jid)
 
     @property
     def friends(self):
@@ -59,7 +66,7 @@ class UserApi(object):
 
     def update_friends(self):
         jid = self.jid
-        friends_vk = get_friends(jid)
+        friends_vk = self.vk.get_friends()
         friends_db = realtime.get_friends(jid)
 
         if friends_db == friends_vk:
@@ -98,8 +105,9 @@ class UserApi(object):
         """Initializes user by subscribing to friends and sending initial presence"""
         jid = self.jid
         logger.debug("user api: called init for user %s" % jid)
-        friends = get_friends(jid)
+        friends = self.vk.get_friends()
         realtime.set_friends(jid, friends)
+        self.unset_polling()
         realtime.unset_polling(jid)
         realtime.unset_processing(jid)
 
@@ -133,10 +141,9 @@ class UserApi(object):
         if not token:
             raise AuthenticationException('no token for %s' % jid)
 
-        api = Api(jid, token)
         try:
             logger.debug('user api: trying to auth with token')
-            if not api.is_application_user():
+            if not self.vk.is_application_user():
                 raise InvalidTokenError('not application user')
             set_token(jid, token)
             logger.debug("user api: authenticated %s" % jid)
@@ -149,8 +156,8 @@ class UserApi(object):
         realtime.set_processing(self.jid)
         if not realtime.is_polling(self.jid):
             self.update_friends()
-            send_messages(self.jid)
-            start_polling(self.jid)
+            self.vk.messages.send_messages()
+            self.start_polling()
         else:
             logger.debug('updates for %s are handled by polling' % self.jid)
         realtime.unset_processing(self.jid)
@@ -161,6 +168,40 @@ class UserApi(object):
             return logger.debug('%s is already a client' % self.jid)
         realtime.add_online_user(self.jid)
         self.process()
+
+    def set_offline(self):
+        realtime.remove_online_user(self.jid)
+
+    def set_online(self):
+        realtime.add_online_user(self.jid)
+
+    def set_token(self, token):
+        assert isinstance(token, unicode)
+        realtime.set_token(self.jid, token)
+
+    @property
+    def is_polling(self):
+        return realtime.is_polling(self.jid)
+
+    def set_polling(self):
+        realtime.set_polling(self.jid)
+
+    def unset_polling(self):
+        realtime.unset_polling(self.jid)
+
+    @property
+    def token(self):
+        return realtime.get_token(self.jid)
+
+    def save(self):
+        database.insert_user(self.jid, None, self.token, None, False)
+
+    @property
+    def is_client(self):
+        return realtime.is_client(self.jid)
+
+    def __str__(self):
+        return str(self.jid)
 
 
 def delete_user(jid):

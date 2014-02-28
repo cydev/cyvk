@@ -4,19 +4,17 @@ import ujson as json
 
 import requests
 
-from .errors import (api_errors, UnknownError, IncorrectApiResponse, TooManyRequestsPerSecond, AuthenticationException,
-                     InvalidTokenError)
-
-# from errors import AuthenticationException, CaptchaNeeded, NotAllowed, AccessRevokedError
 from parallel import realtime
 from compat import text_type, get_logger
 from config import MAX_API_RETRY, API_MAXIMUM_RATE, TRANSPORT_ID
-from .user import UserApi
+from .errors import (api_errors, UnknownError, IncorrectApiResponse, TooManyRequestsPerSecond, AuthenticationException,
+                     InvalidTokenError)
 from .messages import MessagesApi
-from parallel.realtime import get_token
+from .api import method_wrapper
+from .parsing import escape_name
 from parallel.stanzas import push
 from cystanza.stanza import ChatMessage
-from .api import method_wrapper
+
 
 VK_ERROR_BURST = 6
 WAIT_RATE = 2.
@@ -27,16 +25,14 @@ class Api(object):
     URL = 'https://api.vk.com/method/%s'
     VERSION = '3.0'
 
-    def __init__(self, jid, token=None):
-        if not isinstance(jid, text_type):
-            raise ValueError('Expected %s jid, got %s' % (text_type, type(jid)))
-        self.jid = jid
-        token = token or get_token(jid)
+    def __init__(self, user, token=None):
+        self.user = user
+        self.jid = user.jid
+        token = token or user.token
         if not token:
             # TODO: send error to user
-            raise ValueError('No token for %s' % jid)
+            raise ValueError('No token for %s' % user)
         self.token = token
-        self.user = UserApi(self)
         self.messages = MessagesApi(self)
 
     def _method(self, method_name, args=None, additional_timeout=0, retry=0):
@@ -105,6 +101,36 @@ class Api(object):
 
         if raise_auth:
             raise AuthenticationException()
+
+    @method_wrapper
+    def get(self, uid, fields=None):
+        fields = fields or ['screen_name']
+        args = dict(fields=','.join(fields), user_ids=uid)
+        data = self.method('users.get', args)[0]
+        data['name'] = escape_name('', u'%s %s' % (data['first_name'], data['last_name']))
+        del data['first_name'], data['last_name']
+        return data
+
+    @method_wrapper
+    def set_online(self):
+        self.method("account.setOnline")
+
+    @method_wrapper
+    def get_friends(self, fields=None, online=None):
+        fields = fields or ["screen_name"]
+        method_name = "friends.get"
+        if online:
+            method_name = "friends.getOnline"
+        friends_raw = self.method(method_name, {"fields": ",".join(fields)}) or {}
+        friends = {}
+        for friend in friends_raw:
+            uid = friend["uid"]
+            name = escape_name("", u"%s %s" % (friend["first_name"], friend["last_name"]))
+            friends[uid] = {"name": name, "online": friend["online"]}
+            for key in fields:
+                if key != "screen_name":
+                    friends[uid][key] = friend.get(key)
+        return friends
 
     @method_wrapper
     def is_application_user(self):

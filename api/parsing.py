@@ -28,7 +28,7 @@ class MessageParser(ApiWrapper):
             date = fwd['date']
             fwd_body = escape('', compat.html_unespace(fwd['body']))
             date = datetime.fromtimestamp(date).strftime('%d.%m.%Y %H:%M:%S')
-            name = self.api.user.get(id_from)['name']
+            name = self.api.get(id_from)['name']
             body += "\n[%s] <%s> %s" % (date, name, fwd_body)
             body += self._parse_attachments(fwd)
 
