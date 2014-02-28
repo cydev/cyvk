@@ -74,10 +74,8 @@ def initialize():
     transport = get_transport()
     connect(transport)
     authenticate(transport)
-    logger.info('registering handlers')
     realtime.reset_online_users()
     logger.info('initialization finished')
-
     return transport
 
 
