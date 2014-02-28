@@ -8,7 +8,6 @@ from parallel.updates import set_online
 from config import TRANSPORT_ID
 from cystanza.stanza import Presence, ChatMessage, AvailablePresence, SubscribedPresence, UnavailablePresence
 import compat
-import user as user_api
 from user import UserApi
 
 _logger = compat.get_logger()

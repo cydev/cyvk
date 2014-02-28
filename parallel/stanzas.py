@@ -1,9 +1,11 @@
 # coding=utf-8
 from __future__ import unicode_literals
 import pickle
+
 from compat import get_logger
 from cystanza.stanza import Stanza
 from transport.stanza_queue import r, _get_stanza_queue_key
+
 
 _logger = get_logger()
 

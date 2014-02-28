@@ -123,8 +123,6 @@ class UserApi(object):
         logger.debug("user api: %s exists in db" % jid)
         jid = desc['jid']
         realtime.set_last_message(jid, desc['last_message_id'])
-        if desc['roster_set_flag']:
-            realtime.set_roster_flag(jid)
         realtime.set_friends(jid, {})
         logger.debug("user api: %s data loaded" % jid)
 
@@ -135,7 +133,6 @@ class UserApi(object):
         if not token:
             raise AuthenticationException('no token for %s' % jid)
 
-        # logger.debug("user api: vk api initialized")
         api = Api(jid, token)
         try:
             logger.debug('user api: trying to auth with token')
@@ -143,15 +140,8 @@ class UserApi(object):
                 raise InvalidTokenError('not application user')
             set_token(jid, token)
             logger.debug("user api: authenticated %s" % jid)
-        # except CaptchaNeeded:
-        #     logger.debug("user api: captcha needed for %s" % jid)
-        #     raise AuthenticationException('Captcha')
         except InvalidTokenError as token_error:
             raise AuthenticationException('invalid token: %s' % token_error)
-
-        if realtime.is_user(jid):
-            logger.debug("user api: updating db for %s" % jid)
-            realtime.set_last_activity_now(jid)
 
     def process(self):
         if realtime.is_processing(self.jid):
