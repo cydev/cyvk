@@ -58,7 +58,6 @@ def registration_form_handler(iq):
         logger.error('user %s connection failed (from iq)' % jid)
         return push(BadRequestErrorStanza(iq, 'Incorrect password or access token: %s' % e))
 
-    realtime.set_last_activity_now(jid)
     user.add()
     database.insert_user(jid, None, token, None, False)
     logger.debug('registration for %s completed' % jid)

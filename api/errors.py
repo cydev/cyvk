@@ -1,5 +1,5 @@
 class ApiError(Exception):
-    def __init__(self, code, *args, **kwargs):
+    def __init__(self, code=None, *args, **kwargs):
         self.code = code
         super(ApiError, self).__init__(*args, **kwargs)
 

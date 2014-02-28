@@ -10,6 +10,7 @@ def get_logger():
     logger.setLevel(LOG_LEVEL)
     h = logging.FileHandler(LOG_FILE)
     try:
+        # noinspection PyUnresolvedReferences
         import colorlog
 
         f = colorlog.ColoredFormatter('%(yellow)s%(name)-8s %(white)s%(asctime)s %(log_color)s%(message)s', log_colors={
