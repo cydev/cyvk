@@ -19,7 +19,6 @@ def get(attrs, name):
 
 
 def get_stanza(root):
-    logger.debug('got stanza: %s' % etree.tostring(root))
     stanza_name = root.xpath('local-name()')
     a = root.attrib
 

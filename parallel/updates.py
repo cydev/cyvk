@@ -48,7 +48,7 @@ def send_messages(jid):
 def send_message(jid, body, destination_uid):
     _logger.debug('user api: message to %s' % destination_uid)
     api = Api(jid)
-    return api.messages.send_message(body, destination_uid)
+    return api.messages.send_message(destination_uid, body)
 
 
 def set_online(user):

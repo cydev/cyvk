@@ -6,9 +6,10 @@ from parallel import realtime
 from parallel.stanzas import push
 from parallel.updates import set_online
 from config import TRANSPORT_ID
-from cystanza.stanza import Presence, ChatMessage, AvailablePresence, SubscribedPresence
+from cystanza.stanza import Presence, ChatMessage, AvailablePresence, SubscribedPresence, UnavailablePresence
 import compat
 import user as user_api
+from user import UserApi
 
 _logger = compat.get_logger()
 
@@ -23,15 +24,7 @@ def _presence_handler_wrapper(h):
 
 
 def _unavailable(jid, presence):
-    """
-    Unavailable presence handler
-
-    @type presence: Presence
-    @type jid: str
-    @param presence: Presence object
-    @param jid: client jid
-    @return: @raise NotImplementedError:
-    """
+    """Unavailable presence handler"""
     _logger.debug('unavailable presence %s' % presence)
 
     if presence.destination != TRANSPORT_ID:
@@ -41,14 +34,6 @@ def _unavailable(jid, presence):
 
 
 def _error(jid, presence):
-    """
-    Error presence handler
-
-    @type presence: PresenceWrapper
-    @param presence: presence object
-    @param jid: client jid
-    @raise NotImplementedError:
-    """
     _logger.debug('error presence %s' % presence)
 
     if presence.error_code == "404":
@@ -58,13 +43,6 @@ def _error(jid, presence):
 
 
 def _available(jid, presence):
-    """
-    Available status handler
-    @type presence: Presence
-    @param presence: Presence object
-    @param jid: client jid
-    @return:
-    """
     if presence.destination != TRANSPORT_ID:
         return
 
@@ -73,40 +51,27 @@ def _available(jid, presence):
 
 
 def _unsubscribe(jid, presence):
-    """
-    Client unsubscribe handler
-    @type jid: str
-    @type presence: Presence
-    @param presence: Presence object
-    @param jid: client jid
-    """
-
     if realtime.is_client(jid) and presence.destination == TRANSPORT_ID:
         database.remove_user(jid)
         _logger.debug("user removed registration: %s" % jid)
 
 
 def _attempt_to_add_client(jid, _):
-    """
-    Attempt to add client to transport and initialize it
-    @type jid: unicode
-    @param jid: client jid
-    @return:
-    """
     _logger.debug('presence: attempting to add %s to transport' % jid)
 
-    user = database.get_description(jid)
-    if not user:
+    description = database.get_description(jid)
+    if not description:
         _logger.debug('presence: user %s not found in database' % jid)
         return
     _logger.debug('presence: user %s found in database' % jid)
 
-    token = user['token']
+    token = description['token']
 
     try:
-        user_api.connect(jid, token)
-        user_api.initialize(jid, send=True)
-        user_api.add_client(jid)
+        user = UserApi(jid)
+        user.connect(token)
+        user.initialize()
+        user.add()
         set_online(jid)
     except AuthenticationException as e:
         _logger.error('unable to authenticate %s: %s' % (jid, e))
@@ -117,15 +82,6 @@ def _attempt_to_add_client(jid, _):
 
 
 def _subscribe(jid, presence):
-    """
-    Subscribe presence handler
-
-    @type jid: str
-    @type presence: Presence
-    @param presence: presence object
-    @param jid: client jid
-    @return:
-    """
     origin = presence.get_origin()
     destination = presence.get_destination()
     push(SubscribedPresence(destination, origin))
@@ -138,7 +94,8 @@ def _subscribe(jid, presence):
     _logger.debug('sending presence about friend <subscribe>')
 
     if friend_id in client_friends and client_friends[friend_id]['online']:
-        push(AvailablePresence(destination, origin))
+        return push(AvailablePresence(destination, origin))
+    push(UnavailablePresence(destination, origin))
 
 
 _mapping = {'available': _available, 'probe': _available, None: _available,
@@ -147,29 +104,16 @@ _mapping = {'available': _available, 'probe': _available, None: _available,
 
 
 def _handle_presence(jid, presence):
-    """
-    Status update handler for client
-    @type presence: Presence
-    @param presence: status presence
-    @param jid: client jid
-    """
-    status = presence.status
+    status = presence.stanza_type
     _logger.debug('presence status: %s' % status)
     try:
         _presence_handler_wrapper(_mapping[status])(jid, presence)
     except KeyError:
         _logger.error('unable to handle status %s' % status)
 
-    if presence.destination == TRANSPORT_ID:
-        _logger.debug('setting last status %s for %s' % (status, jid))
-        realtime.set_last_status(jid, status)
-
 
 def handler(presence):
-    """
-
-    :type presence: Presence
-    """
+    """:type presence: Presence"""
     jid = presence.get_origin()
 
     _logger.debug('user %s presence handling: %s' % (jid, presence))

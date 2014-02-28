@@ -106,34 +106,6 @@ def set_friends(uid, friends):
     r.set(_get_friends_key(uid), friends_json)
 
 
-def _get_last_activity_key(uid):
-    return _get_user_attribute_key(uid, ACTIVITY)
-
-
-def get_last_activity(user):
-    try:
-        return float(r.get(_get_last_activity_key(user)))
-    except (TypeError, ValueError):
-        return 0
-
-
-def _get_last_update_key(uid):
-    return _get_user_attribute_key(uid, LAST_UPDATE)
-
-
-def get_last_update(uid):
-    last_update = r.get(_get_last_update_key(uid))
-    try:
-        return float(last_update)
-    except TypeError:
-        return 0
-
-
-def set_last_update_now(uid):
-    last_update = time.time()
-    r.set(_get_last_update_key(uid), last_update)
-
-
 def get_clients():
     # getting user list as raw strings
     raw_data = r.smembers(CLIENTS_KEY)
@@ -154,22 +126,6 @@ def remove_online_user(jid):
     r.srem(CLIENTS_KEY, jid)
 
 
-def _get_roster_set_flag_key(jid):
-    return _get_user_attribute_key(jid, 'is_roster_set')
-
-
-def is_roster_set(jid):
-    result = r.get(_get_roster_set_flag_key(jid))
-    if result:
-        return True
-    else:
-        return False
-
-
-def set_roster_flag(jid):
-    r.set(_get_roster_set_flag_key(jid), True)
-
-
 def _get_username_key(jid):
     return _get_user_attribute_key(jid, 'username')
 
@@ -186,7 +142,6 @@ def get_last_message(jid):
     try:
         return int(r.get(_get_last_message_key(jid)))
     except (TypeError, ValueError):
-        # logger.error('get_last_message for %s error: %s' % (jid, e))
         return None
 
 
@@ -196,30 +151,11 @@ def _get_token_key(user):
 
 def get_token(user):
     t = r.get(_get_token_key(user))
-    # logger.debug('got token %s' % t)
     return t
-
-
-def set_last_activity(user, activity_time):
-    # logger.debug('setting last activity %s for %s' % (activity_time, user))
-    r.set(_get_last_activity_key(user), activity_time)
-
-
-def set_last_activity_now(user):
-    now = time.time()
-    set_last_activity(user, now)
 
 
 def _get_last_status_key(jid):
     return _get_user_attribute_key(jid, 'last_status')
-
-
-def get_last_status(jid):
-    return r.get(_get_last_status_key(jid))
-
-
-def set_last_status(jid, status):
-    return r.set(_get_last_status_key(jid), status)
 
 
 def _get_processing_key(jid):
@@ -271,12 +207,3 @@ def set_processing(jid):
     k = _get_processing_key(jid)
     r.set(k, True)
     r.expire(k, 10)
-
-
-def initialize_user(jid, token, last_msg_id, roster_set):
-    r.sadd(USERS_KEY, jid)
-    if roster_set:
-        set_roster_flag(jid)
-    set_last_message(jid, last_msg_id)
-    set_token(jid, token)
-    set_friends(jid, {})

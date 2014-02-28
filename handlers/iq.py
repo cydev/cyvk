@@ -4,7 +4,7 @@ from compat import get_logger
 from cystanza.stanza import FeatureQuery, BadRequestErrorStanza, NotImplementedErrorStanza
 from cystanza.forms import RegistrationFormStanza, RegistrationResult, RegistrationRequest
 import database
-import user as user_api
+from user import UserApi
 from parallel import realtime
 from parallel.stanzas import push
 from config import IDENTIFIER, TRANSPORT_ID
@@ -47,18 +47,19 @@ def registration_form_handler(iq):
     if database.get_description(jid):
         return push(NotImplementedErrorStanza(iq, 'You are already in database'))
 
+    user = UserApi(jid)
     try:
         if not token:
             raise AuthenticationException('no token')
-        user_api.connect(jid, token)
+        user.connect(token)
         realtime.set_token(jid, token)
-        user_api.initialize(jid)
+        user.initialize()
     except AuthenticationException as e:
         logger.error('user %s connection failed (from iq)' % jid)
         return push(BadRequestErrorStanza(iq, 'Incorrect password or access token: %s' % e))
 
     realtime.set_last_activity_now(jid)
-    user_api.add_client(jid)
+    user.add()
     database.insert_user(jid, None, token, None, False)
     logger.debug('registration for %s completed' % jid)
     push(RegistrationResult(iq))

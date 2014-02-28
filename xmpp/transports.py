@@ -1,8 +1,8 @@
 # coding=utf-8
 from __future__ import unicode_literals
-from gevent.monkey import patch_all
-
-patch_all()
+# from gevent.monkey import patch_all
+#
+# patch_all()
 
 import socket
 from select import select

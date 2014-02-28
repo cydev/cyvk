@@ -124,7 +124,7 @@ class Database(object):
             self.lock.acquire()
         return self
 
-    def __exit__(self, *args):
+    def __exit__(self, *_):
         if self.lock:
             self.lock.release()
         if self.__connected:

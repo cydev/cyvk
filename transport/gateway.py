@@ -14,11 +14,13 @@ from database import initialize_database
 from config import (DATABASE_FILE,
                     HOST, SERVER, PORT, TRANSPORT_ID, PASSWORD)
 from parallel import realtime
-from parallel.probe import probe_users
 from transport.errors import ConnectionError
 from transport.stanza_queue import enqueue
 from parallel.long_polling import start_thread_lp_requests, start_thread_lp
 import user as user_api
+from cystanza.stanza import UnavailablePresence
+from parallel.stanzas import push
+from user import probe_users
 import xmpp
 
 
@@ -84,11 +86,10 @@ def halt_handler(sig=None, _=None):
     logger.debug("%s" % status)
 
     def send_unavailable_presence(jid):
-        presence_status = "unavailable"
         friends = realtime.get_friends(jid)
         for friend in friends:
-            user_api.send_presence(jid, get_friend_jid(friend), presence_status, reason=status)
-        user_api.send_presence(jid, TRANSPORT_ID, presence_status, reason=status)
+            push(UnavailablePresence(get_friend_jid(friend), jid, status))
+        push(UnavailablePresence(TRANSPORT_ID, jid, status))
 
     clients = realtime.get_clients()
     map(send_unavailable_presence, clients)

@@ -24,7 +24,7 @@ class MessagesApi(ApiWrapper):
 
     @method_wrapper
     def mark_as_read(self, message_list):
-        self.method('messages.markAsRead', self.jid, dict(message_ids=','.join(message_list)))
+        self.method('messages.markAsRead', dict(message_ids=','.join(message_list)))
 
     @method_wrapper
     def get(self, count=5):
@@ -38,10 +38,10 @@ class MessagesApi(ApiWrapper):
         if last_message_id:
             arguments.update({'last_message_id': last_message_id})
         messages = sorted(self.method('messages.get', arguments)[1:], sorting)
-        read = []
-        messages_return = []
         if not messages:
             return
+        read = []
+        messages_return = []
         last_message_id = messages[-1]["mid"]
         realtime.set_last_message(jid, last_message_id)
 
@@ -49,9 +49,9 @@ class MessagesApi(ApiWrapper):
             read.append(str(message["mid"]))
             from_jid = get_friend_jid(message["uid"])
             body = html_unespace(message['body'])
-            body += parse(jid, message)
+            body += self.parse(message)
             text = escape("", body)
-            messages_return.append(Message(text, from_jid, message["date"]))
+            messages_return.append(Message(from_jid, text, message["date"]))
 
         self.mark_as_read(read)
         return messages_return
@@ -64,5 +64,4 @@ class MessagesApi(ApiWrapper):
     def send_message(self, body, uid):
         assert isinstance(uid, int)
         assert isinstance(body, unicode)
-
         return self.method('messages.send', {'user_id': uid, "message": body, "type": 0})

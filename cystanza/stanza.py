@@ -168,33 +168,34 @@ class Presence(Stanza):
 
 
 class UnavailablePresence(Presence):
-    def __init__(self, origin, destination, show=None, nickname=None, presence_type=None, namespace=None):
-        super(UnavailablePresence, self).__init__(origin, destination, 'unavailable', show,
+    def __init__(self, origin, destination, status=None, show=None, nickname=None, presence_type='unavailable',
+                 namespace=None):
+        super(UnavailablePresence, self).__init__(origin, destination, status, show,
                                                   nickname, presence_type, namespace)
 
 
 class AvailablePresence(Presence):
-    def __init__(self, origin, destination, show=None, nickname=None, presence_type=None, namespace=None):
-        super(AvailablePresence, self).__init__(origin, destination, 'available', show,
-                                                nickname, presence_type, namespace)
+    def __init__(self, origin, destination, status=None, show=None, nickname=None, presence_type='available',
+                 namespace=None):
+        super(AvailablePresence, self).__init__(origin, destination, status, show, nickname, presence_type, namespace)
 
 
 class UnsubscribePresence(Presence):
-    def __init__(self, origin, destination, show=None, nickname=None, presence_type=None, namespace=None):
-        super(UnsubscribePresence, self).__init__(origin, destination, 'unsubscribe', show,
-                                                  nickname, presence_type, namespace)
+    def __init__(self, origin, destination, show=None, nickname=None, presence_type='unsubscribe', namespace=None):
+        super(UnsubscribePresence, self).__init__(origin, destination, show, nickname, presence_type, namespace)
 
 
 class SubscribePresence(Presence):
-    def __init__(self, origin, destination, show=None, nickname=None, presence_type=None, namespace=None):
-        super(SubscribePresence, self).__init__(origin, destination, 'subscribe', show,
+    def __init__(self, origin, destination, status=None, show=None, nickname=None, presence_type='subscribe',
+                 namespace=None):
+        super(SubscribePresence, self).__init__(origin, destination, status, show,
                                                 nickname, presence_type, namespace)
 
 
 class SubscribedPresence(Presence):
-    def __init__(self, origin, destination, show=None, nickname=None, presence_type=None, namespace=None):
-        super(SubscribedPresence, self).__init__(origin, destination, 'subscribed', show,
-                                                 nickname, presence_type, namespace)
+    def __init__(self, origin, destination, status=None, show=None, nickname=None, presence_type='subscribed',
+                 namespace=None):
+        super(SubscribedPresence, self).__init__(origin, destination, status, show, nickname, presence_type, namespace)
 
 
 class Probe(Presence):
