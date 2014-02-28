@@ -1,29 +1,12 @@
 import os
 import logging
+import sqlite3
 
 from config import DB_FILE
 
 
-
-
-#
-
 logger = logging.getLogger("cyvk")
-
-"""
-Module "itypes"
-itypes.py
-
-Copyright (2010-2013) Al Korgun (alkorgun@gmail.com)
-
-Distributed under the GNU GPLv3.
-"""
-
-import sqlite3
-
 connect = sqlite3.connect
-
-__version__ = "0.8"
 
 
 class Number(object):
@@ -79,6 +62,7 @@ class Database(object):
         self.lock = lock
         self.timeout = timeout
 
+    # noinspection PyAttributeOutsideInit
     def __connect(self):
 
         assert not self.__connected, "already connected"
@@ -188,5 +172,3 @@ def get_description(jid):
 def set_token(user, token):
     with Database(DB_FILE) as db:
         db("UPDATE users SET token=? WHERE jid=?", (token, user))
-
-
