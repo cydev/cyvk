@@ -19,7 +19,7 @@ from transport.stanza_queue import enqueue
 from parallel.long_polling import start_thread_lp_requests, start_thread_lp
 import user as user_api
 from cystanza.stanza import UnavailablePresence
-from parallel.stanzas import push
+# from parallel.stanzas import push
 from user import probe_users
 import xmpp
 
@@ -87,9 +87,9 @@ def halt_handler(sig=None, _=None):
 
     def send_unavailable_presence(jid):
         friends = realtime.get_friends(jid)
-        for friend in friends:
-            push(UnavailablePresence(get_friend_jid(friend), jid, status))
-        push(UnavailablePresence(TRANSPORT_ID, jid, status))
+        # for friend in friends:
+        #     push(UnavailablePresence(get_friend_jid(friend), jid, status))
+        # push(UnavailablePresence(TRANSPORT_ID, jid, status))
 
     clients = realtime.get_clients()
     map(send_unavailable_presence, clients)

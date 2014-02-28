@@ -1,8 +1,8 @@
 # coding=utf-8
 from __future__ import unicode_literals
-# from gevent.monkey import patch_all
-#
-# patch_all()
+from gevent.monkey import patch_all
+
+patch_all()
 
 import socket
 from select import select
@@ -15,21 +15,15 @@ BUFF_LEN = 1024
 class TCPSocket(object):
     """This class defines direct TCP connection method."""
 
-    def __init__(self, server=None, use_srv=True):
-        self._server, self.use_srv = server, use_srv
+    def __init__(self, use_srv=True):
+        self._server = None
+        self._use_srv = use_srv
         self._sock = None
         self._send = None
         self._receive = None
 
-    def get_host(self):
-        return self._server[0]
-
-    def get_port(self):
-        return self._server[1]
-
-    def connect(self, server=None):
+    def connect(self, host, port):
         """Try to connect to the given host/port. Does no lookup for SRV record."""
-        host, port = server
         server = (host, int(port))
         try:
             self._sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -37,9 +31,9 @@ class TCPSocket(object):
             self._send = self._sock.sendall
             self._receive = self._sock.recv
         except socket.error as error:
-            logger.error('Failed to connect to remote host %s: %s' % (repr(server), error))
+            logger.error('Failed to connect to %s:%s (%s)' % (host, port, error))
         else:
-            logger.debug("Successfully connected to remote host %s." % repr(server))
+            logger.debug("Successfully connected to host %s:%s" % (host, port))
             return True
 
     def receive(self):

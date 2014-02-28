@@ -3,10 +3,10 @@ from __future__ import unicode_literals
 import time
 import logging
 
-import redis
+import requests
+import ujson as json
 
 from api.errors import InvalidTokenError, AuthenticationException
-from parallel.stanzas import push
 from config import TRANSPORT_ID, IDENTIFIER
 from database import set_token, get_all_users
 from friends import get_friend_jid
@@ -14,7 +14,9 @@ from parallel import realtime
 from api.vkapi import Api
 import database
 from cystanza.stanza import SubscribePresence, AvailablePresence, UnavailablePresence, Probe
-from config import REDIS_DB, REDIS_CHARSET, REDIS_PREFIX, REDIS_PORT, REDIS_HOST
+from parallel.long_polling import event_handler as update_handler
+from config import REDIS_DB, REDIS_CHARSET, REDIS_PREFIX, REDIS_PORT, REDIS_HOST, POLLING_WAIT
+from wrappers import asynchronous
 
 
 START_POLLING_KEY = ':'.join([REDIS_PREFIX, 'long_polling_start_queue'])
@@ -22,44 +24,58 @@ logger = logging.getLogger("cyvk")
 
 
 class UserApi(object):
-    def __init__(self, jid):
+    def __init__(self, transport, jid):
         self.jid = jid
+        self.transport = transport
+        self.friends = []
+        self.processing = False
+        self.polling = False
+        self.token = None
         self.vk = Api(self)
 
     def roster_subscribe(self, subscriptions=None):
         """Subscribe user for jid in dist"""
         if not subscriptions:
-            return push(SubscribePresence(TRANSPORT_ID, self.jid))
+            return self.transport.send(SubscribePresence(TRANSPORT_ID, self.jid))
         for uid, value in subscriptions.iteritems():
-            push(SubscribePresence(get_friend_jid(uid), self.jid, nickname=value["name"]))
+            self.transport.send(SubscribePresence(get_friend_jid(uid), self.jid, nickname=value["name"]))
 
+    @asynchronous
     def start_polling(self):
-        r = redis.StrictRedis(REDIS_HOST, REDIS_PORT, REDIS_DB, charset=REDIS_CHARSET)
-        r.lpush(START_POLLING_KEY, self.jid)
+        if self.polling:
+            return logger.debug('already polling %s' % self)
+        self.polling = True
+        args = self.vk.messages.get_lp_server()
+        args['wait'] = 6
+        url = 'http://{server}?act=a_check&key={key}&ts={ts}&wait={wait}&mode=2'.format(**args)
+        data = json.loads(requests.get(url).text)
+        self.polling = False
+        update_handler(self, data)
 
-    @property
-    def friends(self):
-        return realtime.get_friends(self.jid)
+    @asynchronous
+    def handle_updates(self, data):
+        update_handler(self, data)
 
     @property
     def friends_online(self):
-        friends = self.friends
-        return filter(lambda uid: friends[uid]['online'], friends)
+        return filter(lambda uid: self.friends[uid]['online'], self.friends)
 
     def send_init_presence(self):
         """Sends initial presences to user about friends and transport"""
         logger.debug('user api: sending initial status to %s')
         friends_online = self.friends_online
         for friend_uid in friends_online:
-            push(AvailablePresence(get_friend_jid(friend_uid), self.jid, nickname=self.friends[friend_uid]['name']))
-        push(AvailablePresence(TRANSPORT_ID, self.jid, nickname=IDENTIFIER['name']))
+            self.transport.send(
+                AvailablePresence(get_friend_jid(friend_uid), self.jid, nickname=self.friends[friend_uid]['name']))
+        self.transport.send(AvailablePresence(TRANSPORT_ID, self.jid, nickname=IDENTIFIER['name']))
 
+    @asynchronous
     def send_out_presence(self, status=None):
         logger.debug("user api: sending out presence for %s" % self.jid)
         notification_list = realtime.get_friends(self.jid).keys() + [TRANSPORT_ID]
 
         for uid in notification_list:
-            push(UnavailablePresence(get_friend_jid(uid), self.jid, status=status))
+            self.transport.send(UnavailablePresence(get_friend_jid(uid), self.jid, status=status))
 
     def delete(self):
         raise NotImplementedError('deleting users')
@@ -97,23 +113,18 @@ class UserApi(object):
             cls = AvailablePresence
             if status:
                 cls = UnavailablePresence
-            push(cls(get_friend_jid(uid), jid))
+            self.transport.send(cls(get_friend_jid(uid), jid))
 
         realtime.set_friends(jid, friends_vk)
 
     def initialize(self, send=True):
         """Initializes user by subscribing to friends and sending initial presence"""
-        jid = self.jid
-        logger.debug("user api: called init for user %s" % jid)
-        friends = self.vk.get_friends()
-        realtime.set_friends(jid, friends)
-        self.unset_polling()
-        realtime.unset_polling(jid)
-        realtime.unset_processing(jid)
+        logger.debug("user api: called init for user %s" % self)
+        self.friends = self.vk.get_friends()
 
-        if friends:
-            logger.debug("user api: subscribing friends for %s" % jid)
-            self.roster_subscribe(friends)
+        if self.friends:
+            logger.debug("user api: subscribing friends for %s" % self)
+            self.roster_subscribe(self.friends)
         self.roster_subscribe()  # subscribing to transport
 
         if send:
@@ -121,63 +132,57 @@ class UserApi(object):
             self.send_init_presence()
 
     def load(self):
-        jid = self.jid
-        logger.debug("user api: loading %s" % jid)
-        desc = database.get_description(jid)
+        logger.debug("user api: loading %s" % self)
+        desc = database.get_description(self.jid)
 
         if not desc:
-            raise ValueError('user api: user not found %s' % jid)
+            raise ValueError('user api: user not found %s' % self)
 
-        logger.debug("user api: %s exists in db" % jid)
-        jid = desc['jid']
-        realtime.set_last_message(jid, desc['last_message_id'])
-        realtime.set_friends(jid, {})
-        logger.debug("user api: %s data loaded" % jid)
+        logger.debug("user api: %s exists in db" % self)
+        self.vk.last_message_id = desc['last_message_id']
+        self.token = realtime.get_token(self.jid)
+        logger.debug("user api: %s data loaded" % self)
 
-    def connect(self, token):
-        jid = self.jid
-        logger.debug("user api: connecting %s" % jid)
+    def connect(self, token=None):
+        logger.debug("user api: connecting %s" % self)
 
+        token = token or self.token
         if not token:
-            raise AuthenticationException('no token for %s' % jid)
+            raise AuthenticationException('no token for %s' % self)
 
         try:
             logger.debug('user api: trying to auth with token')
             if not self.vk.is_application_user():
                 raise InvalidTokenError('not application user')
-            set_token(jid, token)
-            logger.debug("user api: authenticated %s" % jid)
+            self.token = token
+            logger.debug("user api: authenticated %s" % self)
         except InvalidTokenError as token_error:
             raise AuthenticationException('invalid token: %s' % token_error)
 
     def process(self):
-        if realtime.is_processing(self.jid):
-            return logger.debug('already processing client %s' % self.jid)
-        realtime.set_processing(self.jid)
-        if not realtime.is_polling(self.jid):
+        if not self.polling:
             self.update_friends()
             self.vk.messages.send_messages()
             self.start_polling()
         else:
             logger.debug('updates for %s are handled by polling' % self.jid)
-        realtime.unset_processing(self.jid)
 
     def add(self):
         logger.debug('add_client %s' % self.jid)
-        if realtime.is_client(self.jid):
+        if self.jid in self.transport.users:
             return logger.debug('%s is already a client' % self.jid)
-        realtime.add_online_user(self.jid)
+        self.transport.users.update({self.jid: self})
         self.process()
 
     def set_offline(self):
-        realtime.remove_online_user(self.jid)
+        del self.transport.users[self.jid]
 
     def set_online(self):
-        realtime.add_online_user(self.jid)
+        self.transport.users.update({self.jid: self})
 
     def set_token(self, token):
-        assert isinstance(token, unicode)
-        realtime.set_token(self.jid, token)
+        self.token = token
+        self.save()
 
     @property
     def is_polling(self):
@@ -189,16 +194,12 @@ class UserApi(object):
     def unset_polling(self):
         realtime.unset_polling(self.jid)
 
-    @property
-    def token(self):
-        return realtime.get_token(self.jid)
-
     def save(self):
         database.insert_user(self.jid, None, self.token, None, False)
 
     @property
     def is_client(self):
-        return realtime.is_client(self.jid)
+        return self.jid in self.transport.users
 
     def __str__(self):
         return str(self.jid)
@@ -237,19 +238,3 @@ def process_users():
     logger.debug('iterated for %.2f ms' % ((time.time() - now) * 1000))
 
 
-def probe_users():
-    logger.info('probing users')
-
-    users = get_all_users()
-    if not users:
-        return logger.info('no users for probing')
-
-    for user in users:
-        try:
-            jid = user[0]
-        except (KeyError, ValueError, IndexError) as e:
-            logger.error('%s while sending probes' % e)
-            continue
-
-        logger.debug('probing %s' % jid)
-        push(Probe(TRANSPORT_ID, jid))

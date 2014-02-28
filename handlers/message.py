@@ -3,22 +3,19 @@ from __future__ import unicode_literals
 
 import compat
 from cystanza.stanza import ChatMessage, Answer
-from user import UserApi
-from parallel.stanzas import push
 from config import TRANSPORT_ID
 import friends
 
 _logger = compat.get_logger()
 
 
-def handler(m):
+def handler(user, m):
     """
     :type m: ChatMessage
     """
     assert isinstance(m, ChatMessage)
 
     jid = m.get_origin()
-    user = UserApi(jid)
 
     _logger.debug('message_handler handling: (%s->%s)' % (jid, m.destination))
 
@@ -37,4 +34,5 @@ def handler(m):
 
     if m.requests_answer:
         answer = Answer(m.destination, jid, message_id=m.message_id)
-        push(answer)
+        user.transport.send(answer)
+        # push(answer)

@@ -4,7 +4,6 @@ import ujson as json
 
 import requests
 
-from parallel import realtime
 from compat import text_type, get_logger
 from config import MAX_API_RETRY, API_MAXIMUM_RATE, TRANSPORT_ID
 from .errors import (api_errors, UnknownError, IncorrectApiResponse, TooManyRequestsPerSecond, AuthenticationException,
@@ -12,7 +11,6 @@ from .errors import (api_errors, UnknownError, IncorrectApiResponse, TooManyRequ
 from .messages import MessagesApi
 from .api import method_wrapper
 from .parsing import escape_name
-from parallel.stanzas import push
 from cystanza.stanza import ChatMessage
 
 
@@ -25,15 +23,16 @@ class Api(object):
     URL = 'https://api.vk.com/method/%s'
     VERSION = '3.0'
 
-    def __init__(self, user, token=None):
+    def __init__(self, user, ):
         self.user = user
         self.jid = user.jid
-        token = token or user.token
-        if not token:
-            # TODO: send error to user
-            raise ValueError('No token for %s' % user)
-        self.token = token
         self.messages = MessagesApi(self)
+        self.last_method_time = 0
+        self.polling = False
+
+    @property
+    def token(self):
+        return self.user.token
 
     def _method(self, method_name, args=None, additional_timeout=0, retry=0):
         """
@@ -53,7 +52,12 @@ class Api(object):
         _logger.debug('calling api method %s, arguments: %s' % (method_name, args))
 
         time.sleep(additional_timeout)
-        realtime.wait_for_api_call(self.jid)
+        now = time.time()
+        diff = now - self.last_method_time
+        if diff < API_MAXIMUM_RATE:
+            _logger.debug('burst protected')
+            time.sleep(abs(diff - API_MAXIMUM_RATE))
+        self.last_method_time = now
 
         try:
             response = requests.post(self.URL % method_name, args)
@@ -75,6 +79,17 @@ class Api(object):
         additional_timeout *= WAIT_RATE
         return self._method(method_name, args, additional_timeout, retry + 1)
 
+    def start_polling(self):
+        if self.polling:
+            return _logger.debug('already polling %s' % self)
+        self.polling = True
+        args = self.messages.get_lp_server()
+        args['wait'] = 6
+        url = 'http://{server}?act=a_check&key={key}&ts={ts}&wait={wait}&mode=2'.format(**args)
+        data = json.loads(requests.get(url).text)
+        self.polling = False
+        self.user.handle_update(data)
+
     @method_wrapper
     def method(self, method_name, args=None, raise_auth=False):
         """Call method with error handling"""
@@ -84,7 +99,7 @@ class Api(object):
         #     _logger.error('captcha challenge for %s' % self.jid)
         #     raise NotImplementedError('captcha')
         except AuthenticationException as e:
-            push(ChatMessage(TRANSPORT_ID, self.jid, 'Authentication error: %s' % e))
+            self.user.transport.send(ChatMessage(TRANSPORT_ID, self.jid, 'Authentication error: %s' % e))
         # except NotAllowed:
         #     friend_jid = get_friend_jid(args.get('user_id', TRANSPORT_ID))
         #     text = "You're not allowed to perform this action"
@@ -95,9 +110,9 @@ class Api(object):
         #     database.remove_user(self.jid)
         #     realtime.remove_online_user(self.jid)
         except InvalidTokenError:
-            push(ChatMessage(TRANSPORT_ID, self.jid, 'Your token is invalid. Please, register again'))
+            self.user.transport.send((ChatMessage(TRANSPORT_ID, self.jid, 'Your token is invalid. Register again')))
         except NotImplementedError as e:
-            push(ChatMessage(TRANSPORT_ID, self.jid, 'Feature not implemented: %s' % e))
+            self.user.transport.send((ChatMessage(TRANSPORT_ID, self.jid, 'Feature not implemented: %s' % e)))
 
         if raise_auth:
             raise AuthenticationException()

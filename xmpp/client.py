@@ -13,7 +13,7 @@ logger = logging.getLogger("xmpp")
 
 
 class Component(object):
-    def __init__(self, server, port=5222):
+    def __init__(self, transport, server, port=5222):
         self.namespace = NS_COMPONENT_ACCEPT
         self.default_namespace = self.namespace
         self.disconnect_handlers = []
@@ -25,17 +25,7 @@ class Component(object):
         self.dispatcher = None
         self.domains = [server, ]
         self.handshake = False
-
-    def register_disconnect_handler(self, handler):
-        # Register handler that will be called on disconnect.
-        self.disconnect_handlers.append(handler)
-
-    def disconnected(self):
-        # Called on disconnection. Calls disconnect handlers
-        self.connected = None
-        logger.warning('disconnect detected')
-        for handler in self.disconnect_handlers:
-            handler()
+        self.transport = transport
 
     def event(self, name, args=None):
         raise NotImplementedError('event handler not overridden')
@@ -43,14 +33,11 @@ class Component(object):
     def is_connected(self):
         return self.connected
 
-    def connect(self, server=None):
-        if not server:
-            server = (self.server, self.port)
-        self.connection = transports.TCPSocket(server)
-        connected = self.connection.connect(server)
+    def connect(self, host, port):
+        self.connection = transports.TCPSocket()
+        connected = self.connection.connect(host, port)
         if not connected:
             return None
-        self.server = server
         self.connected = True
         self.dispatcher = dispatcher.Dispatcher(self.connection, self)
         self.dispatcher.init()
@@ -76,6 +63,7 @@ class Component(object):
         self.connection.send(etree.tostring(q))
         while not self.handshake:
             self.process(1)
+        logger.debug('authenticated')
         self.registered_name = user
         return self.handshake
 

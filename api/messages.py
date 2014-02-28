@@ -2,11 +2,9 @@ from __future__ import unicode_literals
 import time
 
 from .api import ApiWrapper, method_wrapper
-from parallel import realtime
 from .parsing import sorting, escape, MessageParser
 from friends import get_friend_jid
 from compat import html_unespace
-from parallel.stanzas import push
 from cystanza.stanza import ChatMessage
 
 
@@ -20,6 +18,7 @@ class Message(object):
 class MessagesApi(ApiWrapper):
     def __init__(self, api):
         self._parser = MessageParser(api)
+        self.last_id = None
         super(MessagesApi, self).__init__(api)
 
     @method_wrapper
@@ -36,18 +35,15 @@ class MessagesApi(ApiWrapper):
 
         if count > 100:
             count = 100
-        jid = self.jid
-        last_message_id = realtime.get_last_message(jid)
         arguments = dict(out=0, filters=1, count=count)
-        if last_message_id:
-            arguments.update({'last_message_id': last_message_id})
+        if self.last_id:
+            arguments.update({'last_message_id': self.last_id})
         messages = sorted(self.method('messages.get', arguments)[1:], sorting)
         if not messages:
             return
         read = []
         messages_return = []
-        last_message_id = messages[-1]["mid"]
-        realtime.set_last_message(jid, last_message_id)
+        self.last_id = messages[-1]["mid"]
 
         for message in messages:
             read.append(str(message["mid"]))
@@ -79,7 +75,8 @@ class MessagesApi(ApiWrapper):
 
         for message in messages:
             timestamp = time.strftime("%Y%m%dT%H:%M:%S", time.gmtime(message.date))
-            push(ChatMessage(message.origin, self.jid, message.text, timestamp=timestamp))
+            send = self.api.user.transport.send
+            send(ChatMessage(message.origin, self.jid, message.text, timestamp=timestamp))
 
             # @method_wrapper
             # def send_messages(self):

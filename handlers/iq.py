@@ -4,8 +4,6 @@ from compat import get_logger
 from cystanza.stanza import FeatureQuery, BadRequestErrorStanza, NotImplementedErrorStanza
 from cystanza.forms import RegistrationFormStanza, RegistrationResult, RegistrationRequest
 import database
-from user import UserApi
-from parallel.stanzas import push
 from config import IDENTIFIER, TRANSPORT_ID
 from cystanza.namespaces import NS_DISCO_INFO, NS_DISCO_ITEMS, NS_REGISTER, NS_DELAY, NS_LAST, NS_RECEIPTS
 
@@ -25,7 +23,7 @@ TRANSPORT_FEATURES = (NS_DISCO_ITEMS,
 logger = get_logger()
 
 
-def registration_form_handler(iq):
+def registration_form_handler(user, iq):
     """
     :type iq: RegistrationFormStanza
     :param iq:
@@ -37,6 +35,7 @@ def registration_form_handler(iq):
     jid = iq.get_origin()
     logger.debug('received register form from %s' % jid)
     token = iq.token
+    user.token = token
 
     try:
         token = token.split("#access_token=")[1].split("&")[0].strip()
@@ -44,9 +43,8 @@ def registration_form_handler(iq):
         logger.debug('access token is probably in raw format')
 
     if database.get_description(jid):
-        return push(NotImplementedErrorStanza(iq, 'You are already in database'))
+        return user.transport.send(NotImplementedErrorStanza(iq, 'You are already in database'))
 
-    user = UserApi(jid)
     try:
         if not token:
             raise AuthenticationException('no token')
@@ -55,25 +53,25 @@ def registration_form_handler(iq):
         user.initialize()
     except AuthenticationException as e:
         logger.error('user %s connection failed (from iq)' % jid)
-        return push(BadRequestErrorStanza(iq, 'Incorrect password or access token: %s' % e))
+        return user.transport.send(BadRequestErrorStanza(iq, 'Incorrect password or access token: %s' % e))
 
     user.add()
     user.save()
     logger.debug('registration for %s completed' % jid)
-    push(RegistrationResult(iq))
+    user.transport.send(RegistrationResult(iq))
 
 
-def registration_request_handler(request):
+def registration_request_handler(user, request):
     """:type request: RegistrationRequest"""
     if request.destination != TRANSPORT_ID:
         return
 
-    push(RegistrationFormStanza(TRANSPORT_ID, request.origin, query_id=request.stanza_id))
+    user.transport.send(RegistrationFormStanza(TRANSPORT_ID, request.origin, query_id=request.stanza_id))
 
 
-def discovery_request_handler(request):
+def discovery_request_handler(user, request):
     """:type request: FeatureQuery"""
     if request.destination != TRANSPORT_ID:
         return
-
-    push(FeatureQuery(TRANSPORT_ID, request.origin, request.stanza_id, IDENTIFIER['name'], TRANSPORT_FEATURES))
+    send = user.transport.send
+    send(FeatureQuery(TRANSPORT_ID, request.origin, request.stanza_id, IDENTIFIER['name'], TRANSPORT_FEATURES))

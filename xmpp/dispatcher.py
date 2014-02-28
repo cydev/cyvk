@@ -10,6 +10,7 @@ from cystanza.stanza import Stanza, Presence, FeatureQuery, Handshake, ChatMessa
 from cystanza.forms import RegistrationRequest, RegistrationFormStanza
 from handlers import message_handler, presence_handler
 from handlers import registration_form_handler, registration_request_handler, discovery_request_handler
+from user import UserApi
 
 
 logger = logging.getLogger("xmpp")
@@ -24,6 +25,7 @@ class Dispatcher():
         self.connection = connection
         self.parser = etree.XMLPullParser(events=('start', 'end'))
         self.builder = Builder(self.test_dispatch)
+        self.transport = client.transport
 
     def set_handshake_handler(self, handler):
         self.handshake_handler = handler
@@ -36,18 +38,29 @@ class Dispatcher():
 
     def test_dispatch(self, stanza):
         s = get_stanza(stanza)
-        if isinstance(s, ChatMessage):
-            return message_handler(s)
-        if isinstance(s, Presence):
-            return presence_handler(s)
-        if isinstance(s, RegistrationRequest):
-            return registration_request_handler(s)
-        if isinstance(s, RegistrationFormStanza):
-            return registration_form_handler(s)
-        if isinstance(s, FeatureQuery):
-            return discovery_request_handler(s)
+        jid = s.get_origin()
+
         if isinstance(s, Handshake):
             return self.handle_handshake()
+
+        if jid is None:
+            return
+
+        if jid not in self.transport.users:
+            user = UserApi(self.transport, jid)
+        else:
+            user = self.transport.users[jid]
+
+        if isinstance(s, ChatMessage):
+            return message_handler(user, s)
+        if isinstance(s, Presence):
+            return presence_handler(user, s)
+        if isinstance(s, RegistrationRequest):
+            return registration_request_handler(user, s)
+        if isinstance(s, RegistrationFormStanza):
+            return registration_form_handler(user, s)
+        if isinstance(s, FeatureQuery):
+            return discovery_request_handler(user, s)
 
     def process(self, timeout=8):
         logger.debug('dispatcher iteration started')

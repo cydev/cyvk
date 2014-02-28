@@ -6,7 +6,7 @@ import redis
 
 from compat import urlopen, get_logger
 from config import POLLING_WAIT, REDIS_DB, REDIS_CHARSET, REDIS_PREFIX, REDIS_PORT, REDIS_HOST
-from user import UserApi
+# from user import UserApi
 from parallel import updates
 from events.toggle import raise_event
 
@@ -32,7 +32,7 @@ def _start_polling(jid, attempts=0):
     r.lpush(LONG_POLLING_KEY, json.dumps({'jid': jid, 'url': url}))
 
 
-def _handle_url(jid, url):
+def _handle_url(user, url):
     user = UserApi(jid)
     user.set_polling()
     _logger.debug('got url, starting polling')
@@ -42,23 +42,17 @@ def _handle_url(jid, url):
     raise_event(UPDATE_RESULT, response=data, jid=jid)
 
 
-def event_handler(event_body):
-    data = None
-    try:
-        data = json.loads(event_body['response'])
-    except ValueError as e:
-        _logger.error('unable to parse json: %s (%s)' % (data, e))
-    jid = event_body['jid']
-    user = UserApi(jid)
+def event_handler(user, data):
+    jid = user.jid
 
     try:
         if not data['updates']:
             _logger.debug('no updates for %s' % jid)
 
         for update in data['updates']:
-            updates.handle_update(jid, update)
+            updates.handle_update(user, update)
     except KeyError:
-        _logger.error('unable to process %s' % event_body)
+        _logger.error('unable to process %s' % data)
 
     if not user.is_client:
         return _logger.debug('ending polling for %s' % jid)

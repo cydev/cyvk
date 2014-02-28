@@ -1,7 +1,6 @@
 # coding=utf-8
 from __future__ import unicode_literals
 
-from user import UserApi
 from friends import get_friend_jid
 from cystanza.stanza import Presence
 from compat import get_logger
@@ -15,21 +14,21 @@ FRIEND_TYPING_GROUP = 62
 _logger = get_logger()
 
 
-def handle_update(jid, data):
+def handle_update(user, data):
     try:
         code, friend_id = data[0], abs(data[1])
     except (IndexError, ValueError) as e:
         return _logger.error('unable to process update data %s: %s' % (data, e))
 
     if code == NEW_MESSAGE:
-        return UserApi(jid).vk.messages.send_messages()
+        return user.vk.messages.send_messages()
 
     origin = get_friend_jid(friend_id)
 
     if code == FRIEND_ONLINE:
-        return Presence(origin, jid)
+        return user.transport.send(Presence(origin, user.jid))
 
     if code == FRIEND_OFFLINE:
-        return Presence(origin, jid, presence_type='unavailable')
+        return user.transport.send(Presence(origin, user.jid, presence_type='unavailable'))
 
     _logger.debug('doing nothing on code %s' % code)
