@@ -6,11 +6,10 @@ import ujson as json
 from api.errors import InvalidTokenError, AuthenticationException
 from config import TRANSPORT_ID, IDENTIFIER
 from friends import get_friend_jid
-from parallel import realtime
 from api.vkapi import Api
 import database
 from cystanza.stanza import SubscribePresence, AvailablePresence, UnavailablePresence
-from parallel.long_polling import event_handler as update_handler
+from long_polling.long_polling import event_handler as update_handler
 from wrappers import asynchronous
 from compat import requests
 
@@ -64,23 +63,15 @@ class UserApi(object):
                 AvailablePresence(get_friend_jid(friend_uid), self.jid, nickname=self.friends[friend_uid]['name']))
         self.transport.send(AvailablePresence(TRANSPORT_ID, self.jid, nickname=IDENTIFIER['name']))
 
-    @asynchronous
-    def send_out_presence(self, status=None):
-        logger.debug("user api: sending out presence for %s" % self.jid)
-        notification_list = realtime.get_friends(self.jid).keys() + [TRANSPORT_ID]
-
-        for uid in notification_list:
-            self.transport.send(UnavailablePresence(get_friend_jid(uid), self.jid, status=status))
-
     def delete(self):
         raise NotImplementedError('deleting users')
 
     def update_friends(self):
         jid = self.jid
         friends_vk = self.vk.get_friends()
-        friends_db = realtime.get_friends(jid)
+        friends_db = self.friends
 
-        if friends_db == friends_vk:
+        if friends_db == self.friends:
             logger.debug('no changes in friend list for %s' % jid)
             return
 
@@ -110,7 +101,7 @@ class UserApi(object):
                 cls = UnavailablePresence
             self.transport.send(cls(get_friend_jid(uid), jid))
 
-        realtime.set_friends(jid, friends_vk)
+        self.friends = friends_vk
 
     def initialize(self, send=True):
         """Initializes user by subscribing to friends and sending initial presence"""
@@ -135,7 +126,7 @@ class UserApi(object):
 
         logger.debug("user api: %s exists in db" % self)
         self.vk.last_message_id = desc['last_message_id']
-        self.token = realtime.get_token(self.jid)
+        self.token = desc['token']
         logger.debug("user api: %s data loaded" % self)
 
     def connect(self, token=None):
@@ -179,16 +170,6 @@ class UserApi(object):
         self.token = token
         self.save()
 
-    @property
-    def is_polling(self):
-        return realtime.is_polling(self.jid)
-
-    def set_polling(self):
-        realtime.set_polling(self.jid)
-
-    def unset_polling(self):
-        realtime.unset_polling(self.jid)
-
     def save(self):
         database.insert_user(self.jid, None, self.token, None, False)
 
@@ -198,21 +179,3 @@ class UserApi(object):
 
     def __str__(self):
         return str(self.jid)
-
-
-def delete_user(jid):
-    assert isinstance(jid, unicode)
-
-    logger.debug("user api: delete_user %s" % jid)
-
-    # friends = realtime.get_friends(jid)
-    raise NotImplementedError('deleting users')
-    # for friend_id in friends:
-    #
-    #     friend_jid = get_friend_jid(friend_id)
-    #
-    #     send_presence(jid, friend_jid, "unsubscribe")
-    #     send_presence(jid, friend_jid, "unsubscribed")
-    #
-    # database.remove_user(jid)
-    # realtime.remove_online_user(jid)
