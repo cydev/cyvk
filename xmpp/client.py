@@ -3,7 +3,7 @@ from hashlib import sha1
 import logging
 
 from cystanza.namespaces import NS_COMPONENT_ACCEPT
-from cystanza.stanza import Stanza, Handshake
+from cystanza.stanza import Handshake
 from xmpp import dispatcher, transports
 
 

@@ -1,6 +1,6 @@
 # coding=utf-8
 from __future__ import unicode_literals
-from socket import AF_INET, SOCK_STREAM, error as socket_error
+from socket import error as socket_error
 import logging
 
 from gevent import socket

@@ -1,16 +1,17 @@
-import gevent
-from wrappers import asynchronous
-
-from gevent.queue import Queue
 import signal
+from time import time
+
+import gevent
+from gevent.queue import Queue
+
+from wrappers import asynchronous
 from config import HOST, PASSWORD, PORT, TRANSPORT_ID, DB_FILE
 from cystanza.stanza import Probe, UnavailablePresence
 from database import initialize_database, get_all_users
 from friends import get_friend_jid
 import xmpp
-from time import time
-
 from log import get_logger
+
 
 logger = get_logger()
 
