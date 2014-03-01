@@ -2,10 +2,8 @@ from __future__ import unicode_literals
 from hashlib import sha1
 import logging
 
-from lxml import etree
-
 from cystanza.namespaces import NS_COMPONENT_ACCEPT
-from cystanza.stanza import Stanza
+from cystanza.stanza import Stanza, Handshake
 from xmpp import dispatcher, transports
 
 
@@ -34,13 +32,16 @@ class Component(object):
         return self.connected
 
     def connect(self, host, port):
+        logger.debug('client: starting connection')
         self.connection = transports.TCPSocket()
         connected = self.connection.connect(host, port)
+        logger.debug('client: connected: %s' % connected)
         if not connected:
             return None
         self.connected = True
         self.dispatcher = dispatcher.Dispatcher(self.connection, self)
         self.dispatcher.init()
+        logger.debug('dispatcher inited')
 
         while not self.dispatcher.builder.attributes:
             if not self.process(5):
@@ -56,14 +57,13 @@ class Component(object):
 
     def auth_component(self, user, password):
         logger.debug('authenticating component')
-        handshake_hash = sha1(self.dispatcher.builder.attributes['id'] + password)
+        handshake_hash = sha1(self.dispatcher.builder.attributes['id'] + password).hexdigest()
         self.dispatcher.set_handshake_handler(self.handshake_handler)
-        q = etree.Element('handshake', xmlns=NS_COMPONENT_ACCEPT)
-        q.text = handshake_hash.hexdigest()
-        self.connection.send(etree.tostring(q))
-        while not self.handshake:
-            self.process(1)
-        logger.debug('authenticated')
+        self.connection.send(Handshake(handshake_hash, NS_COMPONENT_ACCEPT))
+        logger.debug('waiting on handshake')
+        self.process(5)
+        if self.handshake:
+            logger.debug('authenticated')
         self.registered_name = user
         return self.handshake
 
@@ -71,9 +71,8 @@ class Component(object):
         self.dispatcher.register_handler(*args, **kwargs)
 
     def handshake_handler(self):
+        logger.debug('handshake handler')
         self.handshake = True
 
     def send(self, stanza):
-        if isinstance(stanza, Stanza):
-            return self.dispatcher.send(stanza)
         return self.dispatcher.send(stanza)

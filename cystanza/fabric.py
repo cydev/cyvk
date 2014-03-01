@@ -19,8 +19,11 @@ def get(attrs, name):
 
 
 def get_stanza(root):
+    logger.debug('get_stanza: %s' % etree.tostring(root))
     stanza_name = root.xpath('local-name()')
     a = root.attrib
+
+    logger.debug('attributes: %s' % root.attrib)
 
     if stanza_name == 'handshake':
         return Handshake()
@@ -30,6 +33,9 @@ def get_stanza(root):
     stanza_type = get(a, 'type')
     stanza_id = get(a, 'id')
     ns = get(a, 'xmlns')
+
+    logger.debug({'origin': origin, 'destination': destination, 'stanza:type': stanza_type, 'stauda:id': stanza_id,
+                  'ns': ns})
 
     if stanza_name == STANZA_PRESENCE:
         status = root.findtext('{*}status')

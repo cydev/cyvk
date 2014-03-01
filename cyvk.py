@@ -1,15 +1,12 @@
 import gevent
-from gevent.monkey import patch_all
-
 from wrappers import asynchronous
 
-
-patch_all()
 from gevent.queue import Queue
 import signal
 from config import HOST, PASSWORD, PORT, TRANSPORT_ID, DB_FILE
-from cystanza.stanza import Probe
+from cystanza.stanza import Probe, UnavailablePresence
 from database import initialize_database, get_all_users
+from friends import get_friend_jid
 import xmpp
 from time import time
 
@@ -31,32 +28,43 @@ class CyVk(object):
     def __init__(self):
         self.users = {}
         self.client = xmpp.Component(self, HOST)
-        self.sending = Queue()
+        self.sending = Queue(100)
         self.dispatcher_gl = None
         gevent.signal(signal.SIGTERM, self.disconnect)
         gevent.signal(signal.SIGINT, self.disconnect)
 
     def disconnect(self):
+        for user in self.users.values():
+            for friend in user.friends:
+                self.send(UnavailablePresence(get_friend_jid(friend), user.jid))
+            self.send(UnavailablePresence(TRANSPORT_ID, user.jid))
+        while not self.sending.empty():
+            gevent.sleep(0.1)
         self.client.connection.disconnect()
         exit(1)
 
     def connect(self):
-        self.client.connect(HOST, PORT)
+        logger.debug('starting connecting')
+        connected = self.client.connect(HOST, PORT)
+        if not connected:
+            return logger.debug('not connected')
+        logger.debug('connected')
         self.client.auth(TRANSPORT_ID, PASSWORD)
+        logger.debug('auth')
 
     @staticmethod
     def run_forever():
         while True:
-            gevent.sleep(1)
+            gevent.sleep(0.25)
 
     def start(self):
         initialize_database(DB_FILE)
+        s = gevent.spawn(self.run_forever)
         self.connect()
-        self.receiver_loop()
         self.dispatcher_loop()
+        self.receiver_loop()
         self.probe_users()
         self.process_users()
-        s = gevent.spawn(self.run_forever)
         s.join()
 
     @loop
@@ -65,13 +73,17 @@ class CyVk(object):
 
     @loop
     def receiver_loop(self):
-        self.client.send(self.sending.get())
+        d = self.sending.get()
+        logger.debug('trying to send %s' % d)
+        self.client.send(d)
 
     def add_user(self, user):
         self.users.update({user.jid: user})
 
     def send(self, stanza):
-        self.sending.put(stanza)
+        logger.debug('adding to queue %s' % stanza)
+        self.sending.put(stanza, block=False)
+        logger.debug('added to queue')
 
     @asynchronous
     def probe_users(self):
@@ -82,7 +94,7 @@ class CyVk(object):
             except (KeyError, ValueError, IndexError) as e:
                 logger.error('%s while sending probes' % e)
                 continue
-            self.sending.put(Probe(TRANSPORT_ID, jid))
+            self.send(Probe(TRANSPORT_ID, jid))
 
     @loop
     def process_users(self):

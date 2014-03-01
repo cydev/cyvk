@@ -2,9 +2,7 @@ from __future__ import unicode_literals
 import time
 import ujson as json
 
-import requests
-
-from compat import text_type, get_logger
+from compat import text_type, get_logger, requests
 from config import MAX_API_RETRY, API_MAXIMUM_RATE, TRANSPORT_ID
 from .errors import (api_errors, UnknownError, IncorrectApiResponse, TooManyRequestsPerSecond, AuthenticationException,
                      InvalidTokenError)

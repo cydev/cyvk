@@ -12,7 +12,6 @@ from handlers import message_handler, presence_handler
 from handlers import registration_form_handler, registration_request_handler, discovery_request_handler
 from user import UserApi
 
-
 logger = logging.getLogger("xmpp")
 
 
@@ -37,45 +36,58 @@ class Dispatcher():
         self.connection.send(init_str)
 
     def test_dispatch(self, stanza):
+        logger.debug('dispatching %s' % str(stanza))
         s = get_stanza(stanza)
+        logger.debug('dispatched: %s' % s)
+
+        if not s:
+            return logger.debug('dispatcher: no stanza')
         jid = s.get_origin()
 
         if isinstance(s, Handshake):
             return self.handle_handshake()
 
         if jid is None:
-            return
+            return logger.debug('dispatcher: no jid')
 
         if jid not in self.transport.users:
             user = UserApi(self.transport, jid)
         else:
             user = self.transport.users[jid]
 
+        logger.debug('dispatching on type of stanza')
         if isinstance(s, ChatMessage):
             return message_handler(user, s)
         if isinstance(s, Presence):
             return presence_handler(user, s)
         if isinstance(s, RegistrationRequest):
+            logger.debug('dispatched registration request')
             return registration_request_handler(user, s)
         if isinstance(s, RegistrationFormStanza):
             return registration_form_handler(user, s)
         if isinstance(s, FeatureQuery):
+            logger.debug('dispatched discovery request')
             return discovery_request_handler(user, s)
 
-    def process(self, timeout=8):
+    def process(self, timeout=3):
         logger.debug('dispatcher iteration started')
         if self.connection.pending_data(timeout):
+            logger.debug('dispatcher: some data')
             try:
+                logger.debug('dispatcher: receiving')
                 data = self.connection.receive()
             except IOError as e:
                 logger.error('IO error while reading from socket: %s' % e)
                 return None
             try:
+                logger.debug('dispatcher: parsing')
                 self.builder.parse(data)
             except etree.Error as e:
                 logger.error('builder error: ' % e)
             if data:
                 return len(data)
+        else:
+            logger.debug('no data')
         logger.debug('dispatcher iteration ended with no data')
         return True
 

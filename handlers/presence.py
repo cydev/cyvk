@@ -2,7 +2,7 @@ from __future__ import unicode_literals
 from api.errors import AuthenticationException
 from friends import get_friend_jid
 from config import TRANSPORT_ID
-from cystanza.stanza import Presence, ChatMessage, AvailablePresence, UnavailablePresence
+from cystanza.stanza import Presence, ChatMessage, AvailablePresence, UnavailablePresence, SubscribePresence
 import compat
 
 _logger = compat.get_logger()
@@ -66,7 +66,7 @@ def _attempt_to_add_client(user, _):
 def _subscribe(user, presence):
     origin = presence.get_origin()
     destination = presence.get_destination()
-    user.transport.sendSubscribedPresence(destination, origin)
+    user.transport.send(SubscribePresence(destination, origin))
 
     if destination == TRANSPORT_ID:
         return user.transport.send(AvailablePresence(destination, origin))

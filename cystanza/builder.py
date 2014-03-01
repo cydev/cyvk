@@ -13,9 +13,12 @@ class Builder(object):
         self.attributes = {}
 
     def parse(self, data):
+        logger.debug('builder: started parsing')
         self.parser.feed(data)
+        logger.debug('builder: feeded')
         depth = 0
         for a, e in self.parser.read_events():
+            # logger.debug('builder: got event %s' % a)
             if a == 'start':
                 self.attributes = e.attrib
                 depth += 1

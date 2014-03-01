@@ -1,25 +1,20 @@
 from __future__ import unicode_literals
 
-import time
 import logging
-
-import requests
 import ujson as json
 
 from api.errors import InvalidTokenError, AuthenticationException
 from config import TRANSPORT_ID, IDENTIFIER
-from database import set_token, get_all_users
 from friends import get_friend_jid
 from parallel import realtime
 from api.vkapi import Api
 import database
-from cystanza.stanza import SubscribePresence, AvailablePresence, UnavailablePresence, Probe
+from cystanza.stanza import SubscribePresence, AvailablePresence, UnavailablePresence
 from parallel.long_polling import event_handler as update_handler
-from config import REDIS_DB, REDIS_CHARSET, REDIS_PREFIX, REDIS_PORT, REDIS_HOST, POLLING_WAIT
 from wrappers import asynchronous
+from compat import requests
 
 
-START_POLLING_KEY = ':'.join([REDIS_PREFIX, 'long_polling_start_queue'])
 logger = logging.getLogger("cyvk")
 
 
@@ -221,20 +216,3 @@ def delete_user(jid):
     #
     # database.remove_user(jid)
     # realtime.remove_online_user(jid)
-
-
-def process_users():
-    now = time.time()
-    clients = realtime.get_clients()
-
-    if not clients:
-        logger.debug('no clients')
-        return
-
-    for client in clients:
-        user = UserApi(client)
-        user.process()
-
-    logger.debug('iterated for %.2f ms' % ((time.time() - now) * 1000))
-
-

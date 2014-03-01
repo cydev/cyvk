@@ -80,8 +80,14 @@ class Stanza(object):
 
 
 class Handshake(Stanza):
-    def __init__(self):
-        super(Handshake, self).__init__(STANZA_HANDSHAKE)
+    def __init__(self, handshake_hash=None, namespace=None):
+        self.handshake_hash = handshake_hash
+        super(Handshake, self).__init__(STANZA_HANDSHAKE, namespace=namespace)
+
+    def build(self):
+        super(Handshake, self).build()
+        if self.handshake_hash:
+            self.base.text = self.handshake_hash
 
 
 class Message(Stanza):

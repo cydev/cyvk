@@ -41,3 +41,9 @@ try:
 except ImportError:
     from HTMLParser import HTMLParser
 
+from gevent.monkey import patch_all
+
+patch_all()
+
+import requests
+

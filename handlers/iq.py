@@ -35,12 +35,13 @@ def registration_form_handler(user, iq):
     jid = iq.get_origin()
     logger.debug('received register form from %s' % jid)
     token = iq.token
-    user.token = token
 
     try:
         token = token.split("#access_token=")[1].split("&")[0].strip()
     except (IndexError, AttributeError):
         logger.debug('access token is probably in raw format')
+
+    user.token = token
 
     if database.get_description(jid):
         return user.transport.send(NotImplementedErrorStanza(iq, 'You are already in database'))
@@ -73,5 +74,6 @@ def discovery_request_handler(user, request):
     """:type request: FeatureQuery"""
     if request.destination != TRANSPORT_ID:
         return
+    logger.debug('handling discovery request')
     send = user.transport.send
     send(FeatureQuery(TRANSPORT_ID, request.origin, request.stanza_id, IDENTIFIER['name'], TRANSPORT_FEATURES))
