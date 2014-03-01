@@ -1,17 +1,13 @@
 from __future__ import unicode_literals
 
 import logging
-import ujson as json
-
 from api.errors import InvalidTokenError, AuthenticationException
 from config import TRANSPORT_ID, IDENTIFIER
 from friends import get_friend_jid
 from api.vkapi import Api
 import database
 from cystanza.stanza import SubscribePresence, AvailablePresence, UnavailablePresence
-from long_polling.long_polling import event_handler as update_handler
 from wrappers import asynchronous
-from compat import requests
 
 
 logger = logging.getLogger("cyvk")
@@ -36,19 +32,7 @@ class UserApi(object):
 
     @asynchronous
     def start_polling(self):
-        if self.polling:
-            return logger.debug('already polling %s' % self)
-        self.polling = True
-        args = self.vk.messages.get_lp_server()
-        args['wait'] = 6
-        url = 'http://{server}?act=a_check&key={key}&ts={ts}&wait={wait}&mode=2'.format(**args)
-        data = json.loads(requests.get(url).text)
-        self.polling = False
-        update_handler(self, data)
-
-    @asynchronous
-    def handle_updates(self, data):
-        update_handler(self, data)
+        self.vk.polling.start()
 
     @property
     def friends_online(self):

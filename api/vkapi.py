@@ -1,14 +1,14 @@
 from __future__ import unicode_literals
 import time
-import ujson as json
 
-from compat import text_type, get_logger, requests
+from compat import text_type, get_logger, requests, json
 from config import MAX_API_RETRY, API_MAXIMUM_RATE, TRANSPORT_ID
 from .errors import (api_errors, UnknownError, IncorrectApiResponse, TooManyRequestsPerSecond, AuthenticationException,
                      InvalidTokenError)
 from .messages import MessagesApi
 from .api import method_wrapper
 from .parsing import escape_name
+from .polling import LongPolling
 from cystanza.stanza import ChatMessage
 
 
@@ -26,7 +26,7 @@ class Api(object):
         self.jid = user.jid
         self.messages = MessagesApi(self)
         self.last_method_time = 0
-        self.polling = False
+        self.polling = LongPolling(self)
 
     @property
     def token(self):
@@ -76,17 +76,6 @@ class Api(object):
             additional_timeout = additional_timeout or API_MAXIMUM_RATE / WAIT_RATE
         additional_timeout *= WAIT_RATE
         return self._method(method_name, args, additional_timeout, retry + 1)
-
-    def start_polling(self):
-        if self.polling:
-            return _logger.debug('already polling %s' % self)
-        self.polling = True
-        args = self.messages.get_lp_server()
-        args['wait'] = 6
-        url = 'http://{server}?act=a_check&key={key}&ts={ts}&wait={wait}&mode=2'.format(**args)
-        data = json.loads(requests.get(url).text)
-        self.polling = False
-        self.user.handle_update(data)
 
     @method_wrapper
     def method(self, method_name, args=None, raise_auth=False):
